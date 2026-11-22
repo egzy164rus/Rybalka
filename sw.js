@@ -1,7 +1,7 @@
 /* Сервис-воркер «Тихой заводи»: игра остаётся доступной без интернета.
    Стратегия: сеть → кэш (network-first) для страницы, чтобы обновления прилетали сразу,
    и «сначала кэш» для иконок и манифеста. */
-const VERSION = "rybalka-7.1.0";
+const VERSION = "rybalka-7.1.1";
 const CORE = [
   "./",
   "index.html",
@@ -11,6 +11,9 @@ const CORE = [
   "icon-512.png",
   "icon-maskable-192.png",
   "icon-maskable-512.png",
+  "icon-120.png",
+  "icon-152.png",
+  "icon-167.png",
   "icon-180.png",
   "favicon-32.png"
 ];

@@ -30,7 +30,8 @@ jobs:
           cp rybalka.html _site/index.html
           cp -r screenshots _site/screenshots
           cp manifest.webmanifest sw.js _site/
-          cp icon-192.png icon-512.png icon-180.png icon-maskable-192.png icon-maskable-512.png favicon-32.png _site/
+          cp icon-120.png icon-152.png icon-167.png icon-180.png icon-192.png icon-512.png \
+             icon-maskable-192.png icon-maskable-512.png favicon-32.png _site/
           cp shot-1.jpg shot-2.jpg _site/ 2>/dev/null || true
           # .nojekyll: GitHub Pages не должен пытаться собирать сайт через Jekyll
           touch _site/.nojekyll || true
