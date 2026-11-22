@@ -3954,6 +3954,8 @@ function boot(){
     if (START.on && (e.code === "Enter" || e.code === "Space")){ e.preventDefault(); closeStart(); }
   });
   requestAnimationFrame(t => { last = t; requestAnimationFrame(loop); });
+  // PWA: кнопка установки в стартовом экране + офлайн-кэш
+  if (typeof bootPWA === "function") bootPWA();
 }
 
 // отладочный хук
@@ -3972,8 +3974,90 @@ window.__dbg = () => ({
   fishImg: G.fish && images.fish[artOf(G.fish.type)] ? images.fish[artOf(G.fish.type)].complete : "none",
   junk: G.fish ? !!G.fish.junk : null
 });
+window.__pwa = () => ({ standalone: pwaIsStandalone(), platform: pwaPlatform(),
+  installEvt: !!_installEvt, btn: !!_pwaBtn, sw: !!navigator.serviceWorker,
+  controlled: !!(navigator.serviceWorker && navigator.serviceWorker.controller) });
 window.__selectSpot = i => selectSpot(locDef().spots[i]);
 window.__ui = { openStart, closeStart, renderQuests, renderBaitShelf, claimQuest, dailyNow, questClaimable, openSheet, closeAllSheets };
+
+/* ---------------- PWA: установка на экран и офлайн-режим ---------------- */
+let _installEvt = null;      // отложенное приглашение Chrome/Android
+let _pwaBtn = null;          // кнопка «Установить» в стартовом экране
+function pwaIsStandalone(){
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+function pwaPlatform(){
+  const ua = navigator.userAgent;
+  if (/iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) return "ios";
+  if (/Android/.test(ua)) return "android";
+  return "desktop";
+}
+/* подсказка «как установить», если автоматического приглашения нет */
+function pwaHint(){
+  const plat = pwaPlatform();
+  if (plat === "ios") toast("Установка на iPhone", "Поделиться (квадрат со стрелкой) → «На экран „Домой“»", 4200);
+  else if (plat === "android") toast("Установка на Android", "Меню Chrome (три точки) → «Установить приложение»", 4200);
+  else toast("Установка в Chrome", "Значок ⊕ справа в адресной строке → «Установить»", 4200);
+}
+function pwaSetupInstall(){
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    _installEvt = e;
+    if (_pwaBtn) _pwaBtn.hidden = false;
+  });
+  window.addEventListener("appinstalled", () => {
+    _installEvt = null;
+    if (_pwaBtn) _pwaBtn.hidden = true;
+    try { save.pwaInstalled = 1; persist(); } catch(_) {}
+    toast("Установлено", "Игра теперь на экране устройства — и работает без интернета", 3200);
+  });
+  // кнопка в стартовом экране (показываем и там, где приглашения нет — с подсказкой)
+  const wrap = document.querySelector("#start .start-head");
+  if (!wrap || pwaIsStandalone()) return;
+  const btn = document.createElement("button");
+  btn.id = "btnInstall";
+  btn.type = "button";
+  btn.className = "start-mini";
+  btn.textContent = "Установить приложение";
+  btn.style.cssText = "width:100%;margin-top:10px;padding:12px 8px;font-size:12px;" +
+    "background:rgba(10,26,32,.62);border:1px solid rgba(255,214,122,.34);" +
+    "color:rgba(255,246,226,.92);border-radius:16px;" +
+    "backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);cursor:pointer";
+  btn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    if (_installEvt){
+      _installEvt.prompt();
+      const res = await _installEvt.userChoice.catch(()=>null);
+      if (res && res.outcome === "accepted"){ _installEvt = null; btn.hidden = true; }
+      else pwaHint();
+    } else pwaHint();
+  });
+  wrap.appendChild(btn);
+  _pwaBtn = btn;
+  if (_installEvt) btn.hidden = false;
+}
+/* офлайн-кэш: сервис-воркер появится и на GitHub Pages, и на локальном сервере;
+   при открытии файла с диска (file://) установка и кэш недоступны — игра и так офлайн */
+async function pwaOffline(){
+  if (!("serviceWorker" in navigator)) return;
+  if (location.protocol !== "http:" && location.protocol !== "https:") return;
+  try {
+    const reg = await navigator.serviceWorker.register("sw.js", { scope: "./" });
+    // когда вышло обновление — сообщаем, но не мешаем игре
+    reg.addEventListener("updatefound", () => {
+      const w = reg.installing;
+      if (!w) return;
+      w.addEventListener("statechange", () => {
+        if (w.state === "installed" && navigator.serviceWorker.controller)
+          toast("Обновление готово", "Перезапусти игру, чтобы применить", 2600);
+      });
+    });
+  } catch (e) { /* офлайн-кэш не критичен для игры */ }
+}
+function bootPWA(){
+  pwaSetupInstall();
+  pwaOffline();
+}
 
 if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", boot);
 else setTimeout(boot, 0);

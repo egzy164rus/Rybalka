@@ -1,8 +1,4 @@
-import base64, os, re, sys
-
-# сборка работает из любой папки: считаем пути от расположения скрипта
-ROOT = os.path.dirname(os.path.abspath(__file__))
-os.chdir(ROOT)
+import base64, os, re
 
 A = "assets"
 def b64(p, mime): return f"data:{mime};base64," + base64.b64encode(open(p,"rb").read()).decode()
@@ -61,3 +57,13 @@ missing = set(re.findall(r"__[A-Z_]+__", html)) - {"__DATA__","__GAME__"}
 print("missing tokens:", missing)
 open("rybalka.html","w",encoding="utf-8").write(html)
 print("built rybalka.html", round(os.path.getsize("rybalka.html")/1048576,2), "MB")
+
+# PWA: манифест, сервис-воркер, иконки и index.html рядом со страницей игры
+import shutil
+if os.path.isdir("pwa"):
+    for f in os.listdir("pwa"):
+        if f.startswith("icon_src") or f.startswith("icon_1024") or f.startswith("icon_maskable_1024"):
+            continue
+        shutil.copy2(os.path.join("pwa", f), f)
+    shutil.copy2("rybalka.html", "index.html")
+    print("PWA files copied:", "manifest.webmanifest, sw.js, icons, index.html")
