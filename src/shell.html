@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a1a20">
+<title>Тихая заводь — рыбалка</title>
+<style>
+:root{
+  --bg:#08171d;
+  --glass:rgba(12,30,38,.62);
+  --glass-2:rgba(9,24,30,.86);
+  --stroke:rgba(255,255,255,.13);
+  --stroke-2:rgba(255,255,255,.07);
+  --ink:#f3ecdd;
+  --muted:rgba(243,236,221,.62);
+  --accent:#ffc145;
+  --accent-2:#ff9a3c;
+  --green:#4ade80;
+  --red:#ef4444;
+  --paper:#f7f1e2;
+  --paper-ink:#2a2018;
+  --r-lg:26px;
+  --r-md:18px;
+  --r-sm:12px;
+  --sh:0 18px 50px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg)}
+body{position:fixed;inset:0;width:100%;height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  color:var(--ink);user-select:none;-webkit-user-select:none;touch-action:none;overscroll-behavior:none;
+  -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit}
+svg{display:block}
+#app{position:fixed;inset:0;overflow:hidden}
+canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+/* ============ top bar ============ */
+#topbar{
+  position:absolute;top:0;left:0;right:0;z-index:12;
+  padding:calc(env(safe-area-inset-top,0px) + 9px) 11px 9px;
+  display:flex;align-items:center;gap:6px;pointer-events:none;
+}
+.chip{
+  pointer-events:auto;display:flex;align-items:center;gap:6px;
+  background:var(--glass);backdrop-filter:blur(14px) saturate(1.2);-webkit-backdrop-filter:blur(14px) saturate(1.2);
+  border:1px solid var(--stroke);border-radius:999px;padding:6px 11px 6px 8px;
+  font-size:12.5px;font-weight:700;letter-spacing:.2px;color:var(--ink);
+  box-shadow:0 4px 14px rgba(0,0,0,.22);
+}
+.chip svg{width:16px;height:16px;flex:none}
+.chip b{font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums}
+.chip.loc{padding-left:7px;padding-right:8px;max-width:26vw;min-width:0;flex:0 1 auto;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:12px}
+.chip.weather{gap:3px;padding:5px 6px;flex:none;max-width:34vw;overflow:hidden;white-space:nowrap}
+.chip.wallet{gap:4px;padding:6px 9px 6px 7px;flex:none}
+.chip.wallet b{font-size:12.5px}
+.chip.wallet .pv{color:#d9ccff}
+.chip.wallet .wsep{width:1px;height:14px;background:rgba(255,255,255,.18);margin:0 2px}
+.chip.wallet svg{width:14px;height:14px}
+.chip.pearl{background:rgba(157,134,216,.16);border-color:rgba(157,134,216,.35);color:#e3d8ff;flex:none}
+.chip.pearl b{color:#fff}
+.chip.pearl svg{width:15px;height:15px}
+.chip.weather svg{width:15px;height:15px}
+.chip.weather span{font-size:11.5px;max-width:20vw;overflow:hidden;text-overflow:ellipsis}
+.chip.weather i{
+  font-style:normal;font-size:10.5px;font-weight:900;letter-spacing:.2px;
+  color:#a7f0bd;white-space:nowrap;
+}
+.chip.weather i.down{color:#ffb3a0}
+.lvlpill{
+  pointer-events:auto;display:flex;align-items:center;gap:4px;flex:none;
+  background:linear-gradient(180deg,#ffd979,#f0a51f);color:#2a2205;
+  border-radius:999px;padding:4px 8px;font-weight:900;font-size:12px;
+  box-shadow:0 4px 14px rgba(240,165,31,.35);
+}
+.lvlpill small{font-size:8.5px;font-weight:800;opacity:.72;text-transform:uppercase;letter-spacing:.4px}
+#topbar .roundbtn{width:30px;height:30px;flex:none}
+.spacer{flex:1}
+.roundbtn{
+  pointer-events:auto;width:36px;height:36px;border-radius:999px;display:grid;place-items:center;
+  background:var(--glass);border:1px solid var(--stroke);color:var(--ink);cursor:pointer;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:transform .12s;
+}
+.roundbtn svg{width:18px;height:18px}
+.roundbtn:active{transform:scale(.9)}
+
+/* xp progress under topbar */
+#xpbar{
+  position:absolute;z-index:12;left:11px;right:11px;
+  top:calc(env(safe-area-inset-top,0px) + 52px);
+  height:3px;border-radius:999px;background:rgba(255,255,255,.14);overflow:hidden;
+}
+#xpfill{height:100%;width:0%;background:linear-gradient(90deg,#ffd166,#ff9a3c);transition:width .5s}
+
+/* ============ bottom tab bar ============ */
+#tabs{
+  position:absolute;z-index:14;left:0;right:0;bottom:0;
+  padding:8px 10px calc(env(safe-area-inset-bottom,0px) + 8px);
+  display:flex;gap:5px;justify-content:space-between;
+  background:linear-gradient(180deg,rgba(6,20,26,0),rgba(6,20,26,.72) 40%,rgba(6,20,26,.92));
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-top:1px solid rgba(255,255,255,.06);
+}
+.tab .tabdot{position:absolute;top:5px;right:50%;margin-right:-16px;width:7px;height:7px;border-radius:50%;
+  background:#ff5b8a;box-shadow:0 0 8px #ff5b8a;display:none;animation:blink 1.4s infinite}
+.tab{
+  position:relative;flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:6px 2px;border:none;background:none;color:rgba(243,236,221,.55);
+  font-size:10.5px;font-weight:700;letter-spacing:.2px;cursor:pointer;
+  border-radius:14px;transition:color .15s, background .15s, transform .1s;
+}
+.tab svg{width:21px;height:21px}
+.tab.on{color:var(--accent);background:rgba(255,193,69,.12)}
+.tab:active{transform:scale(.94)}
+
+/* ============ action button ============ */
+#action{
+  position:absolute;left:50%;transform:translateX(-50%);z-index:11;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 76px);
+  width:min(430px,84vw);height:60px;border-radius:19px;border:none;
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  font-size:17.5px;font-weight:850;letter-spacing:.3px;color:#2a2205;
+  background:linear-gradient(180deg,#ffd979,#f7ae2e);
+  box-shadow:0 12px 28px rgba(0,0,0,.42),inset 0 -3px 0 rgba(150,90,0,.32);
+  cursor:pointer;transition:transform .09s, background .2s, color .2s, box-shadow .2s;
+  overflow:hidden;
+}
+#action::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;
+  background:linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0) 55%);
+  opacity:.75;pointer-events:none;
+}
+#action:active{transform:translateX(-50%) scale(.975)}
+#action[data-mode="hold"]{background:linear-gradient(180deg,#8ef0a8,#2fb45c);color:#07240f;box-shadow:0 12px 28px rgba(0,0,0,.42),0 0 26px rgba(74,222,128,.35),inset 0 -3px 0 rgba(0,80,30,.3)}
+#action[data-mode="bite"]{background:linear-gradient(180deg,#ffe08a,#ff8a1f);animation:pulse .5s ease-in-out infinite}
+#action[data-mode="power"]{background:linear-gradient(180deg,#9be2ff,#3aa6d8);color:#04222e}
+#action[data-mode="aim"]{background:linear-gradient(180deg,#e7dcc4,#c9b58c);color:#2a2018}
+#action:disabled{opacity:.55}
+@keyframes pulse{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.03)}}
+
+/* ============ gear bar ============ */
+#gearbar{
+  position:absolute;z-index:11;left:50%;transform:translateX(-50%);
+  bottom:calc(env(safe-area-inset-bottom,0px) + 142px);
+  display:flex;align-items:center;gap:4px;
+  padding:4px 5px;border-radius:999px;
+  background:var(--glass);border:1px solid var(--stroke);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  box-shadow:0 4px 14px rgba(0,0,0,.28);
+  transition:opacity .18s, transform .18s, box-shadow .25s;
+}
+#gearbar.hide{opacity:0;transform:translateX(-50%) translateY(8px);pointer-events:none}
+#gearbar .gi{
+  position:relative;width:26px;height:26px;display:grid;place-items:center;
+  border-radius:9px;background:rgba(255,255,255,.07);color:rgba(243,236,221,.85);
+}
+#gearbar .gi svg{width:15px;height:15px}
+#gearbar .gi i{
+  position:absolute;right:-2px;bottom:-2px;width:12px;height:12px;border-radius:4px;
+  background:#ffc145;color:#2a2205;font-size:8px;font-weight:900;font-style:normal;
+  display:grid;place-items:center;line-height:1;
+}
+#gearbar .gp{
+  display:flex;align-items:center;gap:3px;margin-left:3px;padding:3px 7px 3px 4px;
+  border-radius:999px;background:rgba(120,220,150,.16);border:1px solid rgba(120,220,150,.3);
+  color:#a7f0bd;font-size:11.5px;font-weight:900;
+}
+#gearbar .gp svg{width:13px;height:13px}
+#gearbar.low .gp{background:rgba(255,120,90,.2);border-color:rgba(255,120,90,.45);color:#ffb3a0;animation:blink 1s infinite}
+#gearbar .gi.empty{background:rgba(255,120,90,.18);border-color:rgba(255,120,90,.4);animation:blink 1.2s infinite}
+#gearbar .gi.empty i{color:#ffb3a0}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.55}}
+
+/* ============ power meter ============ */
+#powerWrap{
+  position:absolute;z-index:11;left:0;right:0;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 148px);
+  padding:0 20px;opacity:0;transform:translateY(6px);
+  transition:opacity .22s, transform .22s;pointer-events:none;
+}
+#powerWrap.on{opacity:1;transform:none}
+.meter{
+  position:relative;height:15px;border-radius:999px;overflow:hidden;
+  background:linear-gradient(90deg,rgba(90,190,255,.35),rgba(255,190,90,.3) 60%,rgba(255,90,90,.45));
+  border:1.5px solid rgba(255,255,255,.42);
+  box-shadow:0 6px 18px rgba(0,0,0,.35), inset 0 1px 3px rgba(0,0,0,.28);
+}
+.meter .sweet{
+  position:absolute;top:0;bottom:0;
+  background:repeating-linear-gradient(45deg,rgba(74,222,128,.9),rgba(74,222,128,.9) 6px,rgba(74,222,128,.62) 6px,rgba(74,222,128,.62) 12px);
+  box-shadow:inset 0 0 12px rgba(74,222,128,.95);border-radius:2px;
+}
+.meter .needle{
+  position:absolute;top:-8px;bottom:-8px;width:9px;margin-left:-4.5px;border-radius:4px;
+  background:linear-gradient(180deg,#fff,#eaf6ff 60%,#fff);
+  box-shadow:0 0 0 1.5px rgba(15,30,36,.55),0 0 14px rgba(255,255,255,.95);
+}
+.m-label{
+  display:flex;justify-content:space-between;margin-top:6px;
+  font-size:10px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;
+  color:rgba(255,255,255,.8);text-shadow:0 1px 3px rgba(0,0,0,.75);
+}
+
+/* ============ tension meter ============ */
+#tensionWrap{
+  position:absolute;z-index:11;left:0;right:0;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 148px);
+  padding:0 20px;opacity:0;transition:opacity .25s;pointer-events:none;
+}
+#tensionWrap.on{opacity:1}
+#progWrap{height:7px;border-radius:999px;margin-bottom:8px;overflow:hidden;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.26);box-shadow:0 2px 10px rgba(0,0,0,.3)}
+#progFill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#7ee7ff,#4ade80,#ffe066);box-shadow:0 0 12px rgba(120,240,200,.75);transition:width .08s linear}
+
+/* ============ toast ============ */
+#toast{
+  position:absolute;z-index:30;left:50%;top:34%;transform:translate(-50%,-50%) scale(.94);
+  padding:13px 19px;border-radius:18px;max-width:78vw;text-align:center;
+  background:rgba(7,22,28,.9);border:1px solid rgba(255,255,255,.16);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  font-size:15px;font-weight:750;line-height:1.35;box-shadow:0 16px 40px rgba(0,0,0,.5);
+  opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;
+}
+#toast.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+#toast small{display:block;font-size:12.5px;font-weight:600;opacity:.78;margin-top:5px}
+
+/* ============ sheets / pages ============ */
+.sheet{
+  position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,rgba(8,23,29,.96),rgba(6,18,23,.985));
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  transform:translateY(100%);opacity:0;pointer-events:none;
+  transition:transform .32s cubic-bezier(.22,1,.36,1), opacity .22s;
+}
+.sheet.on{transform:none;opacity:1;pointer-events:auto}
+.sheet-head{
+  padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 10px;
+  display:flex;align-items:center;gap:10px;flex:none;
+}
+.sheet-head h2{margin:0;font-size:20px;font-weight:850;letter-spacing:-.2px}
+.sheet-head .sub{font-size:11.5px;color:var(--muted);font-weight:650;margin-top:2px}
+.sheet-body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:4px 14px calc(env(safe-area-inset-bottom,0px) + 22px);-webkit-overflow-scrolling:touch}
+.sheet-body::-webkit-scrollbar{width:0}
+
+/* ============ base / locations ============ */
+.locCard{
+  position:relative;border-radius:var(--r-lg);overflow:hidden;margin-bottom:13px;
+  border:1px solid var(--stroke);box-shadow:var(--sh);cursor:pointer;
+  transition:transform .14s, box-shadow .2s, border-color .2s;
+  min-height:158px;display:flex;align-items:flex-end;
+}
+.locCard:active{transform:scale(.985)}
+.locCard .photo{
+  position:absolute;inset:0;background-size:cover;background-position:center;
+  transform:scale(1.02);transition:transform .5s;
+}
+.locCard:active .photo{transform:scale(1.06)}
+.locCard .veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,14,18,.55) 0%,rgba(4,14,18,.42) 26%,rgba(4,14,18,.82) 58%,rgba(4,14,18,.96))}
+.locCard .inner{position:relative;padding:14px 15px 15px;width:100%}
+.locCard h3{margin:0 0 3px;font-size:20px;font-weight:850;letter-spacing:-.2px}
+.locCard p{margin:0;font-size:12.5px;color:rgba(255,255,255,.86);line-height:1.42;font-weight:600;text-shadow:0 1px 6px rgba(0,0,0,.7);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.locCard .tags{display:flex;gap:5px;margin-top:9px;flex-wrap:nowrap;overflow:hidden}
+.tag{
+  font-size:10px;font-weight:800;letter-spacing:.2px;padding:3px 8px;border-radius:999px;
+  background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.16);color:#fff;
+  display:inline-flex;align-items:center;gap:4px;white-space:nowrap;flex:none;
+}
+.tag svg{width:11px;height:11px}
+.tag.trunc{overflow:hidden;text-overflow:ellipsis;max-width:44%}
+.tag.gold{background:rgba(255,193,69,.2);border-color:rgba(255,193,69,.4);color:#ffd979}
+.tag.green{background:rgba(74,222,128,.16);border-color:rgba(74,222,128,.36);color:#a7f0bd}
+.locFish{display:flex;align-items:center;gap:2px;margin-top:8px}
+.locFish img{width:34px;height:20px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
+.locFish span{font-size:10.5px;font-weight:800;color:rgba(255,255,255,.6);margin-left:3px}
+.locCard.locked{filter:saturate(.35)}
+.locCard.locked .photo{filter:grayscale(.6) brightness(.6)}
+.lockPill{
+  position:absolute;top:13px;right:13px;display:flex;align-items:center;gap:6px;
+  padding:6px 11px;border-radius:999px;background:rgba(8,22,28,.82);
+  border:1px solid rgba(255,255,255,.2);font-size:11.5px;font-weight:800;
+}
+.lockPill svg{width:13px;height:13px;color:var(--accent)}
+.badgeOn{
+  position:absolute;top:13px;right:13px;padding:6px 11px;border-radius:999px;
+  background:rgba(74,222,128,.9);color:#06240f;font-size:11px;font-weight:900;letter-spacing:.4px;
+  display:flex;align-items:center;gap:5px;
+}
+.badgeOn svg{width:13px;height:13px}
+
+/* section titles */
+.secTitle{
+  display:flex;align-items:center;gap:8px;margin:16px 2px 9px;
+  font-size:12px;font-weight:850;letter-spacing:1px;text-transform:uppercase;color:rgba(243,236,221,.5);
+}
+.secTitle::after{content:"";flex:1;height:1px;background:rgba(255,255,255,.08)}
+
+/* ============ shop ============ */
+.segmented{
+  display:flex;gap:4px;padding:4px;border-radius:16px;background:rgba(255,255,255,.07);
+  border:1px solid var(--stroke-2);margin:0 0 13px;overflow-x:auto;scrollbar-width:none;
+}
+.segmented::-webkit-scrollbar{display:none}
+.seg{
+  flex:1;min-width:74px;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:8px 8px;border:none;border-radius:12px;background:none;color:rgba(243,236,221,.6);
+  font-size:10.5px;font-weight:800;letter-spacing:.2px;cursor:pointer;transition:.15s;
+}
+.seg svg{width:19px;height:19px}
+.seg.on{background:rgba(255,193,69,.16);color:var(--accent);box-shadow:inset 0 0 0 1px rgba(255,193,69,.3)}
+.item{
+  display:flex;gap:11px;align-items:center;padding:12px;border-radius:var(--r-md);
+  background:rgba(255,255,255,.05);border:1px solid var(--stroke-2);margin-bottom:9px;
+  transition:border-color .2s, background .2s;
+}
+.item.owned{border-color:rgba(74,222,128,.28);background:rgba(74,222,128,.06)}
+.item.equipped{border-color:rgba(255,193,69,.5);background:rgba(255,193,69,.1);box-shadow:0 0 0 1px rgba(255,193,69,.25) inset}
+.item .ico{
+  width:44px;height:44px;flex:none;border-radius:13px;display:grid;place-items:center;
+  background:rgba(255,255,255,.07);border:1px solid var(--stroke-2);color:var(--accent);
+}
+.item .ico svg{width:22px;height:22px}
+.item .txt{flex:1;min-width:0}
+.item .txt b{display:block;font-size:14.5px;font-weight:800;letter-spacing:-.1px}
+.item .txt small{display:block;font-size:11.5px;color:var(--muted);font-weight:600;margin-top:2px;line-height:1.35}
+.item .txt .tiers{display:inline-flex;gap:2px;margin-left:6px;vertical-align:middle}
+.item .txt .tiers i{width:4.5px;height:4.5px;border-radius:2px;background:rgba(255,255,255,.2);display:inline-block}
+.item .txt .tiers i.f{background:var(--accent)}
+.item.locked{opacity:.62}
+.item .stats{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.item .stats span{
+  font-size:10px;font-weight:800;letter-spacing:.2px;padding:3px 7px;border-radius:7px;
+  background:rgba(255,255,255,.07);color:rgba(243,236,221,.62);white-space:nowrap;
+}
+.item .stats span b{color:var(--accent);font-weight:900}
+.item .fam{font-size:10px;font-weight:700;color:rgba(243,236,221,.42);margin-top:5px;line-height:1.35}
+.item .prem{font-size:9px;font-weight:900;letter-spacing:.5px;padding:2px 6px;border-radius:6px;
+  background:linear-gradient(90deg,#ffd166,#ff8fd8);color:#3a1f00;margin-left:6px;vertical-align:middle}
+.buy.lock{background:rgba(255,255,255,.07);color:rgba(243,236,221,.55);box-shadow:none;border:1px solid var(--stroke-2)}
+.buy{
+  flex:none;padding:9px 13px;border-radius:12px;border:none;cursor:pointer;
+  font-size:12.5px;font-weight:850;letter-spacing:.2px;color:#2a2205;
+  background:linear-gradient(180deg,#ffd979,#f7ae2e);box-shadow:0 4px 12px rgba(0,0,0,.3);
+  display:flex;align-items:center;gap:5px;transition:transform .1s, opacity .2s;
+}
+.buy svg{width:14px;height:14px}
+.buy:active{transform:scale(.95)}
+.buy.ghost{background:rgba(255,255,255,.1);color:var(--ink);box-shadow:none;border:1px solid var(--stroke)}
+.buy.on{background:rgba(74,222,128,.9);color:#06240f}
+.buy.off{background:rgba(255,255,255,.08);color:rgba(243,236,221,.45);box-shadow:none;border:1px solid var(--stroke-2)}
+.buy:disabled{opacity:.6;cursor:default}
+
+/* ============ journal ============ */
+.jgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(94px,1fr));gap:8px}
+.jcard{
+  position:relative;border-radius:16px;padding:9px 8px 10px;text-align:center;
+  background:rgba(255,255,255,.055);border:1px solid var(--stroke-2);overflow:hidden;
+}
+.jcard.got{border-color:rgba(255,193,69,.3);background:rgba(255,193,69,.07)}
+.jcard img{width:100%;height:44px;object-fit:contain;filter:drop-shadow(0 6px 8px rgba(0,0,0,.35))}
+.jcard .sil{width:100%;height:44px;display:grid;place-items:center;color:rgba(255,255,255,.16)}
+.jcard .sil svg{width:32px;height:32px}
+.jcard b{display:block;font-size:11.5px;font-weight:800;margin-top:3px;letter-spacing:-.1px}
+.jcard small{display:block;font-size:10.5px;font-weight:700;color:var(--muted);margin-top:1px}
+.jcard .new{position:absolute;top:6px;right:6px;font-size:8.5px;font-weight:900;letter-spacing:.4px;
+  padding:2px 5px;border-radius:6px;background:#ff5b8a;color:#fff;box-shadow:0 2px 8px rgba(255,91,138,.5)}
+.jcard .rar{font-size:9px;font-weight:900;letter-spacing:.5px;text-transform:uppercase;margin-top:4px}
+.jfilters{display:flex;flex-wrap:wrap;gap:6px;padding:2px 0 10px}
+.chipf{flex:0 0 auto;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);color:#f3ecdd;
+  font:800 11.5px/1 -apple-system,Segoe UI,Roboto,sans-serif;padding:8px 11px;border-radius:999px;cursor:pointer}
+.chipf i{font-style:normal;opacity:.55;font-weight:800}
+.chipf.on{background:linear-gradient(180deg,#ffd98a,#ffc14a);color:#3a2a05;border-color:transparent}
+.moreBtn{border:1px dashed rgba(255,255,255,.25);background:rgba(255,255,255,.05);color:#f3ecdd;
+  font:800 12px/1 -apple-system,Segoe UI,Roboto,sans-serif;padding:11px;border-radius:14px;cursor:pointer}
+.restock{margin-top:6px;border:1px solid rgba(255,193,69,.45);background:rgba(255,193,69,.14);color:#ffd98a;
+  font:800 11px/1 -apple-system,Segoe UI,Roboto,sans-serif;padding:7px 10px;border-radius:10px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:4px}
+.restock svg{width:12px;height:12px}
+.locHint{font-size:11px;font-weight:800;margin-top:7px;padding:5px 9px;border-radius:9px;display:inline-block;
+  backdrop-filter:blur(4px);text-shadow:none}
+.locHint.ok{background:rgba(24,90,60,.5);color:#b8f0c6}
+.locHint.warn{background:rgba(96,34,26,.55);color:#ffb9a6}
+.locBaits{font-size:10.5px;font-weight:750;color:rgba(255,255,255,.74);margin-top:5px;line-height:1.35;text-shadow:0 1px 5px rgba(0,0,0,.75)}
+/* карточка вида из дневника */
+#fishCard{z-index:70}
+#fishCard .roundbtn{position:absolute;right:10px;top:10px;z-index:6}
+#fishCard .card{width:min(400px,100%);max-height:88vh;overflow:auto;border-radius:26px;padding:18px;
+  background:linear-gradient(180deg,#132b34,#0b1b22);color:#f3ecdd;border:1px solid rgba(255,255,255,.12);
+  box-shadow:0 28px 70px rgba(0,0,0,.6);text-align:center;animation:pop .28s cubic-bezier(.2,1.2,.4,1)}
+#fishCard .fc-art{height:140px;display:grid;place-items:center;margin:2px 0 6px;position:relative;pointer-events:none}
+#fishCard .fc-art img{max-height:136px;max-width:100%;object-fit:contain;filter:drop-shadow(0 12px 16px rgba(0,0,0,.4))}
+#fishCard .fc-rar{display:inline-block;padding:4px 10px;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.6px;text-transform:uppercase}
+#fishCard .fc-name{font-size:21px;font-weight:900;margin:7px 0 2px;letter-spacing:-.3px}
+#fishCard .fc-note{font-size:12.5px;color:rgba(243,236,221,.72);margin:0 0 10px;line-height:1.5}
+#fishCard .fc-rows{display:grid;grid-template-columns:1fr 1fr;gap:7px;text-align:left}
+#fishCard .fc-rows>div{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:8px 10px}
+#fishCard .fc-rows small{display:block;font-size:9.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:rgba(243,236,221,.45)}
+#fishCard .fc-rows b{font-size:12.5px;font-weight:850}
+#fishCard .fc-rows b.ok{color:#a7f0bd}
+#fishCard .fc-rows b.warn{color:#ffb3a0}
+
+/* ============ catch card ============ */
+#catchCard .card{
+  width:min(420px,100%);max-height:88vh;overflow:auto;border-radius:28px;padding:19px;
+  background:linear-gradient(180deg,#fdf8ec,#efe3cb);color:var(--paper-ink);
+  box-shadow:0 28px 70px rgba(0,0,0,.6), inset 0 0 0 1px rgba(120,90,40,.16);
+  animation:pop .3s cubic-bezier(.2,1.2,.4,1);text-align:center;position:relative;
+}
+@keyframes pop{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+#catchCard .art{position:relative;height:158px;display:grid;place-items:center;margin:6px 0 2px}
+#catchCard .art img{max-width:100%;max-height:158px;object-fit:contain;filter:drop-shadow(0 16px 20px rgba(0,0,0,.32))}
+/* живая рыба: тело ходит волной, «хвост» машет, весь силуэт плавает */
+#catchCard .aqua{position:absolute;inset:-6px 0 0;border-radius:50% 50% 46% 46%;z-index:-1;
+  background:radial-gradient(60% 70% at 50% 42%,rgba(120,200,255,.30),rgba(120,200,255,0) 70%)}
+.fishSwim{display:block;position:relative;transform-origin:50% 55%;animation:fishPath 4.4s ease-in-out infinite alternate}
+.fishSwim .fbody{display:block;max-width:100%;max-height:158px;object-fit:contain;
+  transform-origin:62% 50%;animation:fishBody 1.5s ease-in-out infinite alternate}
+.fishSwim .fpad{position:absolute;right:2%;top:46%;width:26%;height:26%;
+  background:radial-gradient(circle at 30% 50%,rgba(0,0,0,.14),rgba(0,0,0,0) 70%);border-radius:50%;
+  animation:fishTail 0.75s ease-in-out infinite alternate;transform-origin:0% 50%}
+@keyframes fishPath{0%{transform:translate(-10px,4px) rotate(-2.2deg)}50%{transform:translate(2px,-6px) rotate(.6deg)}100%{transform:translate(12px,2px) rotate(2deg)}}
+@keyframes fishBody{0%{transform:rotate(-3.4deg) scaleY(.985)}100%{transform:rotate(3.4deg) scaleY(1.015)}}
+@keyframes fishTail{0%{transform:translateX(-4px) rotate(-13deg) scaleX(.85)}100%{transform:translateX(5px) rotate(13deg) scaleX(1.1)}}
+#fishCard .fishSwim .fbody,#fishCard .fc-art img{max-height:132px}
+@keyframes swim{from{transform:translateX(-7px) rotate(-1.4deg)}to{transform:translateX(7px) rotate(1.4deg)}}
+#catchCard .art .glow{position:absolute;width:230px;height:120px;border-radius:50%;filter:blur(28px);opacity:.55;z-index:-1;animation:breathe 2.6s ease-in-out infinite}
+@keyframes breathe{0%,100%{transform:scale(.92);opacity:.45}50%{transform:scale(1.12);opacity:.75}}
+#catchCard .spark{position:absolute;inset:0;pointer-events:none;overflow:hidden;border-radius:28px}
+#catchCard .spark i{position:absolute;width:5px;height:5px;border-radius:50%;background:#fff;opacity:0;animation:spark 2.4s ease-in-out infinite}
+@keyframes spark{0%,100%{opacity:0;transform:translateY(10px) scale(.6)}50%{opacity:.9;transform:translateY(-14px) scale(1)}}
+#catchCard h2{margin:2px 0 0;font-size:23px;font-weight:900;letter-spacing:-.4px}
+#catchCard .rar{display:inline-block;padding:4px 11px;border-radius:999px;font-size:10.5px;font-weight:900;letter-spacing:.7px;text-transform:uppercase}
+.bigweight{font-size:33px;font-weight:900;letter-spacing:-.8px;margin:5px 0 0;line-height:1}
+.bigweight span.u{font-size:16px;font-weight:750;opacity:.55}
+.rec{display:inline-block;margin-left:7px;padding:3px 8px;border-radius:8px;background:linear-gradient(180deg,#ffe9a3,#ffc94d);color:#6b4500;font-size:10px;font-weight:900;letter-spacing:.5px;vertical-align:middle}
+#catchCard .note{font-size:13px;color:#54432f;margin:8px 0 0;line-height:1.5}
+.catchMeta{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-top:11px}
+.catchMeta span{
+  font-size:10.5px;font-weight:800;letter-spacing:.2px;padding:4px 8px;border-radius:999px;
+  background:rgba(120,90,40,.1);color:#5b4a33;display:inline-flex;align-items:center;gap:4px;
+}
+.catchMeta span svg{width:12px;height:12px}
+.catchMeta span.ok{background:rgba(74,180,120,.16);color:#2f6b45}
+.catchMeta span.warn{background:rgba(220,110,60,.18);color:#8f3d10}
+.rowStats{display:flex;gap:7px;margin-top:13px}
+.rowStats div{flex:1;background:rgba(120,90,40,.09);border-radius:14px;padding:8px 7px;text-align:center}
+.rowStats small{display:block;font-size:9px;letter-spacing:.3px;text-transform:uppercase;opacity:.6;font-weight:800;white-space:nowrap}
+.rowStats div{padding:8px 4px}
+.rowStats b{font-size:14px;font-variant-numeric:tabular-nums}
+.btn{
+  width:100%;margin-top:13px;padding:14px;border-radius:16px;border:none;cursor:pointer;
+  font-size:15.5px;font-weight:850;color:#2a2205;
+  background:linear-gradient(180deg,#ffd979,#f7ae2e);
+  box-shadow:0 8px 20px rgba(160,100,0,.28),inset 0 -2px 0 rgba(150,90,0,.25);
+  transition:transform .1s;
+}
+.btn:active{transform:scale(.98)}
+.btn.ghost{background:transparent;color:#6b5638;box-shadow:none;border:1.5px solid rgba(120,90,40,.28);font-weight:750}
+.overlay{
+  position:absolute;inset:0;z-index:26;display:none;place-items:center;padding:18px;
+  background:rgba(5,16,20,.62);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+}
+.overlay.on{display:grid}
+/* у оверлеев-сообщений полупрозрачный фон и «пустая» область не перекрывает нажатия */
+#questDone{background:rgba(5,16,20,.42)}
+#questDone .card{pointer-events:auto}
+#questDone{pointer-events:none}
+#questDone.on{pointer-events:auto}
+
+/* ============ bait shelf ============ */
+#baitShelf{
+  position:absolute;z-index:18;left:10px;right:10px;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 150px);
+  background:rgba(8,22,28,.94);border:1px solid rgba(255,255,255,.14);border-radius:18px;
+  padding:11px 12px 12px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  box-shadow:0 22px 50px rgba(0,0,0,.55);
+  transform:translateY(14px);opacity:0;pointer-events:none;visibility:hidden;
+  transition:transform .22s, opacity .22s, visibility .22s;
+  max-height:52vh;overflow:auto;
+}
+#baitShelf.on{transform:none;opacity:1;pointer-events:auto;visibility:visible}
+.bs-head{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:900;letter-spacing:.6px;
+  text-transform:uppercase;color:rgba(243,236,221,.8);margin-bottom:9px}
+.bs-head span{font-size:9.5px;font-weight:750;letter-spacing:0;text-transform:none;color:rgba(243,236,221,.42)}
+.bs-x{margin-left:auto;width:26px;height:26px;border-radius:9px;border:1px solid rgba(255,255,255,.16);
+  background:rgba(255,255,255,.06);color:#f3ecdd;font-size:16px;line-height:1;cursor:pointer}
+.bs-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.bs{position:relative;text-align:left;border-radius:12px;padding:8px 9px;cursor:pointer;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#f3ecdd}
+.bs b{display:block;font-size:11.5px;font-weight:850;line-height:1.2}
+.bs small{display:block;font-size:9.5px;font-weight:750;color:rgba(243,236,221,.5);margin-top:3px}
+.bs.on{background:linear-gradient(180deg,rgba(255,217,121,.24),rgba(255,193,69,.14));
+  border-color:rgba(255,193,69,.6);box-shadow:0 0 0 1px rgba(255,193,69,.25) inset}
+.bs.on b{color:#ffe6b0}
+.bs.empty{opacity:.55}
+.bs.far{opacity:.42}
+.bs.far small{color:rgba(255,150,120,.7)}
+
+/* ============ quests ============ */
+.qdaily{display:grid;gap:7px;margin-bottom:1px}
+.dailyHead{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:900;letter-spacing:.7px;
+  text-transform:uppercase;color:rgba(243,236,221,.62);margin:2px 2px 1px}
+.dailyHead svg{width:14px;height:14px;color:#ffc145}
+.dailyHead i{font-style:normal;color:#ffd98a;margin-left:auto;letter-spacing:0}
+.dailyRow{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:15px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
+.dailyRow.ready{border-color:rgba(255,193,69,.5);background:rgba(255,193,69,.09);box-shadow:0 0 0 1px rgba(255,193,69,.15) inset}
+.dailyRow.claimed{opacity:.5}
+.dtxt{flex:1;min-width:0}
+.dtxt b{display:block;font-size:12.5px;font-weight:820;line-height:1.25}
+.dtxt small{display:block;font-size:10px;font-weight:750;color:rgba(243,236,221,.48);margin-top:4px}
+.dbar{height:5px;border-radius:99px;background:rgba(255,255,255,.1);margin-top:6px;overflow:hidden}
+.dbar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#7bd8a0,#4ade80);transition:width .4s}
+.dailyRow.ready .dbar i{background:linear-gradient(90deg,#ffd979,#f7ae2e)}
+.dclaim{flex:none;border:none;cursor:pointer;font:850 11px/1 -apple-system,Segoe UI,Roboto,sans-serif;
+  padding:9px 12px;border-radius:11px;background:linear-gradient(180deg,#ffd979,#f7ae2e);color:#3a2a05;
+  box-shadow:0 4px 12px rgba(200,130,0,.28)}
+.dclaim.wait{background:rgba(255,255,255,.04);color:rgba(243,236,221,.28);font-weight:900;padding:9px 12px;
+  display:inline-flex;align-items:center;justify-content:center;min-width:44px;letter-spacing:1.5px}
+.dclaim.done{background:rgba(74,222,128,.18);color:#a7f0bd;padding:9px 10px;display:inline-flex}
+.dclaim.done svg{width:13px;height:13px}
+.qlist{display:grid;gap:9px;margin-top:2px}
+.qcard{position:relative;border-radius:17px;padding:12px 13px;background:rgba(255,255,255,.045);
+  border:1px solid rgba(255,255,255,.08);overflow:hidden}
+.qcard .qtop{display:flex;align-items:baseline;gap:8px}
+.qcard .qtop b{font-size:14px;font-weight:850;letter-spacing:-.2px;flex:1;min-width:0}
+.qchap{font-size:9px;font-weight:900;letter-spacing:.6px;text-transform:uppercase;
+  color:rgba(255,217,138,.85);background:rgba(255,193,69,.12);border:1px solid rgba(255,193,69,.22);
+  padding:3px 7px;border-radius:999px;flex:none}
+.qsub{display:block;font-size:11.5px;font-weight:650;color:rgba(243,236,221,.66);margin-top:3px}
+.qbar{height:6px;border-radius:99px;background:rgba(255,255,255,.09);margin:9px 0 6px;overflow:hidden}
+.qbar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#6fc3ff,#b79cf7);transition:width .45s}
+.qfoot{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.qnum{font-size:11px;font-weight:850;color:rgba(243,236,221,.6);font-variant-numeric:tabular-nums}
+.qrew{display:flex;gap:5px;flex-wrap:wrap;margin-left:auto}
+.rw{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:850;
+  padding:3px 7px;border-radius:8px;background:rgba(255,255,255,.07);color:#f3ecdd}
+.rw svg{width:11px;height:11px}
+.rw.coins{background:rgba(247,201,72,.16);color:#ffd979}
+.rw.xp{background:rgba(127,200,238,.14);color:#a8e0ff}
+.rw.item{background:rgba(183,156,247,.15);color:#d3c4ff}
+.qtip{font-size:10.5px;font-weight:700;color:rgba(243,236,221,.42);margin-top:7px;line-height:1.35;
+  padding-left:14px;position:relative}
+.qtip:before{content:"?";position:absolute;left:0;top:0;width:11px;height:11px;border-radius:50%;
+  background:rgba(255,255,255,.14);color:rgba(255,255,255,.7);font-size:8px;font-weight:900;
+  display:grid;place-items:center;line-height:1}
+.qclaim{width:100%;margin-top:9px;border:none;cursor:pointer;border-radius:12px;padding:11px;
+  font:900 12.5px/1 -apple-system,Segoe UI,Roboto,sans-serif;letter-spacing:.3px;
+  background:linear-gradient(180deg,#ffd979,#f7ae2e);color:#3a2a05;
+  box-shadow:0 6px 16px rgba(200,130,0,.3);animation:qglow 1.6s ease-in-out infinite}
+@keyframes qglow{0%,100%{box-shadow:0 6px 16px rgba(200,130,0,.25)}50%{box-shadow:0 6px 22px rgba(255,190,60,.55)}}
+.qcard.done{opacity:.62}
+.qcard.done .qbar i{background:linear-gradient(90deg,#4ade80,#7ce3a5)}
+.qcard.ready{border-color:rgba(255,193,69,.45);background:rgba(255,193,69,.07)}
+.qdoneTag{display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:10.5px;font-weight:850;
+  color:#a7f0bd;background:rgba(74,222,128,.14);padding:4px 9px;border-radius:8px}
+.qdoneTag svg{width:12px;height:12px}
+.chipf.ready:after{content:"";width:6px;height:6px;border-radius:50%;background:#ff5b8a;
+  display:inline-block;margin-left:5px;vertical-align:middle;box-shadow:0 0 6px #ff5b8a}
+
+/* окно «квест выполнен» */
+#questDone .card{width:min(360px,100%);border-radius:24px;padding:22px 20px;text-align:center;
+  background:linear-gradient(180deg,#1a3038,#0c1c22);color:#f3ecdd;border:1px solid rgba(255,193,69,.35);
+  box-shadow:0 26px 60px rgba(0,0,0,.6), 0 0 60px rgba(255,193,69,.12);
+  animation:pop .3s cubic-bezier(.2,1.2,.4,1)}
+#questDone .qd-medal{width:74px;height:74px;margin:0 auto 10px;border-radius:50%;
+  display:grid;place-items:center;background:radial-gradient(circle at 40% 30%,#ffe9a3,#f7ae2e 70%);
+  box-shadow:0 10px 26px rgba(255,170,0,.35), inset 0 -4px 10px rgba(150,90,0,.3);animation:medal 2.2s ease-in-out infinite}
+#questDone .qd-medal svg{width:36px;height:36px;color:#5a3b00}
+@keyframes medal{0%,100%{transform:rotate(-5deg) scale(1)}50%{transform:rotate(5deg) scale(1.06)}}
+#questDone .qd-kicker{font-size:10px;font-weight:900;letter-spacing:1.4px;text-transform:uppercase;color:#ffd979}
+#questDone .qd-title{font-size:20px;font-weight:900;margin:5px 0 2px;letter-spacing:-.3px}
+#questDone .qd-sub{font-size:12px;color:rgba(243,236,221,.6);margin:0 0 12px;font-weight:650}
+#questDone .qd-rew{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:14px}
+#questDone .qd-btn{width:100%;border:none;cursor:pointer;border-radius:14px;padding:13px;
+  font:900 14px/1 -apple-system,Segoe UI,Roboto,sans-serif;color:#3a2a05;
+  background:linear-gradient(180deg,#ffd979,#f7ae2e);box-shadow:0 8px 20px rgba(200,130,0,.3)}
+#questDone .qd-later{background:none;border:none;color:rgba(243,236,221,.5);font:800 11.5px/1 inherit;
+  margin-top:10px;cursor:pointer;padding:6px}
+
+/* ============ стартовый экран ============ */
+#start{
+  position:absolute;inset:0;z-index:60;display:none;overflow:hidden;
+  background:#061418;
+}
+#start.on{display:block}
+#startCv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.start-sky{position:absolute;inset:0;opacity:0;transition:opacity .6s}
+.start-sky.ready{opacity:1}
+.start-vignette{position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(70% 55% at 50% 38%,rgba(4,16,20,0) 30%,rgba(4,16,20,.55) 78%,rgba(3,10,14,.92) 100%),
+             linear-gradient(180deg,rgba(3,10,14,.55) 0%,rgba(3,10,14,0) 26%,rgba(3,10,14,0) 48%,rgba(3,10,14,.86) 100%)}
+.start-wrap{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;
+  padding:22px 18px calc(env(safe-area-inset-bottom,0px) + 26px)}
+.start-head{width:min(430px,100%);text-align:center;animation:startUp .7s cubic-bezier(.2,.9,.3,1) both}
+@keyframes startUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+.logo{margin-bottom:auto;padding-bottom:18px}
+.logo-kicker{display:inline-block;font-size:10px;font-weight:900;letter-spacing:3.4px;text-transform:uppercase;
+  color:rgba(255,232,190,.72);margin-bottom:2px}
+.logo h1{margin:0;font-size:clamp(38px,13vw,58px);font-weight:900;letter-spacing:clamp(2px,2.4vw,7px);
+  line-height:.95;color:#fff6e2;
+  text-shadow:0 2px 0 rgba(120,70,10,.5),0 10px 34px rgba(0,0,0,.62),0 0 46px rgba(255,190,90,.35)}
+.logo p{margin:9px 0 0;font-size:11.5px;font-weight:800;letter-spacing:.3px;color:rgba(255,240,215,.66)}
+.start-stats{display:none}
+.sstat{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;
+  font-size:10.5px;font-weight:850;color:#fff2d8;background:rgba(8,22,26,.55);
+  border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(8px)}
+.sstat svg{width:12px;height:12px;color:#ffc145}
+.sstat.gold{border-color:rgba(255,193,69,.42);color:#ffe1a3}
+.start-btn{width:100%;border:none;cursor:pointer;border-radius:20px;padding:15px 16px 14px;
+  display:grid;gap:3px;color:#2a2205;
+  background:linear-gradient(180deg,#ffe08a,#f9b32f 62%,#eda01d);
+  box-shadow:0 14px 34px rgba(180,110,0,.42), 0 2px 0 rgba(255,255,255,.4) inset, 0 -3px 0 rgba(150,90,0,.28) inset;
+  transition:transform .12s, box-shadow .2s;position:relative;overflow:hidden}
+.start-btn:active{transform:scale(.985)}
+.start-btn:after{content:"";position:absolute;top:0;bottom:0;width:44%;
+  background:linear-gradient(100deg,rgba(255,255,255,0),rgba(255,255,255,.55),rgba(255,255,255,0));
+  transform:translateX(-140%) skewX(-12deg);animation:shine 3.6s ease-in-out infinite}
+@keyframes shine{0%,62%{transform:translateX(-140%) skewX(-12deg)}82%,100%{transform:translateX(320%) skewX(-12deg)}}
+.sb-main{font-size:17px;font-weight:900;letter-spacing:.4px}
+.sb-sub{font-size:10px;font-weight:800;opacity:.62;letter-spacing:.2px}
+.start-row{display:flex;gap:7px;margin-top:10px}
+.start-mini{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;
+  padding:10px 6px;border-radius:14px;cursor:pointer;
+  background:rgba(10,26,32,.6);border:1px solid rgba(255,255,255,.16);
+  color:rgba(255,244,226,.86);font-size:10.5px;font-weight:850;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.start-mini svg{width:14px;height:14px;flex:none}
+.start-mini:active{transform:scale(.97);background:rgba(20,44,52,.8)}
+.start-mini i{font-style:normal}
+
+/* подсказки-пузыри в игре */
+#coach{position:absolute;inset:0;z-index:30;pointer-events:none}
+.coach-bubble{position:absolute;max-width:70%;padding:9px 13px;border-radius:14px;
+  background:rgba(8,24,30,.9);border:1px solid rgba(255,214,122,.45);color:#fff6e2;
+  font-size:11.5px;font-weight:750;line-height:1.4;box-shadow:0 12px 28px rgba(0,0,0,.5);
+  transform:translate(-50%,-100%) scale(.94);opacity:0;animation:cIn .32s ease forwards}
+@keyframes cIn{to{opacity:1;transform:translate(-50%,-100%) scale(1)}}
+.coach-bubble:after{content:"";position:absolute;left:50%;bottom:-6px;width:12px;height:12px;
+  margin-left:-6px;background:inherit;border-right:inherit;border-bottom:inherit;transform:rotate(45deg)}
+
+/* ============ premium ============ */
+.item.premium{background:linear-gradient(120deg,rgba(157,134,216,.18),rgba(255,193,69,.08));
+  border-color:rgba(157,134,216,.5);box-shadow:0 0 0 1px rgba(157,134,216,.25) inset,0 10px 26px rgba(90,60,160,.18)}
+.item.premium .ico{background:linear-gradient(180deg,#e7dcff,#b9a4f5);color:#2c1d55;border-color:rgba(157,134,216,.6)}
+.premTag{display:inline-block;margin-right:6px;font-size:8.5px;font-weight:900;letter-spacing:1px;
+  padding:2px 6px;border-radius:6px;background:linear-gradient(90deg,#9d86d8,#ffcf6a);color:#241a10;vertical-align:middle}
+.premNote{display:flex;gap:9px;align-items:flex-start;margin-top:10px;padding:10px 12px;border-radius:15px;
+  background:rgba(157,134,216,.10);border:1px solid rgba(157,134,216,.28);color:rgba(243,236,221,.8)}
+.premNote svg{width:26px;height:26px;flex:none;margin-top:2px}
+.premNote b{display:block;font-size:12.5px;font-weight:850;color:#e7dcff}
+.premNote small{display:block;font-size:10.5px;font-weight:650;line-height:1.4;margin-top:2px;color:rgba(243,236,221,.55)}
+button.buy.prem{border:none;cursor:pointer;border-radius:12px;padding:10px 12px;display:inline-flex;align-items:center;gap:5px;
+  font:900 12px/1 -apple-system,Segoe UI,Roboto,sans-serif;color:#2c1d55;
+  background:linear-gradient(180deg,#efe7ff,#c3b0f7);box-shadow:0 6px 16px rgba(120,90,200,.3)}
+button.buy.prem svg{width:13px;height:13px}
+button.buy.prem:disabled{opacity:.5}
+
+/* ============ help sheet ============ */
+#sheetHelp .steps{text-align:left;display:grid;gap:8px;margin-top:2px}
+#sheetHelp .step{display:flex;gap:10px;align-items:flex-start;background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:10px 11px}
+#sheetHelp .step .n{flex:none;width:23px;height:23px;border-radius:8px;display:grid;place-items:center;
+  background:linear-gradient(180deg,#ffd979,#f7ae2e);color:#3a2400;font-weight:900;font-size:12px}
+#sheetHelp .step p{margin:0;font-size:12.5px;color:rgba(243,236,221,.8);line-height:1.45;font-weight:650}
+#sheetHelp .step b{color:#fff2d8;font-weight:850}
+.helpRules{display:grid;gap:8px}
+.helpRules .hr{display:flex;gap:10px;align-items:flex-start;background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.08);border-radius:15px;padding:11px 12px;
+  font-size:12px;font-weight:650;line-height:1.42;color:rgba(243,236,221,.74)}
+.helpRules .hr b{display:block;font-size:12.5px;font-weight:850;color:#fff2d8;margin-bottom:2px}
+.helpRules .hrIco{width:30px;height:30px;border-radius:10px;flex:none;display:grid;place-items:center;
+  background:rgba(255,193,69,.14);border:1px solid rgba(255,193,69,.22)}
+.helpRules .hrIco svg{width:16px;height:16px;color:#ffd979}
+
+/* ============ misc ============ */
+#hint{
+  position:absolute;z-index:10;left:50%;transform:translateX(-50%);
+  top:calc(env(safe-area-inset-top,0px) + 62px);
+  padding:7px 13px;border-radius:999px;background:rgba(6,20,26,.62);
+  border:1px solid rgba(255,255,255,.12);font-size:11.5px;font-weight:750;color:rgba(255,255,255,.85);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);opacity:0;transition:opacity .25s;
+  pointer-events:none;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis;
+}
+#hint.on{opacity:1}
+.dim{position:absolute;inset:0;z-index:9;background:rgba(3,12,16,0);transition:background .3s;pointer-events:none}
+.dim.on{background:rgba(3,12,16,.35)}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="cv"></canvas>
+
+  <!-- ===== fishing HUD ===== -->
+  <div id="topbar">
+    <div class="chip loc" id="chipLoc">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#ffc145" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>
+      <span id="locName">Тихая заводь</span>
+    </div>
+    <div class="chip weather" id="weatherChip"></div>
+    <div class="chip wallet" id="chipWallet" title="Монеты и жемчуг">
+      <span style="width:15px;height:15px;color:#f7c948" id="coinIco"></span><b id="coins">0</b>
+      <span class="wsep"></span>
+      <span style="width:12px;height:12px" id="pearlIco"></span><b id="pearls" class="pv">0</b>
+    </div>
+    <div class="spacer"></div>
+    <div class="lvlpill" id="lvlChip"><small>ур.</small><b id="lvl">1</b></div>
+    <button class="roundbtn" id="btnSound" aria-label="Звук"></button>
+  </div>
+  <div id="xpbar"><div id="xpfill"></div></div>
+
+  <div id="hint"></div>
+  <div class="dim" id="dim"></div>
+
+  <div id="powerWrap">
+    <div class="meter">
+      <div class="sweet" id="sweetZone"></div>
+      <div class="needle" id="powerNeedle"></div>
+    </div>
+    <div class="m-label"><span>слабо</span><span id="powerLabel">сила заброса</span><span>далеко</span></div>
+  </div>
+
+  <div id="tensionWrap">
+    <div id="progWrap"><div id="progFill"></div></div>
+    <div class="meter">
+      <div class="sweet" id="tensionZone"></div>
+      <div class="needle" id="tensionNeedle"></div>
+    </div>
+    <div class="m-label"><span>слабо</span><span>натяжение</span><span>обрыв</span></div>
+  </div>
+
+  <div id="gearbar"></div>
+  <div id="baitShelf"></div>
+  <button id="action">ЗАБРОСИТЬ</button>
+
+  <!-- ===== tab bar ===== -->
+  <nav id="tabs">
+    <button class="tab" data-tab="base" id="tabBase"></button>
+    <button class="tab" data-tab="quests" id="tabQuests"></button>
+    <button class="tab" data-tab="shop" id="tabShop"></button>
+    <button class="tab on" data-tab="fish" id="tabFish"></button>
+    <button class="tab" data-tab="journal" id="tabJournal"></button>
+  </nav>
+
+  <!-- ===== base sheet ===== -->
+  <section class="sheet" id="sheetBase">
+    <div class="sheet-head">
+      <div style="flex:1">
+        <h2>База</h2>
+        <div class="sub">Куда поедем сегодня?</div>
+      </div>
+      <button class="roundbtn" data-close="sheetBase" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body">
+      <div id="locList"></div>
+      <div class="secTitle">Снаряжение</div>
+      <div id="gearSummary"></div>
+      <button class="btn" id="btnToShop">Открыть магазин</button>
+      <button class="btn ghost" id="btnHelpBase" style="margin-top:8px">Как играть</button>
+      <button class="btn ghost" id="btnToStartBase" style="margin-top:8px">На главный экран</button>
+    </div>
+  </section>
+
+  <!-- ===== quests sheet ===== -->
+  <section class="sheet" id="sheetQuests">
+    <div class="sheet-head">
+      <div style="flex:1">
+        <h2>Квесты</h2>
+        <div class="sub" id="qSub">Задания и награды</div>
+      </div>
+      <button class="roundbtn" data-close="sheetQuests" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body">
+      <div class="qdaily" id="qDaily"></div>
+      <div class="secTitle">Сюжетные задания</div>
+      <div class="jfilters" id="qChapters"></div>
+      <div class="qlist" id="qList"></div>
+    </div>
+  </section>
+
+  <!-- ===== quest done ===== -->
+  <div class="overlay" id="questDone">
+    <div class="card">
+      <div class="qd-medal"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6l2.7 6.1 6.6.6-5 4.5 1.5 6.5L12 16.9 6.2 20.3l1.5-6.5-5-4.5 6.6-.6z"/></svg></div>
+      <div class="qd-kicker">Квест выполнен</div>
+      <div class="qd-title">—</div>
+      <p class="qd-sub">—</p>
+      <div class="qd-rew"></div>
+      <button class="qd-btn">Забрать награду</button>
+      <button class="qd-later">Позже</button>
+    </div>
+  </div>
+
+  <!-- ===== help sheet ===== -->
+  <section class="sheet" id="sheetHelp">
+    <div class="sheet-head">
+      <div style="flex:1">
+        <h2>Как играть</h2>
+        <div class="sub">Пять шагов и четыре правила</div>
+      </div>
+      <button class="roundbtn" data-close="sheetHelp" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body">
+      <div class="steps" id="helpSteps"></div>
+      <div class="secTitle">Правила рыбы</div>
+      <div class="helpRules">
+        <div class="hr"><span class="hrIco" data-ico="bait"></span><div><b>Своя приманка</b>Каждая из 100 рыб берёт только одну приманку. На чужую — тишина.</div></div>
+        <div class="hr"><span class="hrIco" data-ico="power"></span><div><b>Порог снасти</b>У рыбы есть «требуемая сила». Слабая удочка — рыба просто не клюнет.</div></div>
+        <div class="hr"><span class="hrIco" data-ico="map"></span><div><b>Водоём</b>5 водоёмов с 1 по 12 уровень. В море — только морская снасть.</div></div>
+        <div class="hr"><span class="hrIco" data-ico="star"></span><div><b>Квесты</b>26 сюжетных заданий и 3 ежедневные цели дают монеты, опыт и снасти.</div></div>
+      </div>
+      <button class="btn" id="btnHelpOk">Понятно, на воду</button>
+    </div>
+  </section>
+
+  <!-- ===== shop sheet ===== -->
+  <section class="sheet" id="sheetShop">
+    <div class="sheet-head">
+      <div style="flex:1">
+        <h2>Магазин</h2>
+        <div class="sub">Снасти и приманки за пойманную рыбу</div>
+      </div>
+      <div class="chip" style="margin-right:4px"><span style="width:16px;height:16px;color:#f7c948" id="coinIco2"></span><b id="coinsShop">0</b></div>
+      <div class="chip pearl" style="margin-right:6px"><span style="width:15px;height:15px" id="pearlIco2"></span><b id="pearlsShop">0</b></div>
+      <button class="roundbtn" data-close="sheetShop" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body">
+      <div class="segmented" id="shopSeg"></div>
+      <div id="itemList"></div>
+    </div>
+  </section>
+
+  <!-- ===== journal sheet ===== -->
+  <section class="sheet" id="sheetJournal">
+    <div class="sheet-head">
+      <div style="flex:1">
+        <h2>Дневник</h2>
+        <div class="sub" id="jSub">Коллекция и статистика</div>
+      </div>
+      <button class="roundbtn" data-close="sheetJournal" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body">
+      <div class="jfilters" id="jFilters"></div>
+      <div class="jgrid" id="jgrid"></div>
+      <div class="secTitle">Статистика</div>
+      <div class="rowStats" style="background:rgba(255,255,255,.05);border-radius:16px;padding:10px;border:1px solid rgba(255,255,255,.07)">
+        <div><small>Забросов</small><b id="stCasts">0</b></div>
+        <div><small>Поймано</small><b id="stCaught">0</b></div>
+        <div><small>Обрывов</small><b id="stBreaks">0</b></div>
+        <div><small>Сходов</small><b id="stLost">0</b></div>
+      </div>
+      <div class="rowStats" style="background:rgba(255,255,255,.05);border-radius:16px;padding:10px;border:1px solid rgba(255,255,255,.07)">
+        <div><small>Общий вес</small><b id="stMass">0</b></div>
+        <div><small>Рекорд</small><b id="stBest">—</b></div>
+        <div><small>Лучший заброс</small><b id="stCast">—</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== карточка вида ===== -->
+  <div class="overlay" id="fishCard">
+    <div class="card" style="position:relative">
+      <button class="roundbtn" data-close="fishCard" aria-label="Закрыть" style="position:absolute;right:10px;top:10px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <div class="fc-art"></div>
+      <div class="fc-rar">—</div>
+      <div class="fc-name">—</div>
+      <p class="fc-note"></p>
+      <div class="fc-rows"></div>
+    </div>
+  </div>
+
+  <!-- ===== catch overlay ===== -->
+  <div class="overlay" id="catchCard">
+    <div class="card">
+      <div class="rar" id="catchRar">обычная</div>
+      <div class="art"><div class="glow" id="catchGlow"></div><div id="catchArt" style="position:relative;display:grid;place-items:center"></div></div>
+      <h2 id="catchName">—</h2>
+      <div class="bigweight" id="weightRow"><span id="catchWeight">0</span> <span class="u">кг</span><span id="catchRecord"></span></div>
+      <p class="note" id="catchNote"></p>
+      <div class="catchMeta" id="catchMeta"></div>
+      <div class="rowStats">
+        <div><small>Монет</small><b id="catchCoins">0</b></div>
+        <div><small>Опыт</small><b id="catchXp">0</b></div>
+        <div><small>В коллекции</small><b id="catchTotal">0</b></div>
+        <div id="pearlCell" style="display:none"><small>Жемчуг</small><b id="catchPearl" style="color:#b9a4f5">+1</b></div>
+      </div>
+      <button class="btn" id="btnNext">Ещё заброс</button>
+    </div>
+  </div>
+
+  <!-- ===== стартовый экран ===== -->
+  <div id="start" class="on">
+    <canvas id="startCv"></canvas>
+    <div class="start-vignette"></div>
+    <div class="start-wrap">
+      <div class="start-head">
+        <div class="logo">
+          <span class="logo-kicker">тихая заводь</span>
+          <h1>РЫБАЛКА</h1>
+        </div>
+        <button class="start-btn" id="btnStart">
+          <span class="sb-main">Начать играть</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- подсказки-обучалки -->
+  <div id="coach"></div>
+</div>
+
+<script>/*__DATA__*/</script>
+<script>/*__GAME__*/</script>
+</body>
+</html>

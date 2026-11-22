@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0d2a33">
+<title>Рыбалка — подсечка и вываживание</title>
+<style>
+  :root{
+    --bg:#0d2a33;
+    --paper:#f6efdf;
+    --ink:#2a2018;
+    --accent:#ffb648;
+    --good:#4ade80;
+    --bad:#ef4444;
+    --warn:#facc15;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    color:#fff;user-select:none;-webkit-user-select:none;touch-action:none;
+    overscroll-behavior:none;
+  }
+  #app{position:fixed;inset:0;overflow:hidden}
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+  /* ---------- HUD ---------- */
+  .hud{
+    position:absolute;top:0;left:0;right:0;
+    padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 10px 12px;
+    display:flex;align-items:center;gap:8px;
+    pointer-events:none;
+  }
+  .chip{
+    pointer-events:auto;
+    display:flex;align-items:center;gap:6px;
+    background:rgba(13,32,38,.55);
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:999px;padding:7px 12px;
+    font-size:13px;font-weight:600;letter-spacing:.2px;
+    color:#fdf6e8;
+  }
+  .chip b{font-weight:800;color:var(--accent)}
+  .spacer{flex:1}
+  .iconbtn{
+    pointer-events:auto;
+    width:38px;height:38px;border-radius:999px;
+    display:grid;place-items:center;
+    background:rgba(13,32,38,.55);
+    border:1px solid rgba(255,255,255,.14);
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    font-size:17px;line-height:1;cursor:pointer;color:#fff;
+    transition:transform .12s ease, background .12s;
+  }
+  .iconbtn:active{transform:scale(.92)}
+
+  /* ---------- Tension meter ---------- */
+  #tensionWrap{
+    position:absolute;left:0;right:0;
+    bottom:calc(env(safe-area-inset-bottom,0px) + 116px);
+    padding:0 22px;
+    opacity:0;transition:opacity .25s ease;
+    pointer-events:none;
+  }
+  #tensionWrap.on{opacity:1}
+  .bar{
+    position:relative;height:16px;border-radius:999px;overflow:hidden;
+    background:linear-gradient(90deg,rgba(80,180,255,.55),rgba(80,180,255,.35) 40%,rgba(255,90,90,.6) 82%,rgba(255,60,60,.85));
+    border:1.5px solid rgba(255,255,255,.5);
+    box-shadow:0 4px 16px rgba(0,0,0,.35);
+  }
+  .zone{
+    position:absolute;top:0;bottom:0;
+    background:repeating-linear-gradient(45deg,rgba(74,222,128,.85),rgba(74,222,128,.85) 7px,rgba(74,222,128,.62) 7px,rgba(74,222,128,.62) 14px);
+    box-shadow:inset 0 0 10px rgba(74,222,128,.9);
+  }
+  #needle{
+    position:absolute;top:-7px;bottom:-7px;width:9px;margin-left:-4.5px;
+    background:linear-gradient(180deg,#fff,#f0f7ff 60%,#fff);border-radius:4px;
+    box-shadow:0 0 0 1.5px rgba(20,30,35,.55), 0 0 12px rgba(255,255,255,.95);
+    transition:box-shadow .1s, background .1s;
+  }
+  #needle::after{
+    content:"";position:absolute;left:50%;top:-9px;width:0;height:0;
+    transform:translateX(-50%);
+    border-left:6px solid transparent;border-right:6px solid transparent;
+    border-top:9px solid #fff;
+    filter:drop-shadow(0 1px 2px rgba(0,0,0,.6));
+  }
+  #needle.danger{background:linear-gradient(180deg,#fff2b0,#ffd0a0);box-shadow:0 0 0 1.5px rgba(120,30,10,.7),0 0 18px 3px rgba(255,90,60,.95)}
+  .prog{
+    height:7px;border-radius:999px;margin-bottom:9px;overflow:hidden;
+    background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);
+    box-shadow:0 2px 8px rgba(0,0,0,.3);
+  }
+  #progFill{
+    height:100%;width:0%;border-radius:999px;
+    background:linear-gradient(90deg,#7ee7ff,#4ade80,#ffe066);
+    transition:width .08s linear;
+    box-shadow:0 0 10px rgba(120,240,200,.7);
+  }
+  .barLabels{
+    display:flex;justify-content:space-between;
+    font-size:10.5px;font-weight:700;letter-spacing:.6px;
+    color:rgba(255,255,255,.85);margin-top:5px;text-transform:uppercase;
+    text-shadow:0 1px 3px rgba(0,0,0,.7);
+  }
+  /* ---------- Action button ---------- */
+  #action{
+    position:absolute;left:50%;transform:translateX(-50%);
+    bottom:calc(env(safe-area-inset-bottom,0px) + 22px);
+    width:min(460px,86vw);height:66px;border-radius:20px;border:none;
+    font-size:19px;font-weight:800;letter-spacing:.4px;color:#26313a;
+    background:linear-gradient(180deg,#ffd479,#f5a623);
+    box-shadow:0 10px 26px rgba(0,0,0,.4),inset 0 -3px 0 rgba(150,90,0,.35);
+    cursor:pointer;transition:transform .08s ease, filter .2s ease, background .2s;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    z-index:5;
+  }
+  #action:active{transform:translateX(-50%) scale(.98)}
+  #action.hold{background:linear-gradient(180deg,#8ee7a5,#31b45c);color:#0c2417}
+  #action.hooked{background:linear-gradient(180deg,#ff9d8a,#e2452c);color:#2b0a04}
+  #action.bite{animation:pulse .55s ease-in-out infinite;background:linear-gradient(180deg,#ffe07d,#ff8a1f)}
+  @keyframes pulse{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.035)}}
+
+  /* ---------- Toast ---------- */
+  #toast{
+    position:absolute;left:50%;top:38%;transform:translate(-50%,-50%) scale(.9);
+    padding:12px 20px;border-radius:16px;
+    background:rgba(10,26,32,.82);border:1px solid rgba(255,255,255,.2);
+    font-size:16px;font-weight:700;text-align:center;max-width:82vw;
+    opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+    line-height:1.35;z-index:8;
+  }
+  #toast.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  #toast small{display:block;font-weight:500;font-size:12.5px;opacity:.8;margin-top:4px}
+
+  /* ---------- Modals ---------- */
+  .overlay{
+    position:absolute;inset:0;display:none;place-items:center;
+    background:rgba(6,18,22,.66);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+    z-index:20;padding:20px;
+  }
+  .overlay.on{display:grid}
+  .card{
+    width:min(440px,100%);max-height:84vh;overflow:auto;
+    background:linear-gradient(180deg,#fbf6ea,#efe4cd);
+    color:var(--ink);border-radius:24px;padding:20px;
+    box-shadow:0 24px 60px rgba(0,0,0,.55), inset 0 0 0 1px rgba(120,90,40,.18);
+    animation:pop .26s cubic-bezier(.2,1.2,.4,1);
+  }
+  @keyframes pop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+  .card h2{margin:0 0 4px;font-size:22px;letter-spacing:.2px}
+  .card p{margin:6px 0;font-size:14px;line-height:1.5;color:#4a3a2a}
+  .btn{
+    width:100%;margin-top:14px;padding:14px;border-radius:16px;border:none;
+    font-size:16px;font-weight:800;color:#26313a;cursor:pointer;
+    background:linear-gradient(180deg,#ffd479,#f5a623);
+    box-shadow:0 6px 16px rgba(160,100,0,.3),inset 0 -2px 0 rgba(150,90,0,.3);
+  }
+  .btn.ghost{background:transparent;color:#6b5638;box-shadow:none;border:1.5px solid rgba(120,90,40,.3);font-weight:700}
+  .btn:active{transform:scale(.98)}
+
+  /* catch card */
+  #catchCard .art{
+    position:relative;height:170px;display:grid;place-items:center;
+    margin:8px -4px 2px;
+  }
+  #catchCard .art img{
+    max-width:100%;max-height:170px;object-fit:contain;
+    filter:drop-shadow(0 14px 18px rgba(0,0,0,.3));
+    animation:swim 2.6s ease-in-out infinite alternate;
+  }
+  @keyframes swim{from{transform:translateX(-6px) rotate(-1.5deg)}to{transform:translateX(6px) rotate(1.5deg)}}
+  .rarity{
+    display:inline-block;padding:4px 12px;border-radius:999px;
+    font-size:11.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;
+  }
+  .r-common{background:#dfe6d5;color:#456230}
+  .r-uncommon{background:#cfe7f5;color:#245a75}
+  .r-rare{background:#e2d4f7;color:#57358c}
+  .r-epic{background:#ffd9c2;color:#8f3d10}
+  .r-junk{background:#e3ddd3;color:#6b6156}
+  .bigweight{font-size:34px;font-weight:900;letter-spacing:-.5px;margin:6px 0 0;line-height:1}
+  .bigweight span{font-size:17px;font-weight:700;opacity:.6}
+  .record{
+    display:inline-block;margin-left:8px;padding:3px 9px;border-radius:8px;
+    background:linear-gradient(180deg,#ffe9a3,#ffc94d);color:#6b4500;
+    font-size:11px;font-weight:900;letter-spacing:.6px;vertical-align:middle;
+  }
+  .rowStats{display:flex;gap:8px;margin-top:14px}
+  .rowStats div{
+    flex:1;background:rgba(120,90,40,.08);border-radius:14px;padding:9px 10px;text-align:center;
+  }
+  .rowStats small{display:block;font-size:10.5px;letter-spacing:.5px;text-transform:uppercase;opacity:.6;font-weight:700}
+  .rowStats b{font-size:15px}
+
+  /* journal */
+  .jrow{
+    display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:14px;
+    background:rgba(120,90,40,.07);margin-bottom:7px;
+  }
+  .jrow img{width:58px;height:38px;object-fit:contain;flex:none}
+  .jrow .jn{flex:1;min-width:0}
+  .jrow .jn b{font-size:14.5px;display:block}
+  .jrow .jn small{font-size:11.5px;opacity:.65;font-weight:600}
+  .jrow .jc{font-size:13px;font-weight:800;opacity:.75;flex:none}
+  .jempty{opacity:.45;font-weight:700;font-size:13.5px}
+
+  /* intro */
+  #intro .card{text-align:center}
+  #intro h1{margin:2px 0 2px;font-size:27px;letter-spacing:-.3px}
+  #intro .sub{font-size:13px;opacity:.65;font-weight:600;margin-bottom:14px}
+  .steps{text-align:left;display:grid;gap:10px;margin-top:6px}
+  .step{display:flex;gap:11px;align-items:flex-start;background:rgba(120,90,40,.08);border-radius:14px;padding:10px 12px}
+  .step .n{
+    flex:none;width:24px;height:24px;border-radius:8px;display:grid;place-items:center;
+    background:#f5a623;color:#3a2400;font-weight:900;font-size:13px;
+  }
+  .step p{margin:0;font-size:13.5px;color:#4a3a2a}
+  .step b{color:#2a2018}
+  .legend{display:flex;gap:6px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+  .legend span{font-size:11px;font-weight:800;padding:4px 9px;border-radius:999px}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="cv"></canvas>
+
+  <div class="hud">
+    <div class="chip"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffb648" stroke-width="2.4" stroke-linecap="round"><path d="M4 4v7a4 4 0 0 0 4 4h8"/><path d="M16 15l4 5"/><circle cx="20" cy="20" r="2"/></svg> Рыб: <b id="hudCatch">0</b></div>
+    <div class="chip"><svg width="15" height="15" viewBox="0 0 24 24" fill="#ffb648" stroke="none"><path d="M12 2.6l2.7 6.1 6.6.6-5 4.5 1.5 6.5L12 16.9 6.2 20.3l1.5-6.5-5-4.5 6.6-.6z"/></svg> <b id="hudBest">—</b></div>
+    <div class="spacer"></div>
+    <button class="iconbtn" id="btnJournal" title="Дневник рыбака" aria-label="Дневник"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fdf6e8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 1-2-2V5z"/><path d="M4 17h15"/><path d="M9 3v14"/></svg></button>
+    <button class="iconbtn" id="btnSound" title="Звук" aria-label="Звук"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fdf6e8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h3l4-4v14l-4-4H4z"/><path id="sndWave" d="M15.5 8.5a5 5 0 0 1 0 7"/><path id="sndWave2" d="M18 6a8.5 8.5 0 0 1 0 12"/></svg></button>
+  </div>
+
+  <div id="tensionWrap">
+    <div class="prog"><div id="progFill"></div></div>
+    <div class="bar">
+      <div class="zone" id="zone"></div>
+      <div id="needle"></div>
+    </div>
+    <div class="barLabels"><span>слабо</span><span>тяни</span><span>обрыв</span></div>
+  </div>
+
+  <button id="action">ЗАБРОСИТЬ СНАСТЬ</button>
+  <div id="toast"></div>
+
+  <!-- Intro -->
+  <div class="overlay" id="intro">
+    <div class="card">
+      <h1>Тихая заводь</h1>
+      <div class="sub">рыбалка на подсечку и вываживание</div>
+      <div class="steps">
+        <div class="step"><div class="n">1</div><p><b>Забрось</b> снасть и жди поклёвки. Поплавок дёрнется — над ним появится <b>!</b></p></div>
+        <div class="step"><div class="n">2</div><p><b>Подсеки</b> вовремя: тапни, пока кольцо вокруг «!» не сжалось.</p></div>
+        <div class="step"><div class="n">3</div><p><b>Вываживай:</b> держи палец — леска натягивается и рыба идёт к тебе. Отпускай, когда стрелка уходит в красное. Держи её в <b>зелёной зоне</b>.</p></div>
+      </div>
+      <div class="legend">
+        <span class="rarity r-common">карась</span>
+        <span class="rarity r-uncommon">окунь</span>
+        <span class="rarity r-rare">лещ</span>
+        <span class="rarity r-epic">щука</span>
+      </div>
+      <button class="btn" id="btnStart">Начать рыбалку</button>
+    </div>
+  </div>
+
+  <!-- Catch -->
+  <div class="overlay" id="catchCard">
+    <div class="card" style="text-align:center">
+      <div id="catchRarity"></div>
+      <div class="art"><img id="catchImg" alt=""></div>
+      <h2 id="catchName">—</h2>
+      <div class="bigweight" id="weightRow"><span id="catchWeight">0</span> <span>кг</span><span id="catchRecord"></span></div>
+      <p id="catchNote"></p>
+      <div class="rowStats">
+        <div><small>Всего</small><b id="statTotal">0</b></div>
+        <div><small>Общий вес</small><b id="statMass">0</b></div>
+        <div><small>Рекорд</small><b id="statBest">—</b></div>
+      </div>
+      <button class="btn" id="btnNext">Ещё заброс</button>
+    </div>
+  </div>
+
+  <!-- Journal -->
+  <div class="overlay" id="journal">
+    <div class="card">
+      <h2>Дневник рыбака</h2>
+      <p style="margin-bottom:10px">Всё, что поймано в этой заводи.</p>
+      <div id="jlist"></div>
+      <div class="rowStats" style="margin-top:12px">
+        <div><small>Забросов</small><b id="stCasts">0</b></div>
+        <div><small>Обрывов</small><b id="stBreaks">0</b></div>
+        <div><small>Сходов</small><b id="stLost">0</b></div>
+      </div>
+      <button class="btn ghost" id="btnCloseJournal">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+/* ============================ assets (inlined) ============================ */
+const IMG = {
+  bgSurface: "__BG_SURFACE__",
+  bgUnder:   "__BG_UNDERWATER__",
+  karas:     "__FISH_KARAS__",
+  okun:      "__FISH_OKUN__",
+  lesh:      "__FISH_LESH__",
+  shchuka:   "__FISH_SHCHUKA__"
+};
+
+/* ============================ fish table ============================ */
+const FISH = {
+  karas:   {name:"Карась",  rarity:"common",   label:"обычная",   wMin:150, wMax:1200, base:0.00, w:42,
+            note:"Золотистый, неторопливый. Классика любого пруда."},
+  okun:    {name:"Окунь",   rarity:"uncommon", label:"частый",    wMin:90,  wMax:900,  base:0.10, w:30,
+            note:"Полосатый боец. Дёргается резко и неровно."},
+  lesh:    {name:"Лещ",     rarity:"rare",     label:"редкий",    wMin:400, wMax:3200, base:0.25, w:18,
+            note:"Широкий, тяжёлый, упирается до последнего."},
+  shchuka: {name:"Щука",    rarity:"epic",     label:"трофей! ",  wMin:700, wMax:6500, base:0.38, w:10,
+            note:"Хищник. Тянет мощно — не порви леску."}
+};
+const JUNK = [
+  {name:"Старый сапог",   emoji:"🥾", note:"Кто-то тут уже рыбачил. Неудачно."},
+  {name:"Пучок тины",     emoji:"🌿", note:"Зелёное, мокрое, бесполезное."},
+  {name:"Ржавая банка",   emoji:"🥫", note:"Мусор. Убери за собой, рыбак."},
+  {name:"Коряга",         emoji:"🪵", note:"Держалась достойно, надо признать."}
+];
+
+/* ============================ save ============================ */
+const KEY = "rybalka_v1";
+const defSave = {seenFight:false, total:0, mass:0, best:0, casts:0, breaks:0, lost:0, mute:false, seen:false,
+                 caught:{}};
+let save = Object.assign({}, defSave);
+try {
+  const raw = localStorage.getItem(KEY);
+  if (raw) save = Object.assign({}, defSave, JSON.parse(raw));
+} catch(e){}
+function persist(){ try{ localStorage.setItem(KEY, JSON.stringify(save)); }catch(e){} }
+
+/* ============================ dom ============================ */
+const $ = id => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+const actionBtn = $("action"), toastEl = $("toast");
+const tensionWrap = $("tensionWrap"), needle = $("needle"), zoneEl = $("zone");
+const catchCard = $("catchCard"), journal = $("journal"), intro = $("intro");
+
+/* ============================ audio ============================ */
+let actx = null;
+function audio(){
+  if (save.mute) return null;
+  if (!actx) { try { actx = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){ return null; } }
+  if (actx.state === "suspended") actx.resume();
+  return actx;
+}
+function tone(freq, dur, type="sine", gain=0.12, slideTo=null){
+  const a = audio(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, a.currentTime);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, a.currentTime+dur);
+  g.gain.setValueAtTime(0.0001, a.currentTime);
+  g.gain.exponentialRampToValueAtTime(gain, a.currentTime+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime+dur);
+  o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime+dur+0.02);
+}
+function noise(dur=0.25, gain=0.18, filt=900){
+  const a = audio(); if (!a) return;
+  const len = Math.floor(a.sampleRate*dur);
+  const buf = a.createBuffer(1, len, a.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i=0;i<len;i++) d[i] = (Math.random()*2-1) * Math.pow(1-i/len, 2.2);
+  const src = a.createBufferSource(); src.buffer = buf;
+  const f = a.createBiquadFilter(); f.type="lowpass"; f.frequency.value=filt;
+  const g = a.createGain(); g.gain.value = gain;
+  src.connect(f).connect(g).connect(a.destination); src.start();
+}
+const sfx = {
+  cast(){ noise(0.3,0.10,1400); tone(520,0.16,"triangle",0.05,180); },
+  splash(){ noise(0.28,0.16,1100); },
+  bite(){ tone(880,0.08,"square",0.07); setTimeout(()=>tone(1180,0.1,"square",0.06),90); },
+  hook(){ tone(300,0.12,"sawtooth",0.08,700); },
+  pull(){ tone(150,0.14,"sawtooth",0.06,90); },
+  tick(){ tone(1200,0.04,"sine",0.03); },
+  win(){ [523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,0.22,"triangle",0.08),i*90)); },
+  snap(){ noise(0.35,0.3,2600); tone(220,0.3,"sawtooth",0.1,60); },
+  lost(){ tone(300,0.4,"sine",0.09,120); }
+};
+
+/* ============================ canvas sizing ============================ */
+let W=0,H=0,DPR=1;
+function resize(){
+  DPR = Math.min(window.devicePixelRatio||1, 2);
+  const r = cv.getBoundingClientRect();
+  W = Math.max(320, r.width); H = Math.max(320, r.height);
+  cv.width = Math.round(W*DPR); cv.height = Math.round(H*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener("resize", resize);
+
+/* ============================ images ============================ */
+const images = {};
+let loadedCount = 0;
+for (const k in IMG){
+  const im = new Image();
+  im.onload = () => { loadedCount++; };
+  im.src = IMG[k];
+  images[k] = im;
+}
+
+/* ============================ scene geometry ============================ */
+function geo(){
+  const surfaceY = H * 0.60;
+  return {
+    surfaceY,
+    rodBase: {x: W*1.02, y: H*0.83},
+    rodTip:  {x: W*0.84, y: surfaceY - H*0.20},
+    bob:     {x: W*0.56,  y: surfaceY}
+  };
+}
+
+/* ============================ game state ============================ */
+const G = {
+  state: "idle",     // idle | casting | waiting | bite | fight | result
+  t: 0,              // time in state
+  clock: 0,
+  holding: false,
+  tension: 0.32,
+  progress: 0,
+  bobX: 0, bobY: 0, bobVy: 0,
+  cast: null,
+  fish: null,        // {type, weight, norm, ...}
+  biteAt: 0, biteWindow: 900,
+  pull: {active:false, warn:0, timer:1.2, dur:0},
+  slackT: 0,
+  particles: [],
+  ripple: [],
+  hint: "",
+  shake: 0,
+  flash: 0,
+  locked: false
+};
+const GREEN = {lo:0.40, hi:0.90};
+zoneEl.style.left = (GREEN.lo*100)+"%";
+zoneEl.style.width = ((GREEN.hi-GREEN.lo)*100)+"%";
+
+function pickFish(){
+  // junk
+  if (Math.random() < 0.07 && save.total > 2) return {junk:true, ...JUNK[(Math.random()*JUNK.length)|0]};
+  let total = 0; for (const k in FISH) total += FISH[k].w;
+  let r = Math.random()*total;
+  for (const k in FISH){ r -= FISH[k].w; if (r <= 0) return buildFish(k); }
+  return buildFish("karas");
+}
+function buildFish(type){
+  const f = FISH[type];
+  // slight skew toward smaller fish
+  const u = Math.pow(Math.random(), 1.5);
+  const weight = Math.round(f.wMin + u*(f.wMax-f.wMin));
+  const norm = (weight - f.wMin)/(f.wMax - f.wMin);
+  return {
+    junk:false, type, name:f.name, rarity:f.rarity, label:f.label, note:f.note,
+    weight, norm,
+    holdGain: 0.30 - norm*0.07 - f.base*0.09,
+    pullPower: 0.30 + norm*0.24 + f.base*0.30,
+    progressRate: 0.32 - norm*0.07 - f.base*0.05,
+    pullEvery: [0.9 + norm*0.7, 2.0 + norm*1.1],
+    pullDur: [0.22 + norm*0.12, 0.36 + norm*0.22]
+  };
+}
+
+/* ============================ helpers ============================ */
+function toast(html, ms=1400){
+  toastEl.innerHTML = html;
+  toastEl.classList.add("on");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>toastEl.classList.remove("on"), ms);
+}
+const lerp = (a,b,t)=>a+(b-a)*t;
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const fmtKg = g => (g/1000).toFixed(2);
+
+function burst(x,y,n=14,spd=180,color="rgba(220,245,255,"){
+  for (let i=0;i<n;i++){
+    const a = -Math.PI/2 + (Math.random()-0.5)*2.2;
+    const s = spd*(0.4+Math.random()*0.9);
+    G.particles.push({x,y,vx:Math.cos(a)*s*(Math.random()<0.5?-1:1)*0.5, vy:Math.sin(a)*s,
+      life:0.5+Math.random()*0.5, max:1, r:1.5+Math.random()*2.5, color});
+  }
+}
+function ripple(x,y){ G.ripple.push({x,y,r:2,a:1}); }
+
+/* ============================ flow ============================ */
+function setState(s){
+  G.state = s; G.t = 0;
+  G.locked = false;
+  tensionWrap.classList.toggle("on", s === "fight");
+  actionBtn.className = "";
+  if (s === "idle"){ actionBtn.textContent = "ЗАБРОСИТЬ СНАСТЬ"; G.progress = 0; }
+  if (s === "waiting"){ actionBtn.textContent = "ЖДЁМ ПОКЛЁВКИ…"; }
+  if (s === "bite"){ actionBtn.textContent = "ПОДСЕКАЙ!"; actionBtn.classList.add("bite"); }
+  if (s === "fight"){ actionBtn.textContent = "ДЕРЖИ, ЧТОБЫ ТЯНУТЬ"; actionBtn.classList.add("hold"); }
+}
+
+function cast(){
+  if (G.state !== "idle") return;
+  const g = geo();
+  G.cast = {from:{...g.rodTip}, to:{x:g.bob.x, y:g.surfaceY+4}, t:0, dur:0.62};
+  G.bobX = g.rodTip.x; G.bobY = g.rodTip.y;
+  G.fish = null; G.tension = GREEN.lo + 0.05; G.progress = 0; G.slackT = 0;
+  G.pull = {active:false, warn:0, timer:1.2, dur:0};
+  save.casts++; persist();
+  setState("casting");
+  sfx.cast();
+}
+
+function startWaiting(){
+  setState("waiting");
+  G.waitDur = 1.4 + Math.random()*3.4;
+  G.nibble = 0.6 + Math.random()*1.2;
+  G.nibbling = false;
+}
+
+function beginBite(){
+  G.fish = pickFish();
+  setState("bite");
+  G.biteWindow = 780 + Math.random()*260;
+  G.biteAt = 0;
+  sfx.bite();
+  ripple(G.bobX, geo().surfaceY);
+  burst(G.bobX, geo().surfaceY, 8, 120);
+}
+
+function landHook(){
+  if (G.state !== "bite") return;
+  sfx.hook();
+  setState("fight");
+  G.tension = GREEN.lo + 0.06; G.progress = 0;
+  G.slackT = 0;
+  G.pull = {active:false, warn:0, timer:0.9+Math.random()*0.7, dur:0};
+  G.holding = false;
+  if (!save.seenFight){ save.seenFight = true; persist();
+    setTimeout(()=>toast("Держи палец на экране<small>Стрелка должна идти по зелёной зоне. Уйдёт в красное — отпусти.</small>", 2600), 350);
+  }
+  burst(G.bobX, geo().surfaceY, 20, 240);
+  ripple(G.bobX, geo().surfaceY);
+  G.shake = 6;
+}
+
+function fail(kind){
+  if (G.state === "result") return;
+  setState("result");
+  tensionWrap.classList.remove("on");
+  if (kind === "break"){
+    save.breaks++; persist();
+    sfx.snap(); G.shake = 16; G.flash = 0.5;
+    toast("Обрыв лески!<small>Слишком сильно натянул — рыба ушла с крючком.</small>", 1900);
+  } else if (kind === "lost"){
+    save.lost++; persist();
+    sfx.lost();
+    toast("Сход…<small>Леска ослабла, и рыба сошла с крючка.</small>", 1900);
+  } else if (kind === "miss"){
+    save.lost++; persist();
+    sfx.lost();
+    toast("Проспал поклёвку<small>Рыба выплюнула наживку и ушла.</small>", 1700);
+  } else if (kind === "early"){
+    toast("Рано!<small>Ты дёрнул до поклёвки — рыба испугалась. Ждём ещё.</small>", 1300);
+    setState("waiting");
+    G.waitDur = 2 + Math.random()*2.5;
+    G.fish = null;
+    return;
+  }
+  setTimeout(()=>{ if (G.state === "result") setState("idle"); }, 1500);
+}
+
+function succeed(){
+  if (G.state === "result") return;
+  const f = G.fish;
+  setState("result");
+  tensionWrap.classList.remove("on");
+  G.holding = false;
+  sfx.win();
+  G.leap = {t:0, x:G.bobX, y:geo().surfaceY, vy:-760, rot:0};
+  burst(G.bobX, geo().surfaceY, 26, 300);
+  ripple(G.bobX, geo().surfaceY);
+  setTimeout(()=>showCatch(f), 780);
+}
+
+function showCatch(f){
+  const art = catchCard.querySelector(".art");
+  const weightRow = $("weightRow");
+  const noteEl = $("catchNote");
+
+  if (f.junk){
+    $("catchRarity").innerHTML = '<span class="rarity r-junk">мусор</span>';
+    art.innerHTML = '<div style="font-size:86px;line-height:1;filter:drop-shadow(0 10px 14px rgba(0,0,0,.25))">'+f.emoji+'</div>';
+    $("catchName").textContent = f.name;
+    weightRow.style.display = "none";
+    $("catchRecord").innerHTML = "";
+    noteEl.textContent = f.note;
+  } else {
+    art.innerHTML = '<img alt="" src="'+IMG[f.type]+'">';
+    $("catchRarity").innerHTML = '<span class="rarity r-'+f.rarity+'">'+f.label+'</span>';
+    $("catchName").textContent = f.name;
+    weightRow.style.display = "";
+    $("catchWeight").textContent = fmtKg(f.weight);
+    noteEl.textContent = f.note;
+
+    const rec = save.caught[f.type];
+    const isRec = !rec || f.weight > (rec.best || 0);
+    $("catchRecord").innerHTML = isRec ? '<span class="record">РЕКОРД</span>' : "";
+
+    save.total++; save.mass += f.weight;
+    if (f.weight > save.best) save.best = f.weight;
+    if (!save.caught[f.type]) save.caught[f.type] = {n:0, best:0};
+    save.caught[f.type].n++;
+    save.caught[f.type].best = Math.max(save.caught[f.type].best, f.weight);
+    persist();
+  }
+
+  $("statTotal").textContent = save.total;
+  $("statMass").textContent = (save.mass/1000).toFixed(2)+" кг";
+  $("statBest").textContent = save.best ? fmtKg(save.best)+" кг" : "—";
+  hud();
+  catchCard.classList.add("on");
+}
+
+function afterCatch(){
+  catchCard.classList.remove("on");
+  setState("idle");
+}
+
+/* ============================ input ============================ */
+function press(){
+  audio();
+  switch (G.state){
+    case "intro": return;
+    case "idle": cast(); break;
+    case "casting": break;
+    case "waiting": fail("early"); break;
+    case "bite": landHook(); break;
+    case "fight": G.holding = true; break;
+  }
+}
+function release(){
+  if (G.state === "fight") G.holding = false;
+}
+
+actionBtn.addEventListener("pointerdown", e => { e.preventDefault(); if (G.state==="idle"||G.state==="bite") press(); else if (G.state==="fight") G.holding = true; });
+actionBtn.addEventListener("pointerup", e => { e.preventDefault(); release(); });
+actionBtn.addEventListener("pointercancel", release);
+actionBtn.addEventListener("pointerleave", release);
+cv.addEventListener("pointerdown", e => { e.preventDefault(); if (G.state==="fight") G.holding = true; else if (G.state!=="result" && !catchCard.classList.contains("on") && !journal.classList.contains("on") && !intro.classList.contains("on")) press(); });
+cv.addEventListener("pointerup", release);
+window.addEventListener("pointerup", release);
+window.addEventListener("contextmenu", e => e.preventDefault());
+
+window.addEventListener("keydown", e => {
+  if (e.code === "Space" || e.code === "Enter"){
+    e.preventDefault();
+    if (catchCard.classList.contains("on")) { afterCatch(); return; }
+    if (G.state === "fight") G.holding = true; else press();
+  }
+  if (e.code === "KeyM") toggleSound();
+});
+window.addEventListener("keyup", e => { if (e.code === "Space" || e.code === "Enter") release(); });
+
+$("btnStart").addEventListener("click", () => {
+  intro.classList.remove("on");
+  save.seen = true; persist();
+  audio();
+  resize();
+});
+$("btnNext").addEventListener("click", afterCatch);
+$("btnCloseJournal").addEventListener("click", () => journal.classList.remove("on"));
+$("btnJournal").addEventListener("click", openJournal);
+
+function openJournal(){
+  const list = $("jlist");
+  let html = "";
+  for (const k in FISH){
+    const f = FISH[k], c = save.caught[k];
+    html += '<div class="jrow" style="'+(c?"":"opacity:.45")+'">'
+         +  '<img src="'+IMG[k]+'" alt="">'
+         +  '<div class="jn"><b>'+f.name+'</b><small>'+(c?("рекорд "+fmtKg(c.best)+" кг"):"ещё не пойман")+'</small></div>'
+         +  '<div class="jc">'+(c?("×"+c.n):"—")+'</div>'
+         +  '</div>';
+  }
+  list.innerHTML = html;
+  $("stCasts").textContent = save.casts;
+  $("stBreaks").textContent = save.breaks;
+  $("stLost").textContent = save.lost;
+  journal.classList.add("on");
+}
+
+let soundBtn = $("btnSound");
+function syncSound(){
+  ["sndWave","sndWave2"].forEach(id => { const el = $(id); if (el) el.style.display = save.mute ? "none" : ""; });
+  soundBtn.style.opacity = save.mute ? 0.55 : 1;
+}
+function toggleSound(){ save.mute = !save.mute; persist(); syncSound(); }
+soundBtn.addEventListener("click", toggleSound);
+
+function hud(){
+  $("hudCatch").textContent = save.total;
+  $("hudBest").textContent = save.best ? fmtKg(save.best)+" кг" : "—";
+}
+
+/* ============================ update ============================ */
+function update(dt){
+  G.clock += dt; G.t += dt;
+  if (G.shake > 0) G.shake = Math.max(0, G.shake - dt*40);
+  if (G.flash > 0) G.flash = Math.max(0, G.flash - dt*1.6);
+
+  const g = geo();
+
+  // particles
+  for (let i=G.particles.length-1;i>=0;i--){
+    const p = G.particles[i];
+    p.life -= dt; p.vy += 520*dt; p.x += p.vx*dt; p.y += p.vy*dt;
+    if (p.life <= 0) G.particles.splice(i,1);
+  }
+  for (let i=G.ripple.length-1;i>=0;i--){
+    const r = G.ripple[i];
+    r.r += dt*90; r.a -= dt*1.1;
+    if (r.a <= 0) G.ripple.splice(i,1);
+  }
+
+  if (G.leap){
+    G.leap.t += dt;
+    const k = Math.min(1, G.leap.t/0.72);
+    G.leap.x = lerp(G.bobX, W*0.80, k);
+    G.leap.y = lerp(g.surfaceY, g.rodTip.y - 10, k) - Math.sin(k*Math.PI)*H*0.16;
+    G.leap.rot = -0.55 - Math.sin(k*Math.PI)*0.5;
+    if (G.leap.t > 0.8) G.leap = null;
+  }
+
+  switch (G.state){
+    case "casting": {
+      G.cast.t += dt;
+      const k = clamp(G.cast.t / G.cast.dur, 0, 1);
+      G.bobX = lerp(G.cast.from.x, G.cast.to.x, k);
+      G.bobY = lerp(G.cast.from.y, G.cast.to.y, k) - Math.sin(k*Math.PI)*H*0.28;
+      if (k >= 1){
+        G.bobY = g.surfaceY;
+        sfx.splash();
+        ripple(G.bobX, g.surfaceY);
+        burst(G.bobX, g.surfaceY, 10, 140);
+        startWaiting();
+      }
+      break;
+    }
+    case "waiting": {
+      G.bobY = g.surfaceY + Math.sin(G.clock*2.1)*2.2;
+      G.nibble -= dt;
+      if (!G.nibbling && G.nibble <= 0){ G.nibbling = true; G.nibble = 0.35; ripple(G.bobX, g.surfaceY); tone(1400,0.03,"sine",0.02); }
+      else if (G.nibbling){ G.nibble -= dt; if (G.nibble <= 0){ G.nibbling = false; G.nibble = 0.7 + Math.random()*1.6; } }
+      G.waitDur -= dt;
+      if (G.waitDur <= 0) beginBite();
+      break;
+    }
+    case "bite": {
+      G.biteAt += dt*1000;
+      const pull = Math.sin(G.biteAt*0.045);
+      G.bobY = g.surfaceY + 5 + pull*9;
+      if (G.biteAt > G.biteWindow) fail("miss");
+      break;
+    }
+    case "fight": updateFight(dt, g); break;
+  }
+
+  // needle
+  const tw = tensionWrap.classList.contains("on");
+  if (tw){
+    $("progFill").style.width = (clamp(G.progress,0,1)*100)+"%";
+    needle.style.left = (clamp(G.tension,0,1)*100)+"%";
+    needle.classList.toggle("danger", G.tension > 0.93 || (G.fish && G.pull.warn > 0));
+    if (G.fish && G.pull.active) needle.style.transform = "scaleY(1.35)";
+    else needle.style.transform = "scaleY(1)";
+  }
+}
+
+function updateFight(dt, g){
+  const f = G.fish;
+  if (!f) return;
+
+  // ---- pull scheduling
+  const P = G.pull;
+  if (P.warn > 0){ P.warn -= dt; }
+  if (!P.active){
+    P.timer -= dt;
+    if (P.timer <= 0 && P.warn <= 0){
+      P.warn = 0.20;                     // telegraph
+      sfx.pull();
+      P.timer = f.pullEvery[0] + Math.random()*(f.pullEvery[1]-f.pullEvery[0]);
+      P.pending = true;
+    }
+    if (P.pending && P.warn <= 0){
+      P.pending = false; P.active = true;
+      P.dur = f.pullDur[0] + Math.random()*(f.pullDur[1]-f.pullDur[0]);
+      P.activeT = 0;
+      G.shake = 4;
+      burst(G.bobX, g.surfaceY, 8, 160);
+    }
+  } else {
+    P.activeT += dt;
+    if (P.activeT >= P.dur) { P.active = false; }
+  }
+
+  // ---- tension physics
+  let rate = 0;
+  if (G.holding) rate += f.holdGain;
+  else rate -= 0.62;
+  if (P.active) rate += f.pullPower;
+  G.tension = clamp(G.tension + rate*dt, 0, 1.35);
+
+  // ---- progress
+  const inGreen = G.tension >= GREEN.lo && G.tension <= GREEN.hi;
+  if (inGreen) G.progress += f.progressRate*dt*1.15;
+  else if (G.tension < 0.28) G.progress -= f.progressRate*0.45*dt;
+  G.progress = clamp(G.progress, 0, 1);
+
+  // ---- bobber / fish visuals
+  const shakeAmt = (P.active ? 7 : 2.5) + G.progress*3;
+  G.bobY = g.surfaceY + Math.sin(G.clock*11)*shakeAmt*0.5 + (P.active?4:0);
+  if (Math.random() < (P.active?0.35:0.05)) ripple(G.bobX + (Math.random()-0.5)*14, g.surfaceY);
+
+  // ---- fail / win
+  if (G.tension >= 1.0) { fail("break"); return; }
+  if (G.tension <= 0.06) {
+    G.slackT += dt;
+    if (G.slackT > 1.6) { fail("lost"); return; }
+  } else G.slackT = Math.max(0, G.slackT - dt*2);
+
+  if (G.progress >= 1) succeed();
+}
+
+/* ============================ draw ============================ */
+function drawCover(img, x=0, y=0, w=W, h=H){
+  if (!img || !img.complete || !img.naturalWidth) return false;
+  const ir = img.naturalWidth/img.naturalHeight, r = w/h;
+  let dw, dh;
+  if (ir > r){ dh = h; dw = h*ir; } else { dw = w; dh = w/ir; }
+  ctx.drawImage(img, x+(w-dw)/2, y+(h-dh)/2, dw, dh);
+  return true;
+}
+
+function drawWaterTint(g){
+  // keep the painted water, just deepen it a touch toward the bottom
+  const grd = ctx.createLinearGradient(0, g.surfaceY-40, 0, H);
+  grd.addColorStop(0, "rgba(16,70,84,0.02)");
+  grd.addColorStop(0.45, "rgba(10,52,66,0.20)");
+  grd.addColorStop(1, "rgba(4,26,34,0.52)");
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, g.surfaceY-40, W, H-(g.surfaceY-40));
+
+  // soft horizon glow where water meets sky
+  const sg = ctx.createLinearGradient(0, g.surfaceY-26, 0, g.surfaceY+16);
+  sg.addColorStop(0, "rgba(255,220,180,0.10)");
+  sg.addColorStop(0.5, "rgba(255,235,205,0.22)");
+  sg.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = sg;
+  ctx.fillRect(0, g.surfaceY-26, W, 42);
+}
+
+function rodCurve(g){
+  const base = g.rodBase, tip = g.rodTip;
+  // bend the rod a little by line tension
+  const bend = (G.state === "fight" ? G.tension : 0.15) * 0.16;
+  const cx = base.x + (tip.x-base.x)*0.42;
+  const cy = base.y - (base.y-tip.y)*0.68 + (tip.x-base.x)*bend;
+  return {base, tip, cx, cy};
+}
+function drawRod(g){
+  const {base, tip, cx, cy} = rodCurve(g);
+  ctx.save();
+  ctx.lineCap = "round";
+  // handle
+  ctx.strokeStyle = "#3a2718";
+  ctx.lineWidth = Math.max(6, 8*Math.min(W,H)/900);
+  ctx.beginPath();
+  ctx.moveTo(base.x, base.y);
+  ctx.lineTo(lerp(base.x, tip.x, 0.12), lerp(base.y, tip.y, 0.12));
+  ctx.stroke();
+  // blank (tapered: draw as two strokes)
+  ctx.strokeStyle = "#6b4a2b";
+  ctx.lineWidth = Math.max(3, 4.2*Math.min(W,H)/900);
+  ctx.beginPath();
+  ctx.moveTo(lerp(base.x, tip.x, 0.10), lerp(base.y, tip.y, 0.10));
+  ctx.quadraticCurveTo(cx, cy, tip.x, tip.y);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,225,175,.5)";
+  ctx.lineWidth = Math.max(1, 1.2*Math.min(W,H)/900);
+  ctx.beginPath();
+  ctx.moveTo(lerp(base.x, tip.x, 0.12), lerp(base.y, tip.y, 0.12));
+  ctx.quadraticCurveTo(cx, cy, tip.x, tip.y);
+  ctx.stroke();
+  // reel
+  const rx = lerp(base.x, tip.x, 0.22), ry = lerp(base.y, tip.y, 0.22);
+  const s = clamp(Math.min(W,H)/620, 0.62, 1.5);
+  ctx.beginPath();
+  ctx.ellipse(rx, ry + 4*s, 9*s, 7*s, -0.5, 0, Math.PI*2);
+  ctx.fillStyle = "#2c3b42"; ctx.fill();
+  ctx.strokeStyle = "rgba(210,230,235,.55)"; ctx.lineWidth = 1.4; ctx.stroke();
+  ctx.restore();
+}
+
+function drawLine(g){
+  const from = {x: g.rodTip.x, y: g.rodTip.y};
+  const to = {x: G.bobX, y: G.bobY};
+  const taut = (G.state === "fight");
+  const dist = Math.hypot(to.x-from.x, to.y-from.y);
+  const sag = taut ? 2 + (1-G.tension)*8 : Math.min(60, dist*0.12);
+  const mx = (from.x+to.x)/2, my = (from.y+to.y)/2 + sag;
+  ctx.save();
+  const alpha = taut ? 0.75 : 0.5;
+  ctx.strokeStyle = taut && G.tension > 0.9 ? "rgba(255,220,200,"+alpha+")" : "rgba(255,255,255,"+alpha+")";
+  ctx.lineWidth = taut ? 1.6 : 1.2;
+  ctx.beginPath();
+  ctx.moveTo(from.x, from.y);
+  ctx.quadraticCurveTo(mx, my, to.x, to.y);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawBobber(g){
+  if (G.state === "idle") {
+    // idle: float hangs from the rod tip
+    G.bobX = g.rodTip.x + 6;
+    G.bobY = g.rodTip.y + 46;
+  }
+  const x = G.bobX, y = G.bobY;
+  const s = clamp(Math.min(W,H)/620, 0.62, 1.5);
+  const r = 8*s;
+
+  // ripples
+  for (const rp of G.ripple){
+    ctx.beginPath();
+    ctx.ellipse(rp.x, g.surfaceY, rp.r*1.6, rp.r*0.5, 0, 0, Math.PI*2);
+    ctx.strokeStyle = "rgba(255,255,255,"+(rp.a*0.34)+")";
+    ctx.lineWidth = 1.2; ctx.stroke();
+  }
+
+  // float body
+  ctx.save();
+  ctx.translate(x,y);
+  const tilt = G.state==="fight" ? Math.sin(G.clock*9)*0.12 : Math.sin(G.clock*2)*0.05;
+  ctx.rotate(tilt);
+  // antenna
+  ctx.strokeStyle = "#f7f3ea"; ctx.lineWidth = 2*s;
+  ctx.beginPath(); ctx.moveTo(0,-r*0.6); ctx.lineTo(0,-r*2.0); ctx.stroke();
+  ctx.beginPath(); ctx.arc(0,-r*2.0, 2.2*s, 0, Math.PI*2); ctx.fillStyle="#ff5b3d"; ctx.fill();
+  // sphere
+  const grd = ctx.createLinearGradient(0,-r,0,r);
+  grd.addColorStop(0, "#ff6b4a"); grd.addColorStop(0.5, "#ff5b3d"); grd.addColorStop(0.52, "#f6f1e4"); grd.addColorStop(1, "#e6dfd0");
+  ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.fillStyle = grd; ctx.fill();
+  ctx.strokeStyle = "rgba(60,30,20,.45)"; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.restore();
+
+  // bite indicator
+  if (G.state === "bite"){
+    const kk = clamp(G.biteAt/G.biteWindow, 0, 1);
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(x, g.surfaceY, 26*s + 40*s*kk, 9*s + 14*s*kk, 0, 0, Math.PI*2);
+    ctx.strokeStyle = "rgba(255,255,255,"+(0.5-0.35*kk)+")";
+    ctx.lineWidth = 1.6; ctx.stroke();
+    const k = clamp(G.biteAt/G.biteWindow, 0, 1);
+    const rad = (30 + 58*(1-k))*s;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(x, y-rad*0.9, rad, 0, Math.PI*2);
+    ctx.strokeStyle = "rgba(255,214,102,"+(0.85-k*0.4)+")";
+    ctx.lineWidth = Math.max(2, 3.4*s); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y-rad*0.9, rad*0.72, 0, Math.PI*2);
+    ctx.strokeStyle = "rgba(255,255,255,.5)"; ctx.lineWidth = 1.6*s; ctx.stroke();
+    ctx.font = "900 " + (34*s)+"px -apple-system,Segoe UI,Roboto,sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillStyle = "#fff6d8";
+    ctx.shadowColor = "rgba(0,0,0,.6)"; ctx.shadowBlur = 8;
+    ctx.fillText("!", x, y - rad*0.9 + 1);
+    ctx.restore();
+    ctx.restore();
+  }
+}
+
+function drawFish(g){
+  if (!G.fish || G.fish.junk) return;
+  const img = images[G.fish.type];
+  if (!img || !img.complete) return;
+
+  const s = clamp(Math.min(W,H)/620, 0.62, 1.6);
+  let x = G.bobX, y = g.surfaceY + 70*s, rot = 0, scale = 1, alpha = 1;
+
+  if (G.state === "fight"){
+    const wig = Math.sin(G.clock*7)*0.1 + (G.pull.active? Math.sin(G.clock*26)*0.14 : 0);
+    const depth = (1 - G.progress)*120*s + 46*s;
+    y = g.surfaceY + depth + Math.sin(G.clock*5)*4*s;
+    x = G.bobX + Math.sin(G.clock*(G.pull.active?8:3.1))*22*s;
+    rot = wig;
+    // fade out as it gets close (then leaps)
+    alpha = clamp(0.35 + G.progress*0.8, 0.35, 1);
+    // size by weight
+    const baseW = 96*s;
+    const w = baseW * (0.72 + G.fish.norm*0.75);
+    drawSprite(img, x, y, w, rot, alpha);
+    return;
+  }
+
+  if (G.state === "result" && G.leap){
+    const w = 96*s * (0.72 + G.fish.norm*0.75);
+    drawSprite(img, G.leap.x, G.leap.y, w, G.leap.rot, 1);
+    return;
+  }
+
+
+}
+
+function drawSprite(img, x, y, w, rot, alpha){
+  const h = w * img.naturalHeight/img.naturalWidth;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(x,y);
+  ctx.rotate(rot);
+  ctx.scale(-1,1); // sprites are drawn facing left; flip so they face right (toward the rod)
+  ctx.shadowColor = "rgba(0,20,26,.45)";
+  ctx.shadowBlur = 12;
+  ctx.drawImage(img, -w/2, -h/2, w, h);
+  ctx.restore();
+}
+
+function drawParticles(){
+  for (const p of G.particles){
+    const a = clamp(p.life/0.8, 0, 1);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    ctx.fillStyle = p.color + (a*0.8) + ")";
+    ctx.fill();
+  }
+}
+
+function drawForeground(g){
+  // soft bottom scrim so the HUD/controls read well
+  const bs = ctx.createLinearGradient(0, H*0.72, 0, H);
+  bs.addColorStop(0, "rgba(4,22,28,0)");
+  bs.addColorStop(1, "rgba(4,22,28,0.55)");
+  ctx.fillStyle = bs;
+  ctx.fillRect(0, H*0.72, W, H*0.28);
+
+  // top scrim for the status chips
+  const ts = ctx.createLinearGradient(0, 0, 0, H*0.16);
+  ts.addColorStop(0, "rgba(6,20,26,0.42)");
+  ts.addColorStop(1, "rgba(6,20,26,0)");
+  ctx.fillStyle = ts;
+  ctx.fillRect(0, 0, W, H*0.16);
+
+  // reed silhouettes in the corners
+  const s = clamp(Math.min(W,H)/620, 0.7, 1.6);
+  ctx.save();
+  ctx.strokeStyle = "rgba(8,26,26,0.92)";
+  ctx.fillStyle = "rgba(8,26,26,0.92)";
+  ctx.lineCap = "round";
+  const reeds = [
+    {x: W*0.02, h: H*0.30, dir: 1, w: 3.2*s},
+    {x: W*0.06, h: H*0.24, dir: 1, w: 2.6*s},
+    {x: W*0.10, h: H*0.20, dir: 1, w: 2.2*s},
+    {x: W*0.965,h: H*0.26, dir:-1, w: 3.0*s},
+    {x: W*0.93, h: H*0.19, dir:-1, w: 2.4*s}
+  ];
+  for (const r of reeds){
+    const topX = r.x + r.dir*W*0.05, topY = H - r.h;
+    ctx.lineWidth = r.w;
+    ctx.beginPath();
+    ctx.moveTo(r.x, H+10);
+    ctx.quadraticCurveTo(r.x + r.dir*W*0.012, H - r.h*0.55, topX, topY);
+    ctx.stroke();
+    // catkin
+    ctx.beginPath();
+    ctx.ellipse(topX, topY - 5*s, 3.2*s, 9*s, r.dir*0.12, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawVignette(){
+  const grd = ctx.createRadialGradient(W/2, H*0.45, Math.min(W,H)*0.28, W/2, H*0.5, Math.max(W,H)*0.78);
+  grd.addColorStop(0, "rgba(0,0,0,0)");
+  grd.addColorStop(1, "rgba(0,0,0,0.42)");
+  ctx.fillStyle = grd;
+  ctx.fillRect(0,0,W,H);
+}
+
+function draw(){
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.clearRect(0,0,W,H);
+  const g = geo();
+
+  ctx.save();
+  if (G.shake > 0.2){
+    ctx.translate((Math.random()-0.5)*G.shake, (Math.random()-0.5)*G.shake);
+  }
+
+  if (!drawCover(images.bgSurface)){ ctx.fillStyle = "#123"; ctx.fillRect(0,0,W,H); }
+  drawWaterTint(g);
+
+  // underwater area uses the underwater art faintly during the fight
+  if (G.state === "fight" || G.state === "result"){
+    const top = g.surfaceY - 6;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, top, W, H-top);
+    ctx.clip();
+    ctx.globalAlpha = 0.40;
+    if (images.bgUnder.complete) drawCover(images.bgUnder, 0, top - H*0.05, W, H - top + H*0.05);
+    ctx.globalAlpha = 1;
+    // blend the seam: surface colour fading into the underwater layer
+    const seam = ctx.createLinearGradient(0, top, 0, top + 90);
+    seam.addColorStop(0, "rgba(232,196,168,0.55)");
+    seam.addColorStop(0.4, "rgba(120,150,155,0.20)");
+    seam.addColorStop(1, "rgba(10,45,58,0)");
+    ctx.fillStyle = seam;
+    ctx.fillRect(0, top, W, 92);
+    ctx.fillStyle = "rgba(4,30,40,0.26)";
+    ctx.fillRect(0, top, W, H-top);
+    ctx.restore();
+  }
+
+  drawFish(g);
+  drawRod(g);
+  drawBobber(g);
+  drawLine(g);
+  drawParticles();
+  drawForeground(g);
+  drawVignette();
+
+  if (G.flash > 0){
+    ctx.fillStyle = "rgba(255,80,60,"+(G.flash*0.35)+")";
+    ctx.fillRect(0,0,W,H);
+  }
+  ctx.restore();
+}
+
+/* ============================ loop ============================ */
+let last = performance.now();
+function loop(now){
+  const dt = Math.min(0.05, (now-last)/1000);
+  last = now;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+/* ============================ debug ============================ */
+window.__dbg = () => ({state:G.state, tension:+G.tension.toFixed(3), progress:+G.progress.toFixed(3),
+  holding:G.holding, pull:G.pull.active, warn:+G.pull.warn.toFixed(2), slack:+G.slackT.toFixed(2),
+  fish:G.fish && !G.fish.junk ? G.fish.type : (G.fish? "junk":null)});
+
+/* ============================ boot ============================ */
+function boot(){
+  resize();
+  hud();
+  syncSound();
+  actionBtn.textContent = "ЗАБРОСИТЬ СНАСТЬ";
+  if (save.seen) intro.classList.remove("on"); else intro.classList.add("on");
+  setState("idle");
+  requestAnimationFrame(t => { last = t; requestAnimationFrame(loop); });
+}
+if (document.readyState === "complete" || document.readyState === "interactive") setTimeout(boot, 0);
+else window.addEventListener("DOMContentLoaded", boot);
+})();
+</script>
+</body>
+</html>

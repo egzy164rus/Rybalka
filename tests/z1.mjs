@@ -1,0 +1,24 @@
+import { chromium } from "playwright";
+const b = await chromium.launch();
+const p = await b.newPage({ viewport:{width:430,height:860}, deviceScaleFactor:2 });
+const errs=[]; p.on("pageerror",e=>errs.push(e.message));
+await p.goto((process.env.GAME_URL || new URL("../rybalka.html", import.meta.url).href)); await p.waitForTimeout(1200);
+await p.click("#btnStart"); await p.waitForTimeout(500);
+await p.evaluate(()=>{const s=window.__test.save(); s.xp=140000; s.coins=9000; s.baits.corn=99;
+  s.equipped.bait="corn"; s.equipped.rod="sea"; s.seenCoach={c_power:1,c_bite:1,c_fight:1}; window.__test.persist();});
+await p.reload(); await p.waitForTimeout(1200); await p.click("#btnStart"); await p.waitForTimeout(900);
+// тап в произвольное место воды (не в кружок)
+await p.mouse.click(300, 700); await p.waitForTimeout(600);
+const st = await p.evaluate(()=>window.__dbg());
+const spot = await p.evaluate(()=>{const s=window.__test.save(); return null;});
+const info = await p.evaluate(()=>{ const g=window.__dbg(); return g; });
+await p.screenshot({path:"./tests/out/f1_free.png"});
+const B = await p.evaluate(()=>{const r=document.getElementById("action").getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};});
+await p.mouse.move(B.x,B.y); await p.mouse.down(); await p.waitForTimeout(500); await p.mouse.up();
+await p.waitForTimeout(400);
+await p.screenshot({path:"./tests/out/f2_cast.png"});
+await p.waitForTimeout(900);
+await p.screenshot({path:"./tests/out/f3_wait.png"});
+console.log("STATE", JSON.stringify(await p.evaluate(()=>window.__dbg())));
+console.log("ERRS", JSON.stringify(errs));
+await b.close();
