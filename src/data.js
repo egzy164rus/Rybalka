@@ -350,7 +350,7 @@ const CLUB_SPOTS = {
            w:{taimen:7, nelma:6, losos:6, forel_l:6, chavycha:4, peacock:5, lenok:7, golec_ar:5}},
   night:  {id:"prem_night", sweet:[0.28,0.50],  name:"Клубный плёс",  x:0.30, y:0.645, depth:"глубоко",
            w:{beluga:5, kaluga:4, sevryuga:6, oster_r:6, som_amur:7, ship:4, som:8, zmeegolov:5}},
-  winter: {id:"prem_winter", sweet:[0.50,0.72], name:"Клубная лунка", x:0.52, y:0.735, depth:"глубоко",
+  winter: {id:"prem_winter", sweet:[0.50,0.72], name:"Клубная лунка", x:0.30, y:0.700, depth:"глубоко",
            w:{beluga:4, muksun:8, omul:8, chir:7, oster_s:6, som:6, lenok:6}},
   sea:    {id:"prem_sea", sweet:[0.45,0.68],    name:"Клубный плёс",  x:0.46, y:0.660, depth:"глубоко",
            w:{mako:4, marlin:5, swordfish:5, tuna:7, chavycha:6, paltus:7, barracuda:6, angler:5}}

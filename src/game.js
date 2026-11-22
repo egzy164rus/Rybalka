@@ -1829,7 +1829,8 @@ function drawSpots(g){
     let bx = x - tw/2 - padX;
     let by = y - ry - bh - 12*s;
     // на льду подпись не должна налезать на лунку: разводим точки по вертикали
-    if (save.loc === "winter"){
+    // клубной лунке подъём не нужен: её подпись и так стоит выше пятна
+    if (save.loc === "winter" && !isClub){
       const holeY = y + 6;
       if (holeY - (by + bh) < 46*s) by = y - ry - bh - 52*s;
     }
@@ -1864,7 +1865,12 @@ function drawSpots(g){
     const pool = spotPool(sp);
     const okCount = pool.filter(z => z.okBait && z.okRod).length;
     const baitOk = pool.some(z => z.okBait);
-    const tagTxt = okCount ? fishCount(okCount) : (baitOk ? "нужна снасть посильнее" : "другая приманка");
+    const nearMin = isClub ? Math.min.apply(null, pool.filter(z => z.okBait && !z.okRod)
+      .map(z => FISH[z.id].reqPower).concat([9999])) : 9999;
+    const tagTxt = okCount
+      ? (isClub ? "клуб · " + fishCount(okCount) : fishCount(okCount))
+      : (isClub && baitOk && nearMin < 9999 ? "нужна удочка " + nearMin
+        : baitOk ? "нужна снасть посильнее" : "другая приманка");
     ctx.font = "800 " + (9.5*s) + "px -apple-system,Segoe UI,Roboto,sans-serif";
     const tw2 = ctx.measureText(tagTxt).width;
     const b2w = tw2 + 12*s, b2h = 15*s;
@@ -1888,7 +1894,7 @@ function drawSpots(g){
       const t2 = "КЛУБ";
       ctx.font = "900 " + (8*s) + "px -apple-system,Segoe UI,Roboto,sans-serif";
       const w2 = ctx.measureText(t2).width + 10*s;
-      const px2 = x - w2/2, py2 = y - ry - 24*s, h2 = 13*s;
+      const px2 = x + tw/2 + 10*s, py2 = by - 4*s, h2 = 13*s;
       ctx.beginPath();
       const r2 = h2/2;
       ctx.moveTo(px2+r2, py2);
@@ -1903,7 +1909,7 @@ function drawSpots(g){
       ctx.lineWidth = 0.9; ctx.stroke();
       ctx.fillStyle = "#efe6ff";
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(t2, x, py2 + h2/2 + 0.5);
+      ctx.fillText(t2, px2 + w2/2, py2 + h2/2 + 0.5);
     }
 
     // маркер глубины

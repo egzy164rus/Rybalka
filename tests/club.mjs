@@ -3,7 +3,7 @@ const b = await chromium.launch();
 const p = await b.newPage({ viewport:{width:430,height:860}, deviceScaleFactor:2 });
 const errs=[]; p.on("pageerror",e=>errs.push(e.message));
 p.on("console",m=>{ if(m.type()==="error") errs.push("console:"+m.text()); });
-const GAME = (process.env.GAME_URL || new URL("../rybalka.html", import.meta.url).href);
+const GAME = "file:///home/user/rybalka.html";
 await p.goto(GAME); await p.waitForTimeout(1100);
 await p.click("#btnStart"); await p.waitForTimeout(400);
 
