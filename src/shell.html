@@ -10,16 +10,16 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="Тихая заводь">
 <meta name="description" content="Тихая заводь — рыбалка: 100 видов рыбы, 5 водоёмов, премиум-снасти. Работает офлайн.">
-<link rel="manifest" href="manifest.webmanifest?v=712">
-<link rel="icon" href="favicon-32.png?v=712" sizes="32x32" type="image/png">
+<link rel="manifest" href="manifest.webmanifest?v=713">
+<link rel="icon" href="favicon-32.png?v=713" sizes="32x32" type="image/png">
 <!-- iOS: иконка «На экран Домой». Safari берёт последний подходящий размер,
      поэтому перечисляем все типовые; ?v= — чтобы не подхватилась старая копия из кэша -->
-<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=712">
-<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=712">
-<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=712">
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=712">
-<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=712">
-<link rel="apple-touch-icon" href="icon-180.png?v=712">
+<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=713">
+<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=713">
+<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=713">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=713">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=713">
+<link rel="apple-touch-icon" href="icon-180.png?v=713">
 <title>Тихая заводь — рыбалка</title>
 <style>
 :root{
@@ -657,6 +657,38 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 .coach-bubble:after{content:"";position:absolute;left:50%;bottom:-6px;width:12px;height:12px;
   margin-left:-6px;background:inherit;border-right:inherit;border-bottom:inherit;transform:rotate(45deg)}
 
+/* ============ клубная карточка ============ */
+.clubcard{margin:12px 0 4px;border-radius:18px;padding:13px 14px;
+  background:linear-gradient(140deg,rgba(120,96,200,.24),rgba(255,193,69,.10));
+  border:1px solid rgba(180,150,255,.42);box-shadow:0 10px 26px rgba(60,30,120,.18)}
+.clubcard.locked{background:linear-gradient(140deg,rgba(120,96,200,.14),rgba(255,193,69,.05));
+  border-style:dashed;border-color:rgba(180,150,255,.3)}
+.club-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.club-medal{width:38px;height:38px;border-radius:50%;flex:none;display:grid;place-items:center;
+  background:radial-gradient(circle at 38% 30%,#efe2ff,#a98cf0 72%);color:#2c1d55;
+  box-shadow:0 6px 16px rgba(120,80,220,.35),inset 0 -3px 8px rgba(60,30,120,.28)}
+.club-medal svg{width:19px;height:19px}
+.club-title{font-size:13.5px;font-weight:900;color:#f3eaff;line-height:1.15}
+.club-title small{display:block;font-size:10px;font-weight:800;letter-spacing:.6px;
+  text-transform:uppercase;color:rgba(226,214,255,.62);margin-top:2px}
+.club-lvl{margin-left:auto;font:900 11px/1 -apple-system,Segoe UI,Roboto,sans-serif;
+  padding:6px 9px;border-radius:999px;color:#3a2a05;background:linear-gradient(180deg,#ffd979,#f0a51f);
+  box-shadow:0 4px 12px rgba(200,140,0,.3)}
+.club-lvl small{display:block;font-size:9px;font-weight:750;letter-spacing:.02em;opacity:.62;margin-top:1px}
+.club-perks{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 10px}
+.club-perk{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:850;
+  padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.08);
+  border:1px solid rgba(200,180,255,.28);color:#efe6ff}
+.club-perk.off{opacity:.42;border-style:dashed}
+.club-perk svg{width:11px;height:11px;color:#cbb6ff}
+.club-btn{width:100%;border:none;cursor:pointer;border-radius:13px;padding:11px;
+  font:900 12.5px/1 -apple-system,Segoe UI,Roboto,sans-serif;color:#2c1d55;
+  background:linear-gradient(180deg,#e6d8ff,#b9a0f5);box-shadow:0 8px 18px rgba(90,60,170,.28)}
+.club-btn:disabled{opacity:.55;box-shadow:none}
+.club-btn.ready{animation:clubPulse 1.8s ease-in-out infinite}
+@keyframes clubPulse{0%,100%{box-shadow:0 8px 18px rgba(90,60,170,.28)}50%{box-shadow:0 8px 26px rgba(160,120,255,.55)}}
+.club-foot{font-size:10.5px;font-weight:700;color:rgba(226,214,255,.6);margin-top:7px;line-height:1.4}
+
 /* ============ premium ============ */
 .item.premium{background:linear-gradient(120deg,rgba(157,134,216,.18),rgba(255,193,69,.08));
   border-color:rgba(157,134,216,.5);box-shadow:0 0 0 1px rgba(157,134,216,.25) inset,0 10px 26px rgba(90,60,160,.18)}
@@ -794,6 +826,7 @@ button.buy.prem:disabled{opacity:.5}
     </div>
     <div class="sheet-body">
       <div class="qdaily" id="qDaily"></div>
+      <div class="clubcard" id="clubCard"></div>
       <div class="secTitle">Сюжетные задания</div>
       <div class="jfilters" id="qChapters"></div>
       <div class="qlist" id="qList"></div>

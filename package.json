@@ -5,8 +5,9 @@
   "description": "Тихая заводь — рыбалка 7.1: одна HTML-страница, офлайн, 100 видов рыбы",
   "scripts": {
     "build": "python3 build.py",
-    "test": "node tests/smoke.mjs && node tests/z7.mjs",
-    "shots": "node tests/shots.mjs"
+    "test": "node tests/smoke.mjs && node tests/z7.mjs && node tests/club.mjs",
+    "shots": "node tests/shots.mjs",
+    "test:club": "node tests/club.mjs"
   },
   "devDependencies": {
     "playwright": "1.49.0"

@@ -146,6 +146,65 @@ function restockCost(ids){
 }
 /* «сила снасти» — минимум из удочки и лески; если рыба сильнее, она уйдёт */
 const gearPower = () => Math.min(rodDef().power, lineDef().power);
+/* ---------------- премиум-клуб: уровень, перки, клубный плёс ---------------- */
+/* в сохранении премиум-предметы лежат как «p_premRod», в PREMIUM — как «premRod» */
+const premKey = (id) => (id && id.slice(0,2) === "p_" ? id.slice(2) : id);
+const isPrem = (id) => !!PREMIUM[premKey(id)];
+const premOwned = () => (save.owned ? Object.keys(save.owned).some(slot =>
+  (save.owned[slot]||[]).some(id => isPrem(id))) : false);
+const premCount = () => {
+  let n = 0;
+  for (const k of PEARL_ITEMS){
+    const slot = PREMIUM[k].kind;
+    const list = (save.owned && save.owned[slot]) || [];
+    if (list.includes(k) || list.includes("p_"+k)) n++;
+  }
+  return n;
+};
+const premEquipped = () => SLOTS.reduce((n, sl) =>
+  n + (isPrem(save.equipped[sl.id]) && (save.owned[sl.id]||[]).includes(save.equipped[sl.id]) ? 1 : 0), 0);
+/* уровень клуба: 1 за первый предмет, +1 за каждые два купленных, +1 если надето три и больше */
+function clubLvl(){
+  const n = premCount();
+  if (!n) return 0;
+  // каждый премиум-предмет даёт уровень; +1 бонус, если надето три и больше
+  return Math.min(5, n + (premEquipped() >= 3 ? 1 : 0));
+}
+const clubRank = () => CLUB_RANKS[Math.min(5, clubLvl())];
+/* 1 предмет / 2 предмета / 5 предметов */
+const plur = (n, one, few, many) => {
+  const a = Math.abs(n) % 100, b = a % 10;
+  if (a > 10 && a < 20) return many;
+  if (b > 1 && b < 5) return few;
+  if (b === 1) return one;
+  return many;
+};
+/* значение перка с учётом уровня (0, если перка нет) */
+function perk(name){
+  const r = clubRank();
+  if (!r.perks[name]) return 0;
+  return (PERK_VAL[name] || [])[clubLvl()] || 0;
+}
+/* клубный плёс — четвёртая точка водоёма, видна только участникам клуба */
+const clubSpot = () => (premOwned() && CLUB_SPOTS[save.loc]) ? CLUB_SPOTS[save.loc] : null;
+const locSpots = () => { const L = LOCATIONS[save.loc] || LOCATIONS.lake; const c = clubSpot(); return c ? L.spots.concat([c]) : L.spots; };
+/* ежедневный клубный набор */
+const clubDayReady = () => premOwned() && save.clubDay !== todayKey();
+function claimClubDay(){
+  if (!premOwned()){ toast("Только для клуба", "Купи любой премиум-предмет за жемчуг — и набор твой.", 2400); return false; }
+  if (!clubDayReady()){ toast("Набор уже забран", "Новый набор будет завтра.", 1800); return false; }
+  save.clubDay = todayKey();
+  save.coins = (save.coins||0) + CLUB_DAY.coins;
+  save.xp = (save.xp||0) + CLUB_DAY.xp;
+  save.pearl = (save.pearl||0) + CLUB_DAY.pearl;
+  save.pearlTotal = (save.pearlTotal||0) + CLUB_DAY.pearl;
+  for (const b in CLUB_DAY.baits) save.baits[b] = (save.baits[b]||0) + CLUB_DAY.baits[b];
+  persist(); updateChips(); renderQuests();
+  sfx.level ? sfx.level() : sfx.buy();
+  toast("Клубный набор", "+"+CLUB_DAY.coins+" монет, +"+CLUB_DAY.xp+" опыта, +"+CLUB_DAY.pearl+" жемчуг и приманки", 3000);
+  return true;
+}
+
 const locDef  = () => LOCATIONS[save.loc] || LOCATIONS.lake;
 
 /* ---------------- квесты ---------------- */
@@ -237,7 +296,8 @@ function questOnCatch(f){
   }
   if (save.quests.q_kinds) save.quests.q_kinds.prog = Object.keys(save.caught).length;
   // жемчуг: редко и по-крупному
-  const pearlChance = f.rar === "mythic" ? 0.9 : f.rar === "legendary" ? 0.55 : f.rar === "epic" ? 0.18 : 0.03;
+  const pearlBase = f.rar === "mythic" ? 0.9 : f.rar === "legendary" ? 0.55 : f.rar === "epic" ? 0.18 : 0.03;
+  const pearlChance = clamp(pearlBase + perk("pearl"), 0, 0.97);
   if (Math.random() < pearlChance){
     save.pearl = (save.pearl||0) + 1; save.pearlTotal = (save.pearlTotal||0) + 1;
     G.pearlFind = true;
@@ -445,7 +505,7 @@ function depthNameByY(y){
   return k < 0.30 ? "мелко" : k < 0.62 ? "средне" : "глубоко";
 }
 function zonePool(x, y){
-  const spots = locDef().spots;
+  const spots = locSpots();
   const k = clamp((y - geo().surfaceY) / Math.max(1, (H - geo().surfaceY)), 0, 1);
   const near = [];
   for (const sp of spots){
@@ -465,7 +525,7 @@ function zonePool(x, y){
 /* ближайшая «именованная» точка — только для подписи */
 function nearestSpotName(x, y){
   let best = null, bd = 1e9;
-  for (const sp of locDef().spots){
+  for (const sp of locSpots()){
     const pos = spotPos(sp);
     const d = Math.hypot(x - pos.x, y - pos.y);
     if (d < bd){ bd = d; best = sp; }
@@ -612,8 +672,8 @@ function pickFish(spot){
   let r = Math.random()*total, type = Object.keys(w)[0];
   for (const k in w){ r -= w[k]; if (r <= 0){ type = k; break; } }
   const F = FISH[type];
-  const u = Math.pow(Math.random(), 1.55);
-  const weight = Math.round((F.wMin + u*(F.wMax-F.wMin)) * L.sizeMul * weatherNow().size);
+  const u = Math.pow(Math.random(), 1.55 + perk("big")*3);   // клуб: чаще крупные особи
+  const weight = Math.round((F.wMin + u*(F.wMax-F.wMin)) * L.sizeMul * weatherNow().size * (1 + perk("all")));
   const norm = clamp((weight - F.wMin*L.sizeMul) / (F.wMax*L.sizeMul - F.wMin*L.sizeMul), 0, 1);
   return {
     junk:false, type, name:F.name, rar:F.rar, note:F.note, weight, norm,
@@ -635,7 +695,7 @@ function spotPool(spot){
 /* какие приманки вообще имеют смысл в этом водоёме */
 function locBaits(){
   const set = new Set();
-  for (const sp of locDef().spots) for (const k in sp.w) if (FISH[k]) set.add(FISH[k].bait);
+  for (const sp of locSpots()) for (const k in sp.w) if (FISH[k]) set.add(FISH[k].bait);
   return set;
 }
 
@@ -803,7 +863,7 @@ function biteWait(){
   const calmK = G.waterClear ? (save.loc === "winter" ? 1.08 : 1.15) : 1;
   // 4) точность заброса
   const accK = 1.10 - 0.25 * clamp(G.acc || 0, 0, 1);
-  const mean = 4.4 * richK * wxK * calmK * accK;
+  const mean = 4.4 * richK * wxK * calmK * accK * (1 - perk("bite"));
   // сумма двух равномерных: чаще 4-8 с, реже крайности
   const g = (Math.random() + Math.random()) / 2;
   let t = mean * (0.42 + g * 1.32);
@@ -984,7 +1044,7 @@ function showCatch(f){
     $("catchRecord").innerHTML = isRec ? '<span class="rec">РЕКОРД</span>' : "";
 
     const perfectBonus = 1 + Math.min(0.25, (G.perfectAcc || 0) * 0.09);
-    const coins = Math.round(f.weight/1000 * f.val * (1 + G.acc*0.35) * perfectBonus);
+    const coins = Math.round(f.weight/1000 * f.val * (1 + G.acc*0.35) * perfectBonus * (1 + perk("coin")));
     const xp = Math.round(f.xp + f.weight/1000*4);
     $("catchCoins").textContent = "+"+coins;
     $("catchXp").textContent = "+"+xp;
@@ -1705,9 +1765,10 @@ function drawAmbient(g){
 
 function drawSpots(g){
   if (!["idle","aim","power","casting"].includes(G.state)) return;
-  const spots = locDef().spots;
+  const spots = locSpots();
   const s = clamp(Math.min(W,H)/620, 0.7, 1.5);
   for (const sp of spots){
+    const isClub = sp.id.indexOf("prem_") === 0;
     const {x, y} = spotPos(sp);
     const sel = G.spot && G.spot.id === sp.id;
     const pulse = 0.5 + 0.5*Math.sin(G.clock*2.2 + sp.x*7);
@@ -1718,13 +1779,31 @@ function drawSpots(g){
     ctx.fillStyle = "rgba(4,18,24,0.32)";
     ctx.fill();
     ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI*2);
-    ctx.fillStyle = sel ? "rgba(255,193,69,0.24)" : "rgba(255,255,255,0.12)";
+    ctx.fillStyle = sel ? "rgba(255,193,69,0.24)"
+      : isClub ? "rgba(178,150,255,0.22)" : "rgba(255,255,255,0.12)";
     ctx.fill();
-    ctx.strokeStyle = sel ? "rgba(255,214,122,"+(0.9+pulse*0.1)+")" : "rgba(255,255,255,"+(0.55+pulse*0.2)+")";
-    ctx.lineWidth = sel ? 2.8 : 2;
+    ctx.strokeStyle = sel ? "rgba(255,214,122,"+(0.9+pulse*0.1)+")"
+      : isClub ? "rgba(211,190,255,"+(0.75+pulse*0.25)+")" : "rgba(255,255,255,"+(0.55+pulse*0.2)+")";
+    ctx.lineWidth = sel ? 2.8 : isClub ? 2.4 : 2;
     ctx.setLineDash(sel ? [] : [7,6]);
     ctx.stroke();
     ctx.setLineDash([]);
+    if (isClub){
+      // клубный плёс: тёплое свечение и жемчужные искры по краю
+      ctx.save();
+      const gr = ctx.createRadialGradient(x, y, 2, x, y, rx*1.5);
+      gr.addColorStop(0, "rgba(205,180,255,"+(0.16+pulse*0.10)+")");
+      gr.addColorStop(1, "rgba(205,180,255,0)");
+      ctx.fillStyle = gr;
+      ctx.beginPath(); ctx.ellipse(x, y, rx*1.5, ry*1.5, 0, 0, Math.PI*2); ctx.fill();
+      for (let i=0;i<3;i++){
+        const a = G.clock*0.9 + i*2.1;
+        const px = x + Math.cos(a)*rx*1.15, py = y + Math.sin(a)*ry*1.15;
+        ctx.beginPath(); ctx.arc(px, py, 1.6*s, 0, Math.PI*2);
+        ctx.fillStyle = "rgba(232,220,255,"+(0.55+0.35*Math.sin(a*2))+")"; ctx.fill();
+      }
+      ctx.restore();
+    }
 
     if (sel){
       ctx.beginPath(); ctx.ellipse(x, y, rx*1.35, ry*1.35, 0, 0, Math.PI*2);
@@ -1765,7 +1844,7 @@ function drawSpots(g){
     ctx.closePath();
     ctx.fillStyle = sel ? "rgba(255,193,69,0.92)" : "rgba(8,22,28,0.62)";
     ctx.fill();
-    ctx.fillStyle = sel ? "#2a2205" : "rgba(255,255,255,0.9)";
+    ctx.fillStyle = sel ? "#2a2205" : isClub ? "#efe6ff" : "rgba(255,255,255,0.9)";
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillText(label, x, by + bh/2 + 0.5);
 
@@ -1803,6 +1882,29 @@ function drawSpots(g){
     ctx.fillStyle = okCount ? "#b8f0c6" : "#ffb9a6";
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillText(tagTxt, cx, cy + b2h/2 + 0.5);
+
+    if (isClub){
+      // метка «клуб» над точкой
+      const t2 = "КЛУБ";
+      ctx.font = "900 " + (8*s) + "px -apple-system,Segoe UI,Roboto,sans-serif";
+      const w2 = ctx.measureText(t2).width + 10*s;
+      const px2 = x - w2/2, py2 = y - ry - 24*s, h2 = 13*s;
+      ctx.beginPath();
+      const r2 = h2/2;
+      ctx.moveTo(px2+r2, py2);
+      ctx.arcTo(px2+w2, py2, px2+w2, py2+h2, r2);
+      ctx.arcTo(px2+w2, py2+h2, px2, py2+h2, r2);
+      ctx.arcTo(px2, py2+h2, px2, py2, r2);
+      ctx.arcTo(px2, py2, px2+w2, py2, r2);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(60,40,110,0.78)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(200,180,255,0.6)";
+      ctx.lineWidth = 0.9; ctx.stroke();
+      ctx.fillStyle = "#efe6ff";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(t2, x, py2 + h2/2 + 0.5);
+    }
 
     // маркер глубины
     ctx.beginPath(); ctx.arc(x, y, 2.8*s, 0, Math.PI*2);
@@ -2412,7 +2514,7 @@ function drawSprite(img, x, y, w, rot, alpha){
 const SPL = [];
 function updateSplashes(dt){
   if (["waiting","aim","idle"].includes(G.state) && Math.random() < dt*0.55){
-    const spot = G.spot || locDef().spots[(Math.random()*locDef().spots.length)|0];
+    const spot = G.spot || locSpots()[(Math.random()*locSpots().length)|0];
     const pos = spotPos(spot);
     SPL.push({
       x: clamp(pos.x + rnd(-W*0.10, W*0.10), W*0.06, W*0.94),
@@ -2972,10 +3074,15 @@ function renderBaitShelf(){
         const b = BAITS[id], own = baitsLeft(id), eq = save.equipped.bait === id;
         const here = locB.has(id);
         const fishHere = Object.keys(FISH).filter(k => FISH[k].bait === id &&
-          locDef().spots.some(sp => sp.w[k]) && FISH[k].reqPower <= rodDef().power).length;
+          locSpots().some(sp => sp.w[k]) && FISH[k].reqPower <= rodDef().power).length;
+        // клубный плёс: сколько редких видов возьмёт эта приманка
+        const clubSpotNow = premOwned() ? CLUB_SPOTS[save.loc] : null;
+        const clubHits = clubSpotNow
+          ? Object.keys(clubSpotNow.w).filter(k => FISH[k] && FISH[k].bait === id && FISH[k].reqPower <= rodDef().power).length : 0;
         return '<button class="bs'+(eq?" on":"")+(own?"":" empty")+(here?"":" far")+'" data-bait="'+id+'">'
           + '<b>'+b.name+'</b>'
-          + '<small>'+own+' шт · '+(here ? (fishHere ? fishHere+" видов тут" : "нужна снасть сильнее") : "не в этом водоёме")+'</small>'
+          + '<small>'+own+' шт · '+(here ? (fishHere ? fishHere+" видов тут" : "нужна снасть сильнее") : "не в этом водоёме")
+          + (clubHits ? ' · клуб +'+clubHits : '')+'</small>'
           + '</button>';
       }).join("") + '</div>';
   const x = sh.querySelector("#bsClose");
@@ -3282,8 +3389,23 @@ function renderShop(){
   // премиум-блок
   const premRow = document.createElement("div");
   premRow.className = "premNote";
+  const clubLine = premOwned()
+    ? '<br><b style="color:#d9c9ff">Клуб: ур. ' + clubLvl() + ' / 5 · ' + clubRank().name +
+      ' · ' + premCount() + '/' + PEARL_ITEMS.length + ' предметов</b>' +
+      '<small>Перки: ' + [
+        perk("pearl") ? "жемчуг +" + Math.round(perk("pearl")*100) + "%" : "",
+        perk("bite") ? "поклёвка −" + Math.round(perk("bite")*100) + "%" : "",
+        perk("coin") ? "монеты +" + Math.round(perk("coin")*100) + "%" : "",
+        perk("big") ? "крупная рыба +" + Math.round(perk("big")*100) + "%" : "",
+        perk("all") ? "размер рыбы +" + Math.round(perk("all")*100) + "%" : ""
+      ].filter(Boolean).join(" · ") +
+      '. Клубный плёс открыт на всех водоёмах' + (clubDayReady() ? ', набор ждёт в разделе «Квесты».' : '.') + '</small>'
+    : '<br><b style="color:#d9c9ff">Преимущества клуба</b><small>Любой премиум-предмет даёт уровень клуба: ' +
+      'перки (жемчуг, скорость поклёвки, монеты, крупная рыба), закрытый клубный плёс на каждом водоёме и ' +
+      'ежедневный набор монет, опыта и жемчуга.</small>';
   premRow.innerHTML = ICONS.pearl + '<div><b>Жемчуг: ' + (save.pearl||0) + '</b>' +
-    '<small>Жемчуг падает за трофеи, легенд и мифических рыб, а также за квесты. Премиум-предметы покупаются один раз и навсегда.</small></div>';
+    '<small>Жемчуг падает за трофеи, легенд и мифических рыб, а также за квесты. Премиум-предметы покупаются один раз и навсегда.</small>' +
+    clubLine + '</div>';
   list.appendChild(premRow);
   note.textContent = shopSlot === "bait"
     ? "Каждая рыба берёт ТОЛЬКО свою приманку: за заброс тратится 1 шт. Кукуруза и хлеб дёшевы, креветка и краб — для трофеев."
@@ -3302,6 +3424,53 @@ function questRewardText(r){
   if (r.bait) p.push('<span class="rw item">'+ICONS.bait + r.baitN+'×'+BAITS[r.bait].name+'</span>');
   return p.join("");
 }
+/* клубная карточка: уровень, перки и ежедневный набор */
+function renderClubCard(){
+  const el = $("clubCard");
+  if (!el) return;
+  const lvl = clubLvl(), rank = clubRank();
+  const ready = clubDayReady();
+  const nextLvl = Math.min(5, lvl + 1);
+  const nextRank = CLUB_RANKS[nextLvl];
+  const cnt = premCount();
+  const needForNext = lvl === 0 ? "нужен первый премиум-предмет"
+    : lvl >= 5 ? "высший уровень, все перки открыты"
+    : "ещё " + (5 - cnt) + " " + plur(5 - cnt, "предмет", "предмета", "предметов") +
+      " до ранга «" + CLUB_RANKS[5].name + "»";
+  const perkRow = (key, label, val) =>
+    '<span class="club-perk'+(val > 0 ? "" : " off")+'">'+ICONS.star+
+      label + (val > 0 ? " +" + Math.round(val*100) + "%" : "")+'</span>';
+  const perks = premOwned()
+    ? perkRow("pearl","жемчуг за улов", perk("pearl")) +
+      perkRow("bite","скорость поклёвки", perk("bite")) +
+      perkRow("coin","монеты", perk("coin")) +
+      perkRow("big","крупная рыба", perk("big")) +
+      perkRow("all","размер рыбы", perk("all"))
+    : '<span class="club-perk off">перки откроются после первой покупки</span>';
+  el.className = "clubcard" + (premOwned() ? "" : " locked");
+  el.innerHTML =
+    '<div class="club-head">' +
+      '<div class="club-medal">'+ICONS.pearl+'</div>' +
+      '<div class="club-title">Премиум-клуб<small>'+(premOwned() ? rank.name : "закрыт · предметы за жемчуг")+'</small></div>' +
+      '<div class="club-lvl">'+(premOwned() ? "ур. "+lvl+" / 5" : "нет доступа")+
+        (premOwned() ? '<small>' + cnt + ' из ' + PEARL_ITEMS.length + ' предметов</small>' : '')+'</div>' +
+    '</div>' +
+    '<div class="club-perks">'+perks+'</div>' +
+    (premOwned()
+      ? '<button class="club-btn'+(ready ? " ready" : "")+'" id="clubDayBtn"'+(ready ? "" : " disabled")+'>' +
+          (ready ? "Забрать клубный набор" : "Набор уже забран — завтра новый") + '</button>' +
+        '<div class="club-foot">Набор: +'+CLUB_DAY.coins+' монет, +'+CLUB_DAY.xp+' опыта, +'+CLUB_DAY.pearl+
+          ' жемчуг, приманки — раз в сутки. Клубный плёс: четвёртая точка на каждом водоёме, метка «КЛУБ» на воде.' +
+          '<br><b>Дальше:</b> '+needForNext+'.</div>'
+      : '<button class="club-btn" id="clubShopBtn">Открыть премиум-предметы</button>' +
+        '<div class="club-foot">Купи любой предмет за жемчуг — откроешь уровень клуба, перки, ' +
+          'клубный плёс на всех водоёмах и ежедневный набор.</div>');
+  const b1 = $("clubDayBtn");
+  if (b1) b1.addEventListener("click", () => { claimClubDay(); });
+  const b2 = $("clubShopBtn");
+  if (b2) b2.addEventListener("click", () => { closeAllSheets(); openSheet("sheetShop", () => renderShop()); });
+}
+
 function renderQuests(){
   const list = $("qList");
   if (!list) return;
@@ -3330,6 +3499,8 @@ function renderQuests(){
     daily.querySelectorAll("button[data-daily]").forEach(b =>
       b.addEventListener("click", () => claimDaily(b.dataset.daily)));
   }
+
+  renderClubCard();
 
   // главы
   const chap = $("qChapters");
@@ -3506,7 +3677,7 @@ function isWaterPoint(x, y){
 }
 
 function nearestSpot(x, y){
-  const spots = locDef().spots;
+  const spots = locSpots();
   let best = null, bd = 1e9;
   for (const sp of spots){
     const pos = spotPos(sp);
@@ -3974,10 +4145,17 @@ window.__dbg = () => ({
   fishImg: G.fish && images.fish[artOf(G.fish.type)] ? images.fish[artOf(G.fish.type)].complete : "none",
   junk: G.fish ? !!G.fish.junk : null
 });
+window.__club = () => ({ owned: premOwned(), count: premCount(), equipped: premEquipped(),
+  lvl: clubLvl(), rank: clubRank().name, perks: { pearl: perk("pearl"), bite: perk("bite"),
+    coin: perk("coin"), big: perk("big"), all: perk("all") },
+  clubSpot: !!clubSpot(), dayReady: clubDayReady(), dayKey: save.clubDay || null,
+  spots: locSpots().map(s => s.id) });
 window.__pwa = () => ({ standalone: pwaIsStandalone(), platform: pwaPlatform(),
   installEvt: !!_installEvt, btn: !!_pwaBtn, sw: !!navigator.serviceWorker,
   controlled: !!(navigator.serviceWorker && navigator.serviceWorker.controller) });
-window.__selectSpot = i => selectSpot(locDef().spots[i]);
+window.__selectSpot = i => selectSpot(locSpots()[i]);
+window.__spotById = (id) => locSpots().find(s => s.id === id) || null;
+window.__fishDef = (id) => FISH[id];
 window.__ui = { openStart, closeStart, renderQuests, renderBaitShelf, claimQuest, dailyNow, questClaimable, openSheet, closeAllSheets };
 
 /* ---------------- PWA: установка на экран и офлайн-режим ---------------- */

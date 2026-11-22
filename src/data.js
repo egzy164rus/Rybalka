@@ -321,6 +321,43 @@ const SLOTS = [
 ];
 
 /* ---------------- ПОГОДА ---------------- */
+/* ---------------- ПРЕМИУМ-ПРЕИМУЩЕСТВА ---------------- */
+/* Клубный уровень растёт от всех купленных и надетых премиум-предметов:
+   чем их больше, тем выше уровень и сильнее пассивные перки. */
+const CLUB_RANKS = [
+  {lvl:0, name:"Гость",       perks:{}},
+  {lvl:1, name:"Участник",    perks:{pearl:1}},
+  {lvl:2, name:"Рыбак клуба", perks:{pearl:1, bite:1}},
+  {lvl:3, name:"Мастер",      perks:{pearl:1, bite:1, coin:1}},
+  {lvl:4, name:"Трофейщик",   perks:{pearl:1, bite:1, coin:1, big:1}},
+  {lvl:5, name:"Хранитель",   perks:{pearl:1, bite:1, coin:1, big:1, all:1}}
+];
+/* значения перков по уровню: жемчуг за улов, скорость поклёвки, монеты, крупная рыба, размер */
+const PERK_VAL = {
+  pearl: [0, 0.10, 0.15, 0.20, 0.25, 0.30],
+  bite:  [0, 0.00, 0.06, 0.10, 0.12, 0.14],
+  coin:  [0, 0.00, 0.00, 0.06, 0.10, 0.14],
+  big:   [0, 0.00, 0.00, 0.00, 0.05, 0.08],
+  all:   [0, 0.00, 0.00, 0.00, 0.00, 0.05]
+};
+
+/* Закрытый «клубный плёс»: четвёртая точка на каждом водоёме, видна только участникам клуба.
+   Правила приманки и прочности удочки действуют и здесь — плёс лишь богаче и глубже. */
+const CLUB_SPOTS = {
+  lake:   {id:"prem_lake", sweet:[0.70,0.92],   name:"Клубный плёс",  x:0.62, y:0.615, depth:"глубоко",
+           w:{som:10, amur_b:6, shchuka:9, sudak:7, karp:8, sterlyad:6, tolst_p:5, amur_w:5}},
+  river:  {id:"prem_river", sweet:[0.74,0.95],  name:"Клубный плёс",  x:0.74, y:0.655, depth:"глубоко",
+           w:{taimen:7, nelma:6, losos:6, forel_l:6, chavycha:4, peacock:5, lenok:7, golec_ar:5}},
+  night:  {id:"prem_night", sweet:[0.28,0.50],  name:"Клубный плёс",  x:0.30, y:0.645, depth:"глубоко",
+           w:{beluga:5, kaluga:4, sevryuga:6, oster_r:6, som_amur:7, ship:4, som:8, zmeegolov:5}},
+  winter: {id:"prem_winter", sweet:[0.50,0.72], name:"Клубная лунка", x:0.52, y:0.735, depth:"глубоко",
+           w:{beluga:4, muksun:8, omul:8, chir:7, oster_s:6, som:6, lenok:6}},
+  sea:    {id:"prem_sea", sweet:[0.45,0.68],    name:"Клубный плёс",  x:0.46, y:0.660, depth:"глубоко",
+           w:{mako:4, marlin:5, swordfish:5, tuna:7, chavycha:6, paltus:7, barracuda:6, angler:5}}
+};
+/* ежедневный клубный набор: раз в сутки, только участникам клуба */
+const CLUB_DAY = { coins:260, xp:140, pearl:2, baits:{ corn:10, worm:10, bloodworm:8 } };
+
 const WEATHER = {
   sunny:  {name:"Ясно",       icon:"sun",   bite:1.00, size:1.00, light:1.00, hint:"Тишь да гладь"},
   overcast:{name:"Облачно",    icon:"cloud", bite:1.10, size:1.03, light:0.90, hint:"Рыба активна — самое время"},
