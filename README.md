@@ -1,10 +1,26 @@
 # Тихая заводь — рыбалка 7.1
 
-**Играть онлайн:** https://egzy164rus.github.io/Rybalka/ · **Репозиторий:** https://github.com/egzy164rus/Rybalka
-
 Одна веб-страница (`rybalka.html`), без внешних файлов и интернета: 100 видов рыбы, 5 водоёмов,
 своя приманка для каждой рыбы, порог прочности удочки, живая вода, анимация ловли, зимняя рыбалка
 с мормышкой, 39 квестов, 3 ежедневные цели и премиум-снасти за жемчуг. Прогресс хранится в `localStorage`.
+
+## PWA: установка на экран и офлайн
+
+Игра ставится как приложение на Android, iPhone и десктоп.
+
+- **Манифест** `manifest.webmanifest`: `standalone`, портретная ориентация, тема `#0a1a20`,
+  иконки 192/512 в режимах `any` и `maskable`, два скриншота для витрины Android.
+- **Сервис-воркер** `sw.js`: кэш `rybalka-7.1.0` (страница, манифест, иконки); стратегия
+  network-first для страницы — обновления прилетают сразу, при обрыве сети отдаётся кэш,
+  поэтому игра открывается без интернета. Старые кэши удаляются при активации.
+- **Установка**: кнопка «Установить приложение» в стартовом экране. В Chrome/Android она вызывает
+  системное приглашение (`beforeinstallprompt`), на iPhone показывает подсказку
+  «Поделиться → На экран „Домой“», на десктопе — путь через значок в адресной строке.
+  На iOS добавлены `apple-touch-icon` и `apple-mobile-web-app-*`.
+- **Проверено на живом сайте** (`https://egzy164rus.github.io/Rybalka/`, Chromium с Android UA):
+  манифест отдаётся 200 и парсится (4 иконки, 2 скриншота), сервис-воркер активен и кэширует
+  9 файлов, ловля проходит, после включения офлайн-режима страница загружается из кэша,
+  прогресс (1 рыба) сохраняется, ошибок консоли нет.
 
 ## Что нового в 7.1
 
@@ -181,52 +197,14 @@
 
 ## Публикация (GitHub Pages)
 
-Игра — одна страница, поэтому годится в статический сайт без сборки на сервере.
+Игра — один `rybalka.html`, поэтому она сразу годится в статический сайт:
 
-**Вариант А. Загрузить готовый `rybalka.html` (без git, 30 секунд)**
+1. Репозиторий уже инициализирован локально (ветка `main`, один коммит 7.1).
+2. Ветка `main` → **Settings → Pages → Source: GitHub Actions**; воркфлоу `.github/workflows/pages.yml`
+   на каждый пуш копирует `rybalka.html` в `index.html` и публикует сайт.
+3. После первого пуша игра открывается по адресу `https://<логин>.github.io/<репозиторий>/`.
 
-1. На github.com: **New repository** → имя, например `rybalka` → Public → **без** README и лицензии.
-2. **Add file → Upload files** → перетащить `rybalka.html`, переименовать его в `index.html` при желании
-   (не обязательно — Pages откроет и `rybalka.html`), → **Commit**.
-3. **Settings → Pages** → Source: *Deploy from a branch* → Branch: `main`, папка `/ (root)` → **Save**.
-4. Через минуту игра доступна: `https://<логин>.github.io/rybalka/` (или `.../rybalka/rybalka.html`).
-
-**Вариант Б. Выложить весь этот репозиторий через git**
-
-```bash
-cd rybalka-7.1
-git init -b main
-git add -A
-git commit -m "Тихая заводь 7.1"
-git remote add origin https://github.com/<логин>/rybalka.git
-git push -u origin main
-```
-
-Для git пароль — это **Personal Access Token** (GitHub → Settings → Developer settings →
-Personal access tokens → Tokens (classic) → права `repo`), обычный пароль не подойдёт.
-
-Затем **Settings → Pages → Source: GitHub Actions** — воркфлоу `.github/workflows/pages.yml`
-сам публикует `rybalka.html` как `index.html` и обновляет сайт на каждый пуш в `main`.
-
-**Что в папке**
-
-| Файл | Назначение |
-| --- | --- |
-| `rybalka.html` | готовая игра (3.7 МБ, всё внутри, работает офлайн) |
-| `index.html` | копия для сайта — GitHub Pages открывает её сразу |
-| `src/`, `assets/`, `build.py` | исходники и сборка: `python3 build.py` → `rybalka.html` |
-| `screenshots/` | 15 кадров 7.1 для README и витрины |
-| `tests/` | проверки на Playwright: `smoke.mjs` (5 водоёмов), `z7.mjs` (сила ↔ расстояние) |
-| `.github/workflows/pages.yml` | автопубликация на GitHub Pages |
-
-Тесты (нужны Node.js и Playwright):
-
-```bash
-npm install
-npx playwright install chromium
-npm test          # smoke + сила заброса
-npm run build     # пересобрать страницу
-```
+Собрать страницу заново: `python3 build.py` (нужна папка `assets/` с исходниками картинок).
 
 ## Технические заметки
 
