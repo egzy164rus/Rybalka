@@ -10,16 +10,16 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="Тихая заводь">
 <meta name="description" content="Тихая заводь — рыбалка: 100 видов рыбы, 5 водоёмов, премиум-снасти. Работает офлайн.">
-<link rel="manifest" href="manifest.webmanifest?v=713">
-<link rel="icon" href="favicon-32.png?v=713" sizes="32x32" type="image/png">
+<link rel="manifest" href="manifest.webmanifest?v=714">
+<link rel="icon" href="favicon-32.png?v=714" sizes="32x32" type="image/png">
 <!-- iOS: иконка «На экран Домой». Safari берёт последний подходящий размер,
      поэтому перечисляем все типовые; ?v= — чтобы не подхватилась старая копия из кэша -->
-<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=713">
-<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=713">
-<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=713">
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=713">
-<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=713">
-<link rel="apple-touch-icon" href="icon-180.png?v=713">
+<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=714">
+<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=714">
+<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=714">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=714">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=714">
+<link rel="apple-touch-icon" href="icon-180.png?v=714">
 <title>Тихая заводь — рыбалка</title>
 <style>
 :root{
@@ -460,6 +460,16 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 .catchMeta span svg{width:12px;height:12px}
 .catchMeta span.ok{background:rgba(74,180,120,.16);color:#2f6b45}
 .catchMeta span.warn{background:rgba(220,110,60,.18);color:#8f3d10}
+/* клубный случай в карточке улова */
+.clubLuck{
+  display:flex;align-items:center;gap:7px;margin-top:9px;padding:8px 11px;border-radius:13px;
+  background:linear-gradient(135deg,rgba(138,108,232,.16),rgba(138,108,232,.07));
+  border:1px solid rgba(138,108,232,.38);
+}
+.clubLuck svg{width:16px;height:16px;flex:none;opacity:.9}
+.clubLuck small{font-size:9px;letter-spacing:.3px;text-transform:uppercase;font-weight:900;
+  color:#6d55b8;white-space:nowrap}
+.clubLuck b{margin-left:auto;font-size:11px;font-weight:850;color:#3b2a6b;text-align:right;line-height:1.25}
 .rowStats{display:flex;gap:7px;margin-top:13px}
 .rowStats div{flex:1;background:rgba(120,90,40,.09);border-radius:14px;padding:8px 7px;text-align:center}
 .rowStats small{display:block;font-size:9px;letter-spacing:.3px;text-transform:uppercase;opacity:.6;font-weight:800;white-space:nowrap}
@@ -510,6 +520,12 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 .bs.on{background:linear-gradient(180deg,rgba(255,217,121,.24),rgba(255,193,69,.14));
   border-color:rgba(255,193,69,.6);box-shadow:0 0 0 1px rgba(255,193,69,.25) inset}
 .bs.on b{color:#ffe6b0}
+.bs{position:relative}
+.bs-buy{
+  position:absolute;top:5px;right:5px;font-style:normal;font-size:8.5px;font-weight:900;
+  letter-spacing:.2px;color:#2a2205;background:linear-gradient(180deg,#ffd979,#f7ae2e);
+  border-radius:999px;padding:2px 6px;box-shadow:0 3px 8px rgba(160,100,0,.3);
+}
 .bs.empty{opacity:.55}
 .bs.far{opacity:.42}
 .bs.far small{color:rgba(255,150,120,.7)}
@@ -689,6 +705,42 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 @keyframes clubPulse{0%,100%{box-shadow:0 8px 18px rgba(90,60,170,.28)}50%{box-shadow:0 8px 26px rgba(160,120,255,.55)}}
 .club-foot{font-size:10.5px;font-weight:700;color:rgba(226,214,255,.6);margin-top:7px;line-height:1.4}
 
+/* клубная цель дня внутри карточки клуба */
+.club-goal{
+  margin-top:9px;padding:9px 11px;border-radius:14px;
+  background:rgba(120,96,210,.13);border:1px dashed rgba(190,166,255,.34);
+}
+.club-goal.ready{border-style:solid;border-color:rgba(190,166,255,.7);background:rgba(120,96,210,.24)}
+.club-goal.done{opacity:.65}
+.cg-top{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:850;color:#e6dbff}
+.cg-top svg{width:12px;height:12px;color:#c9b4ff}
+.cg-top i{margin-left:auto;font-style:normal;font-size:10px;font-weight:900;color:rgba(230,219,255,.7)}
+.cg-bar{height:5px;border-radius:99px;background:rgba(255,255,255,.12);margin:7px 0 0;overflow:hidden}
+.cg-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#a98cff,#d9c9ff)}
+.club-goal small{display:block;margin-top:6px;font-size:9.5px;font-weight:700;color:rgba(243,236,221,.55)}
+.cg-btn{
+  width:100%;margin-top:8px;padding:8px;border-radius:11px;border:none;cursor:pointer;
+  font-size:11.5px;font-weight:850;color:#2a1a52;
+  background:linear-gradient(180deg,#d9c9ff,#a98cff);
+  box-shadow:0 5px 14px rgba(120,80,220,.3);
+}
+.cg-btn:active{transform:scale(.98)}
+
+/* чип клубного набора в шапке */
+.clubchip{
+  position:relative;display:grid;place-items:center;width:30px;height:30px;padding:0;cursor:pointer;
+  border-radius:50%;
+  background:linear-gradient(135deg,rgba(150,120,240,.4),rgba(120,96,210,.24));
+  border:1px solid rgba(198,176,255,.5);color:#efe6ff;
+  box-shadow:0 4px 14px rgba(90,60,180,.3);
+}
+.clubchip svg{width:15px;height:15px}
+.clubchip.ready{animation:clubChipPulse 2.6s ease-in-out infinite}
+.clubchip i{
+  position:absolute;top:-1px;right:-1px;width:8px;height:8px;border-radius:50%;
+  background:#ffd05a;border:1.5px solid #14232a;box-shadow:0 0 6px rgba(255,208,90,.9);
+}
+@keyframes clubChipPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.055)}}
 /* ============ premium ============ */
 .item.premium{background:linear-gradient(120deg,rgba(157,134,216,.18),rgba(255,193,69,.08));
   border-color:rgba(157,134,216,.5);box-shadow:0 0 0 1px rgba(157,134,216,.25) inset,0 10px 26px rgba(90,60,160,.18)}
@@ -754,6 +806,7 @@ button.buy.prem:disabled{opacity:.5}
       <span style="width:12px;height:12px" id="pearlIco"></span><b id="pearls" class="pv">0</b>
     </div>
     <div class="spacer"></div>
+    <button class="clubchip" id="clubChip" aria-label="Клубный набор" style="display:none"></button>
     <div class="lvlpill" id="lvlChip"><small>ур.</small><b id="lvl">1</b></div>
     <button class="roundbtn" id="btnSound" aria-label="Звук"></button>
   </div>
@@ -947,6 +1000,7 @@ button.buy.prem:disabled{opacity:.5}
         <div><small>В коллекции</small><b id="catchTotal">0</b></div>
         <div id="pearlCell" style="display:none"><small>Жемчуг</small><b id="catchPearl" style="color:#b9a4f5">+1</b></div>
       </div>
+      <div class="clubLuck" id="clubLuckRow" style="display:none"></div>
       <button class="btn" id="btnNext">Ещё заброс</button>
     </div>
   </div>

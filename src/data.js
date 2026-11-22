@@ -327,14 +327,15 @@ const SLOTS = [
 const CLUB_RANKS = [
   {lvl:0, name:"Гость",       perks:{}},
   {lvl:1, name:"Участник",    perks:{pearl:1}},
-  {lvl:2, name:"Рыбак клуба", perks:{pearl:1, bite:1}},
-  {lvl:3, name:"Мастер",      perks:{pearl:1, bite:1, coin:1}},
-  {lvl:4, name:"Трофейщик",   perks:{pearl:1, bite:1, coin:1, big:1}},
-  {lvl:5, name:"Хранитель",   perks:{pearl:1, bite:1, coin:1, big:1, all:1}}
+  {lvl:2, name:"Рыбак клуба", perks:{pearl:1, bite:1, xp:1}},
+  {lvl:3, name:"Мастер",      perks:{pearl:1, bite:1, coin:1, xp:1}},
+  {lvl:4, name:"Трофейщик",   perks:{pearl:1, bite:1, coin:1, big:1, xp:1}},
+  {lvl:5, name:"Хранитель",   perks:{pearl:1, bite:1, coin:1, big:1, all:1, xp:1}}
 ];
 /* значения перков по уровню: жемчуг за улов, скорость поклёвки, монеты, крупная рыба, размер */
 const PERK_VAL = {
   pearl: [0, 0.10, 0.15, 0.20, 0.25, 0.30],
+  xp:    [0, 0.00, 0.05, 0.08, 0.10, 0.12],
   bite:  [0, 0.00, 0.06, 0.10, 0.12, 0.14],
   coin:  [0, 0.00, 0.00, 0.06, 0.10, 0.14],
   big:   [0, 0.00, 0.00, 0.00, 0.05, 0.08],
@@ -355,8 +356,21 @@ const CLUB_SPOTS = {
   sea:    {id:"prem_sea", sweet:[0.45,0.68],    name:"Клубный плёс",  x:0.46, y:0.660, depth:"глубоко",
            w:{mako:4, marlin:5, swordfish:5, tuna:7, chavycha:6, paltus:7, barracuda:6, angler:5}}
 };
-/* ежедневный клубный набор: раз в сутки, только участникам клуба */
-const CLUB_DAY = { coins:260, xp:140, pearl:2, baits:{ corn:10, worm:10, bloodworm:8 } };
+/* ежедневный клубный набор: раз в сутки, только участникам клуба.
+   Чем выше ранг, тем щедрее набор — это ещё одно преимущество уровня. */
+/* клубная цель дня: одна на сутки, только в клубном плёсе (для участников клуба) */
+const CLUB_GOAL = { coins:420, xp:220, pearl:2, count:3 };
+const CLUB_DAY = {
+  coins:260, xp:140, pearl:2, baits:{ corn:10, worm:10, bloodworm:8 },
+  byLvl: [
+    {coins:260, xp:140, pearl:2, mul:1.0},   // Гость (не бывает)
+    {coins:260, xp:140, pearl:2, mul:1.0},   // Участник
+    {coins:300, xp:165, pearl:2, mul:1.15},  // Рыбак клуба
+    {coins:350, xp:190, pearl:3, mul:1.3},   // Мастер
+    {coins:400, xp:215, pearl:3, mul:1.45},  // Трофейщик
+    {coins:470, xp:250, pearl:4, mul:1.6}    // Хранитель
+  ]
+};
 
 const WEATHER = {
   sunny:  {name:"Ясно",       icon:"sun",   bite:1.00, size:1.00, light:1.00, hint:"Тишь да гладь"},

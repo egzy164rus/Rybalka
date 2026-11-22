@@ -52,7 +52,9 @@ const DEF = {
   casts:0, breaks:0, lost:0,
   loc:"lake", weather:null, seen:false, seenFight:false, mute:false,
   quests:{}, daily:null, streak:0, noBreak:0, day:null,
-  pearl:0, pearlTotal:0, locsCaught:{}, perfects:0, accs:0, premLog:{}
+  pearl:0, pearlTotal:0, locsCaught:{}, perfects:0, accs:0, premLog:{},
+  clubDay:null, clubLuck:null, clubVisit:null, clubGoalDay:null, clubGoal:0, clubGoalDone:false,
+  baits:{}
 };
 let save;
 try {
@@ -188,20 +190,105 @@ function perk(name){
 /* клубный плёс — четвёртая точка водоёма, видна только участникам клуба */
 const clubSpot = () => (premOwned() && CLUB_SPOTS[save.loc]) ? CLUB_SPOTS[save.loc] : null;
 const locSpots = () => { const L = LOCATIONS[save.loc] || LOCATIONS.lake; const c = clubSpot(); return c ? L.spots.concat([c]) : L.spots; };
-/* ежедневный клубный набор */
+/* ежедневный клубный набор: награда растёт с уровнем клуба */
+const clubDayBase = () => CLUB_DAY.byLvl[clamp(clubLvl(), 0, 5)] || CLUB_DAY.byLvl[1];
+const clubDayReward = () => {
+  const b = clubDayBase(), k = 1 + perk("xp");
+  const out = {
+    coins: Math.round(b.coins * (1 + perk("coin"))),
+    xp: Math.round(b.xp * k),
+    pearl: b.pearl,
+    baits: {}
+  };
+  for (const id in CLUB_DAY.baits) out.baits[id] = Math.round(CLUB_DAY.baits[id] * b.mul);
+  return out;
+};
+/* клубный случай: раз в сутки с клубного плёса падает редкая приманка и немного монет.
+   Приманку выбираем из тех, что берут рыбу именно этого плёса, — она сразу рабочая. */
+const clubLuckReady = () => premOwned() && save.clubLuck !== todayKey();
+function clubSpotBaits(loc){
+  const sp = CLUB_SPOTS[loc || save.loc];
+  if (!sp) return [];
+  const need = [];
+  for (const k in sp.w){
+    const F = FISH[k];
+    if (F && BAITS[F.bait] && !need.includes(F.bait)) need.push(F.bait);
+  }
+  return need;
+}
+/* первый точный заброс на плёс за сутки — небольшой бонус, чтобы клубная точка звала */
+const clubVisitReady = () => premOwned() && save.clubVisit !== todayKey();
+function clubVisit(power){
+  if (!clubVisitReady()) return false;
+  const sp = G.spot;
+  if (!sp || sp.id.indexOf("prem_") !== 0) return false;
+  const inZone = power >= sp.sweet[0] && power <= sp.sweet[1];
+  if (!inZone) return false;
+  save.clubVisit = todayKey();
+  const coins = 120 + clubLvl()*30;
+  save.coins = (save.coins||0) + coins;
+  persist(); updateChips();
+  sfx.level ? sfx.level() : sfx.buy();
+  toast("Клубная точка", "Точный заброс на плёс: +"+coins+" монет. Раз в сутки.", 2800);
+  return true;
+}
+function clubLuckRoll(spot){
+  if (!premOwned()) return false;
+  if (!spot || spot.id.indexOf("prem_") !== 0) return false;
+  if (!clubLuckReady()) return false;
+  const list = clubSpotBaits(save.loc);
+  if (!list.length) return false;
+  save.clubLuck = todayKey();
+  const bait = list[Math.floor(Math.random()*list.length)];
+  const n = 10 + Math.floor(Math.random()*6) + clubLvl()*2;
+  save.baits[bait] = (save.baits[bait]||0) + n;
+  const coins = 40 + clubLvl()*12;
+  save.coins = (save.coins||0) + coins;
+  persist();
+  G.clubLuck = { bait, n, coins, t: 4.2 };
+  tone(880, 0.1, "sine", 0.06, 1240);
+  return true;
+}
+/* сколько осталось до новой сутки: «3 ч 12 мин» */
+function dayLeft(){
+  const now = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, 0, 0, 0);
+  const m = Math.max(1, Math.round((next - now)/60000));
+  const h = Math.floor(m/60), mm = m % 60;
+  return h > 0 ? h + " ч " + (mm ? mm + " мин" : "") : mm + " мин";
+}
 const clubDayReady = () => premOwned() && save.clubDay !== todayKey();
+/* новый день — новая клубная цель (сброс лениво, в карточке и при улове) */
 function claimClubDay(){
   if (!premOwned()){ toast("Только для клуба", "Купи любой премиум-предмет за жемчуг — и набор твой.", 2400); return false; }
   if (!clubDayReady()){ toast("Набор уже забран", "Новый набор будет завтра.", 1800); return false; }
+  const rw = clubDayReward();
   save.clubDay = todayKey();
-  save.coins = (save.coins||0) + CLUB_DAY.coins;
-  save.xp = (save.xp||0) + CLUB_DAY.xp;
-  save.pearl = (save.pearl||0) + CLUB_DAY.pearl;
-  save.pearlTotal = (save.pearlTotal||0) + CLUB_DAY.pearl;
-  for (const b in CLUB_DAY.baits) save.baits[b] = (save.baits[b]||0) + CLUB_DAY.baits[b];
+  save.coins = (save.coins||0) + rw.coins;
+  save.xp = (save.xp||0) + rw.xp;
+  save.pearl = (save.pearl||0) + rw.pearl;
+  save.pearlTotal = (save.pearlTotal||0) + rw.pearl;
+  for (const b in rw.baits) save.baits[b] = (save.baits[b]||0) + rw.baits[b];
   persist(); updateChips(); renderQuests();
   sfx.level ? sfx.level() : sfx.buy();
-  toast("Клубный набор", "+"+CLUB_DAY.coins+" монет, +"+CLUB_DAY.xp+" опыта, +"+CLUB_DAY.pearl+" жемчуг и приманки", 3000);
+  toast("Клубный набор", "+"+rw.coins+" монет, +"+rw.xp+" опыта, +"+rw.pearl+" жемчуг и приманки", 3000);
+  return true;
+}
+
+/* забрать клубную цель дня: 3 рыбы с клубного плёса */
+function claimClubGoal(){
+  if (!premOwned()) return false;
+  const cur = save.clubGoalDay === todayKey() ? (save.clubGoal||0) : 0;
+  if (save.clubGoalDone || cur < CLUB_GOAL.count){ return false; }
+  save.clubGoalDone = true;
+  const coins = Math.round(CLUB_GOAL.coins * (1 + perk("coin")));
+  const xp = Math.round(CLUB_GOAL.xp * (1 + perk("xp")));
+  save.coins += coins; save.xp += xp;
+  save.pearl = (save.pearl||0) + CLUB_GOAL.pearl;
+  save.pearlTotal = (save.pearlTotal||0) + CLUB_GOAL.pearl;
+  persist(); updateChips(); renderQuests();
+  sfx.level ? sfx.level() : sfx.buy();
+  toast("Клубная цель дня", "+"+coins+" монет, +"+xp+" опыта, +"+CLUB_GOAL.pearl+" жемчуг", 3000);
   return true;
 }
 
@@ -249,7 +336,10 @@ function questClaimable(q){
 function grantReward(r){
   const parts = [];
   if (r.coins){ save.coins += r.coins; parts.push("+"+r.coins+" монет"); }
-  if (r.xp){ save.xp += r.xp; parts.push("+"+r.xp+" опыта"); }
+  if (r.xp){
+    const xp = Math.round(r.xp * (1 + perk("xp")));
+    save.xp += xp; parts.push("+"+xp+" опыта");
+  }
   if (r.rod && !save.owned.rod.includes(r.rod)){
     save.owned.rod.push(r.rod); parts.push("удочка «"+RODS[r.rod].name+"»");
   }
@@ -303,6 +393,11 @@ function questOnCatch(f){
     G.pearlFind = true;
   }
   save.noBreak++;
+  /* клубная цель дня: три рыбы с клубного плёса */
+  if (premOwned() && G.spot && G.spot.id.indexOf("prem_") === 0){
+    if (save.clubGoalDay !== todayKey()){ save.clubGoalDay = todayKey(); save.clubGoal = 0; }
+    if (!save.clubGoalDone) save.clubGoal = Math.min(CLUB_GOAL.count, (save.clubGoal||0) + 1);
+  }
   // «все 100 видов»
   if (save.quests.q_all) save.quests.q_all.prog = Object.keys(save.caught).length;
   save.locsCaught[save.loc] = true;
@@ -379,10 +474,11 @@ function claimDaily(id){
   save.daily.done = save.daily.done || {};
   if (save.daily.done[id]) return;
   save.daily.done[id] = true;
-  save.coins += t.coins; save.xp += t.xp;
+  const dXp = Math.round(t.xp * (1 + perk("xp")));
+  save.coins += t.coins; save.xp += dXp;
   persist(); updateChips(); renderQuests();
   sfx.level();
-  toast("Ежедневная цель", "+"+t.coins+" монет · +"+t.xp+" опыта", 2400);
+  toast("Ежедневная цель", "+"+t.coins+" монет · +"+dXp+" опыта", 2400);
   const allDone = tasks.every(x => save.daily.done[x.id]);
   if (allDone) toast("Все цели дня закрыты!", "Завтра придут новые. Так держать.", 3000);
 }
@@ -819,6 +915,7 @@ function releasePower(){
   const ratio = clamp(p / Math.max(0.08, ideal), 0.12, 1.9);
   G.bobTarget = clamp(tipX - (tipX - pos.x) * ratio + rnd(-jitter,jitter)*W, W*0.04, W*0.97);
   if (G.acc > 0.85){ dailyOn("acc", 1); save.accs = (save.accs||0)+1; }
+  clubVisit(p);
   if (G.acc > 0.98) floatText("ТОЧНО!", G.bobTarget, geo().surfaceY - 60, "#a7f0bd");
   else if (G.acc > 0.6) floatText("неплохо", G.bobTarget, geo().surfaceY - 60, "#ffe9a3");
   else floatText("мимо зоны", G.bobTarget, geo().surfaceY - 60, "#ffb3a0");
@@ -826,6 +923,7 @@ function releasePower(){
 }
 
 function startCast(){
+  if (G.clubLuck) G.clubLuck.t = 0;
   const g = geo();
   G.castFrom = { x:g.rodTip.x, y:g.rodTip.y };
   G.bobX = g.rodTip.x; G.bobY = g.rodTip.y;
@@ -978,6 +1076,7 @@ function succeed(){
       life:rnd(0.5,1.0), r:rnd(1.4,3.2), color:"rgba(225,250,255,"});
   }
   burst(G.bobX, wY(), 26, 300); ring(G.bobX);
+  clubLuckRoll(G.spot);
   G.jumpUntil = performance.now() + 1150;   // пока летит рыба, карточку не показываем
   setTimeout(()=>showCatch(f), 1150);
 }
@@ -1045,11 +1144,19 @@ function showCatch(f){
 
     const perfectBonus = 1 + Math.min(0.25, (G.perfectAcc || 0) * 0.09);
     const coins = Math.round(f.weight/1000 * f.val * (1 + G.acc*0.35) * perfectBonus * (1 + perk("coin")));
-    const xp = Math.round(f.xp + f.weight/1000*4);
+    const xp = Math.round((f.xp + f.weight/1000*4) * (1 + perk("xp")));
     $("catchCoins").textContent = "+"+coins;
     $("catchXp").textContent = "+"+xp;
     const pearlCell = $("pearlCell");
     if (pearlCell) pearlCell.style.display = G.pearlFind ? "" : "none";
+    const luckRow = $("clubLuckRow");
+    if (luckRow){
+      if (G.clubLuck && G.clubLuck.t > 0){
+        luckRow.style.display = "";
+        luckRow.innerHTML = ICONS.pearl + '<small>Клубный случай</small><b>+' + G.clubLuck.n + ' «' +
+          BAITS[G.clubLuck.bait].name + '» · +' + G.clubLuck.coins + ' монет</b>';
+      } else luckRow.style.display = "none";
+    }
 
     save.coins += coins;
     const beforeLvl = levelInfo().lvl;
@@ -1867,8 +1974,10 @@ function drawSpots(g){
     const baitOk = pool.some(z => z.okBait);
     const nearMin = isClub ? Math.min.apply(null, pool.filter(z => z.okBait && !z.okRod)
       .map(z => FISH[z.id].reqPower).concat([9999])) : 9999;
+    // клубный плёс сам подсвечивает, что раз в сутки даёт бонус за точный заброс
+    const visitWaiting = isClub && clubVisitReady();
     const tagTxt = okCount
-      ? (isClub ? "клуб · " + fishCount(okCount) : fishCount(okCount))
+      ? (isClub ? "клуб · " + fishCount(okCount) + (visitWaiting ? " · ждёт вас" : "") : fishCount(okCount))
       : (isClub && baitOk && nearMin < 9999 ? "нужна удочка " + nearMin
         : baitOk ? "нужна снасть посильнее" : "другая приманка");
     ctx.font = "800 " + (9.5*s) + "px -apple-system,Segoe UI,Roboto,sans-serif";
@@ -3085,7 +3194,13 @@ function renderBaitShelf(){
         const clubSpotNow = premOwned() ? CLUB_SPOTS[save.loc] : null;
         const clubHits = clubSpotNow
           ? Object.keys(clubSpotNow.w).filter(k => FISH[k] && FISH[k].bait === id && FISH[k].reqPower <= rodDef().power).length : 0;
+        const price = b.price || 0;
+        // пустую приманку можно докупить прямо здесь: монетами или (премиум) жемчугом
+        const buyTag = own ? '' : (b.pearl
+          ? '<i class="bs-buy">жемчуг</i>'
+          : price ? '<i class="bs-buy">×10 · ' + price*10 + '</i>' : '');
         return '<button class="bs'+(eq?" on":"")+(own?"":" empty")+(here?"":" far")+'" data-bait="'+id+'">'
+          + buyTag
           + '<b>'+b.name+'</b>'
           + '<small>'+own+' шт · '+(here ? (fishHere ? fishHere+" видов тут" : "нужна снасть сильнее") : "не в этом водоёме")
           + (clubHits ? ' · клуб +'+clubHits : '')+'</small>'
@@ -3095,10 +3210,25 @@ function renderBaitShelf(){
   if (x) x.addEventListener("click", () => toggleBaitShelf(false));
   sh.querySelectorAll(".bs").forEach(btn => btn.addEventListener("click", () => {
     const id = btn.dataset.bait;
-    if (!save.owned.bait.includes(id)) save.owned.bait.push(id);
+    const b = BAITS[id];
+    // пустую приманку покупаем здесь же — десятком, за монеты
+    if (!baitsLeft(id)){
+      const cost = (b.price || 0) * 10;
+      if ((save.coins || 0) < cost){
+        toast("Не хватает монет", "«" + b.name + "» ×10 стоит " + cost + " монет.", 2000);
+        sfx.tap(); return;
+      }
+      save.coins -= cost;
+      save.baits[id] = (save.baits[id] || 0) + 10;
+      if (!save.owned.bait.includes(id)) save.owned.bait.push(id);
+      toast("Приманка куплена", "«" + b.name + "» ×10 за " + cost + " монет.", 1800);
+      sfx.buy();
+    } else {
+      if (!save.owned.bait.includes(id)) save.owned.bait.push(id);
+      sfx.tap();
+    }
     save.equipped.bait = id;
-    if (!baitsLeft(id)){ save.baits[id] = 10; toast("Приманка куплена", BAITS[id].name + " ×10 за " + (BAITS[id].price*10) + " монет.", 1600); }
-    persist(); updateChips(); renderBaitShelf(); sfx.tap();
+    persist(); updateChips(); renderBaitShelf(); renderGearBar();
   }));
 }
 
@@ -3134,9 +3264,24 @@ function updateQuestDot(){
   const dot = $("questDot");
   if (!dot) return;
   const ready = QUESTS.some(q => questClaimable(q)) ||
+    clubDayReady() ||
     dailyNow().some(t => { const p = dailyProg(t); return p.cur >= p.max && !(save.daily.done||{})[t.id]; });
   dot.style.display = ready ? "block" : "none";
 }
+/* чип «набор ждёт»: виден только участникам клуба, пока набор не забран */
+function syncClubChip(){
+  const el = $("clubChip");
+  if (!el) return;
+  const show = premOwned();
+  el.style.display = show ? "" : "none";
+  if (!show) return;
+  const ready = clubDayReady();
+  el.innerHTML = ICONS.pearl + (ready ? '<i></i>' : "");
+  el.classList.toggle("ready", ready);
+  el.style.opacity = ready ? "1" : ".5";
+  el.title = ready ? "Клубный набор ждёт — забрать" : "Клуб: " + clubRank().name + " · набор уже забран";
+}
+
 function updateChips(){
   $("coins").textContent = save.coins;
   if ($("coinsShop")) $("coinsShop").textContent = save.coins;
@@ -3149,6 +3294,7 @@ function updateChips(){
   const chipLoc = $("chipLoc");
   if (chipLoc) chipLoc.title = locDef().name + " — " + locDef().sub;
   syncWeatherChip();
+  syncClubChip();
   $("btnSound").innerHTML = save.mute ? ICONS.mute : ICONS.sound;
   renderGearBar();
   syncWeatherChip();
@@ -3400,6 +3546,7 @@ function renderShop(){
       ' · ' + premCount() + '/' + PEARL_ITEMS.length + ' предметов</b>' +
       '<small>Перки: ' + [
         perk("pearl") ? "жемчуг +" + Math.round(perk("pearl")*100) + "%" : "",
+        perk("xp") ? "опыт +" + Math.round(perk("xp")*100) + "%" : "",
         perk("bite") ? "поклёвка −" + Math.round(perk("bite")*100) + "%" : "",
         perk("coin") ? "монеты +" + Math.round(perk("coin")*100) + "%" : "",
         perk("big") ? "крупная рыба +" + Math.round(perk("big")*100) + "%" : "",
@@ -3439,6 +3586,7 @@ function renderClubCard(){
   const nextLvl = Math.min(5, lvl + 1);
   const nextRank = CLUB_RANKS[nextLvl];
   const cnt = premCount();
+  const rw = clubDayReward();
   const needForNext = lvl === 0 ? "нужен первый премиум-предмет"
     : lvl >= 5 ? "высший уровень, все перки открыты"
     : "ещё " + (5 - cnt) + " " + plur(5 - cnt, "предмет", "предмета", "предметов") +
@@ -3448,11 +3596,27 @@ function renderClubCard(){
       label + (val > 0 ? " +" + Math.round(val*100) + "%" : "")+'</span>';
   const perks = premOwned()
     ? perkRow("pearl","жемчуг за улов", perk("pearl")) +
+      perkRow("xp","опыт", perk("xp")) +
       perkRow("bite","скорость поклёвки", perk("bite")) +
       perkRow("coin","монеты", perk("coin")) +
       perkRow("big","крупная рыба", perk("big")) +
       perkRow("all","размер рыбы", perk("all"))
     : '<span class="club-perk off">перки откроются после первой покупки</span>';
+  /* клубная цель дня: новый день — счёт заново */
+  if (save.clubGoalDay !== todayKey()){ save.clubGoal = 0; save.clubGoalDone = false; }
+  const gReady = premOwned() && (save.clubGoalDay === todayKey() ? (save.clubGoal||0) >= CLUB_GOAL.count : false);
+  const gDone = premOwned() && !!save.clubGoalDone;
+  const gCur = save.clubGoalDay === todayKey() ? (save.clubGoal||0) : 0;
+  const goalRow = premOwned()
+    ? '<div class="club-goal'+(gReady ? " ready" : gDone ? " done" : "")+'">' +
+        '<div class="cg-top">' + ICONS.bolt + '<b>Цель дня: 3 рыбы на плёсе</b>' +
+          '<i>' + (gDone ? "выполнено" : Math.min(gCur, CLUB_GOAL.count) + "/" + CLUB_GOAL.count) + '</i></div>' +
+        '<div class="cg-bar"><i style="width:' + Math.round((gDone ? 1 : Math.min(gCur, CLUB_GOAL.count)/CLUB_GOAL.count)*100) + '%"></i></div>' +
+        (gReady
+          ? '<button class="cg-btn" id="clubGoalBtn">Забрать +' + CLUB_GOAL.coins + ' монет, +' + CLUB_GOAL.pearl + ' жемчуг</button>'
+          : '<small>Награда: +' + CLUB_GOAL.coins + ' монет, +' + CLUB_GOAL.xp + ' опыта, +' + CLUB_GOAL.pearl + ' жемчуг</small>') +
+      '</div>'
+    : "";
   el.className = "clubcard" + (premOwned() ? "" : " locked");
   el.innerHTML =
     '<div class="club-head">' +
@@ -3462,15 +3626,18 @@ function renderClubCard(){
         (premOwned() ? '<small>' + cnt + ' из ' + PEARL_ITEMS.length + ' предметов</small>' : '')+'</div>' +
     '</div>' +
     '<div class="club-perks">'+perks+'</div>' +
+    goalRow +
     (premOwned()
       ? '<button class="club-btn'+(ready ? " ready" : "")+'" id="clubDayBtn"'+(ready ? "" : " disabled")+'>' +
-          (ready ? "Забрать клубный набор" : "Набор уже забран — завтра новый") + '</button>' +
-        '<div class="club-foot">Набор: +'+CLUB_DAY.coins+' монет, +'+CLUB_DAY.xp+' опыта, +'+CLUB_DAY.pearl+
-          ' жемчуг, приманки — раз в сутки. Клубный плёс: четвёртая точка на каждом водоёме, метка «КЛУБ» на воде.' +
+          (ready ? "Забрать клубный набор" : "Набор забран · новый через " + dayLeft()) + '</button>' +
+        '<div class="club-foot">Набор ранга: +'+rw.coins+' монет, +'+rw.xp+' опыта, +'+rw.pearl+
+          ' жемчуг, приманки. На плёсе раз в сутки — клубный случай и бонус за точный заброс.' +
           '<br><b>Дальше:</b> '+needForNext+'.</div>'
       : '<button class="club-btn" id="clubShopBtn">Открыть премиум-предметы</button>' +
         '<div class="club-foot">Купи любой предмет за жемчуг — откроешь уровень клуба, перки, ' +
           'клубный плёс на всех водоёмах и ежедневный набор.</div>');
+  const gb = $("clubGoalBtn");
+  if (gb) gb.addEventListener("click", claimClubGoal);
   const b1 = $("clubDayBtn");
   if (b1) b1.addEventListener("click", () => { claimClubDay(); });
   const b2 = $("clubShopBtn");
@@ -4136,6 +4303,24 @@ function boot(){
 }
 
 // отладочный хук
+/* тест-хуки: поймать конкретную рыбу и забросить с заданной силой (только для проверок) */
+window.__forceCatch = (id) => {
+  const F = FISH[id];
+  if (!F) return null;
+  save.equipped.bait = F.bait;
+  const f = { junk:false, type:id, name:F.name, rar:F.rar, note:F.note, weight:Math.round(F.wMin*3),
+    norm:0.5, aggr:F.aggr, stam:F.stam, val:F.val, xp:F.xp, art:artOf(id), palette:paletteFor(id),
+    bait:F.bait, reqPower:F.reqPower };
+  G.fish = f; G.acc = 0.95; G.perfectAcc = 0.95; G.biteAt = 1;
+  succeed();
+  return f.name;
+};
+window.__castAt = (power) => {
+  selectSpot(G.spot || locSpots()[0]);
+  setState("power"); G.power = power; G.hold = false;
+  releasePower();
+  return G.acc;
+};
 window.__test = { save:() => save, persist, pickFish, spotPool, RODS, BAITS, gearPower,
   setEquip:(slot,id)=>{ save.equipped[slot]=id; }, questOnCatch, QUESTS, PREMIUM, PEARL_ITEMS, FISH,
   LOCATIONS, RARITY, rodDef, lineDef, hookDef, netDef, reelDef, levelInfo };
@@ -4152,9 +4337,13 @@ window.__dbg = () => ({
   junk: G.fish ? !!G.fish.junk : null
 });
 window.__club = () => ({ owned: premOwned(), count: premCount(), equipped: premEquipped(),
-  lvl: clubLvl(), rank: clubRank().name, perks: { pearl: perk("pearl"), bite: perk("bite"),
+  lvl: clubLvl(), rank: clubRank().name,
+  perks: { pearl: perk("pearl"), xp: perk("xp"), bite: perk("bite"),
     coin: perk("coin"), big: perk("big"), all: perk("all") },
   clubSpot: !!clubSpot(), dayReady: clubDayReady(), dayKey: save.clubDay || null,
+  dayReward: clubDayReward(), luckReady: clubLuckReady(), visitReady: clubVisitReady(),
+  goal: { cur: save.clubGoalDay === todayKey() ? (save.clubGoal||0) : 0,
+          max: CLUB_GOAL.count, done: !!save.clubGoalDone },
   spots: locSpots().map(s => s.id) });
 window.__pwa = () => ({ standalone: pwaIsStandalone(), platform: pwaPlatform(),
   installEvt: !!_installEvt, btn: !!_pwaBtn, sw: !!navigator.serviceWorker,
