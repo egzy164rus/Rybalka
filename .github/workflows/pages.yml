@@ -1,0 +1,42 @@
+# Публикация игры на GitHub Pages: rybalka.html становится index.html сайта
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Собрать сайт (PWA)
+        run: |
+          mkdir -p _site
+          # index.html уже собран build.py; на всякий случай пересоберём из rybalka.html
+          cp rybalka.html _site/index.html
+          cp -r screenshots _site/screenshots
+          cp manifest.webmanifest sw.js _site/
+          cp icon-120.png icon-152.png icon-167.png icon-180.png icon-192.png icon-512.png \
+             icon-maskable-192.png icon-maskable-512.png favicon-32.png _site/
+          cp shot-1.jpg shot-2.jpg _site/ 2>/dev/null || true
+          # .nojekyll: GitHub Pages не должен пытаться собирать сайт через Jekyll
+          touch _site/.nojekyll || true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
