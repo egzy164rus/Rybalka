@@ -4574,7 +4574,7 @@ function renderBase(){
         setState("idle");
       });
     } else {
-      card.addEventListener("click", () => toast("Закрыто", "Нужен "+L.unlock+" уровень. Лови рыбу, чтобы качаться.", 1600));
+      card.addEventListener("click", () => toast("Пока закрыто", "Водоём откроется на "+L.unlock+" уровне. Сейчас "+save.level+". Лови рыбу, чтобы качаться.", 1900));
     }
     list.appendChild(card);
   }
