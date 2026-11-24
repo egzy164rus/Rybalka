@@ -129,7 +129,8 @@ const rule = await p.evaluate(()=>{
       checks++;
       if (f && !f.junk){
         const F = window.__fishDef(f.type);
-        if (F.bait !== bait || F.reqPower > T.RODS[rodId].power) bad++;
+        // 8.6: вид берёт свою насадку и совместимые с ней
+        if (!(window.__baitsFor ? window.__baitsFor(f.type) : [F.bait]).includes(bait) || F.reqPower > T.RODS[rodId].power) bad++;
       }
     }
   }

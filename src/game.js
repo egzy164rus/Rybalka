@@ -380,6 +380,138 @@ function timeMults(loc){
   if (windowOn(loc)) return {klyov:WINDOW_K.klyov, size:WINDOW_K.size, coins:WINDOW_K.coins, pearl:WINDOW_K.pearl};
   return {klyov:OFF_WINDOW_K, size:1, coins:1, pearl:0};
 }
+
+/* ============================================================================
+   8.6: ЖИВАЯ ВОДА — экология водоёма
+   Идея: у водоёма есть паспорт (солёность, течение, прозрачность, тип), у точки —
+   профиль дна (глубина в метрах, грунт, укрытия, трава, локальное течение), у вида —
+   требования к этим условиям. Вид берётся только там, где он может жить (жёсткий порог).
+   Ничего из 8.0/8.5 не отменяется: приманка, удочка, любимые точки работают как раньше.
+   ========================================================================== */
+const locEnv = (loc) => LOC_ENV[loc || save.loc] || LOC_ENV.lake;
+
+/* температура воды: без сезонов (они в 8.7) — от типа воды, суток, погоды и глубины */
+const TEMP_TYPE = {lake:0, pond:1, river:-2, brook:-4, sea:-1, lagoon:4, bog:3};
+const TEMP_DAY  = {dawn:-1.5, day:2.5, dusk:0.5, night:-2};
+const TEMP_WX   = {sun:1.5, cloud:0, rain:-1, fog:-1, storm:-1.5, moon:-1, snow:-5};
+const tempOf = (loc) => (loc || save.loc) === save.loc ? weatherNow().icon : (WEATHER[locMech(loc).weather[0]] || WEATHER.sunny).icon;
+function waterTemp(loc, depth){
+  const env = locEnv(loc), d = dayTimeNow(), ic = tempOf(loc);
+  let t = 17.4 + (TEMP_TYPE[env.type] || 0) + (TEMP_DAY[d] || 0) * 0.7 + (TEMP_WX[ic] || 0) * 0.55 + (env.tempOff || 0);
+  t -= clamp((depth - 1.5) * 0.22, 0, 4.2);  // глубина холоднее и стабильнее
+  return Math.round(clamp(t, 0.5, 31) * 10) / 10;
+}
+
+/* профиль дна точки; для свободного заброса — интерполяция по именованным точкам */
+function spotEnv(spot, loc){
+  const L = loc || save.loc;
+  const tbl = SPOT_ENV[L] || SPOT_ENV.lake;
+  if (!spot) return {depth:3, bottom:"sand", cover:0.15, weed:"none", flow:(locEnv(L).flow||0)};
+  if (spot.env) return spot.env;
+  const e = tbl[spot.id];
+  if (e) return e;
+  // 8.6: точка с профилем-заглушкой из LOCATIONS (глубина словом) — это обычное место воды
+  if (!spot.free) return {depth:3, bottom:"sand", cover:0.12, weed:"none", flow:(locEnv(L).flow||0)};
+  // свободный заброс: взвешиваем профили точек по расстоянию (как zonePool)
+  const spots = Object.keys(tbl);
+  let sw = 0, dep = 0, cov = 0, flo = 0;
+  const bot = {}, wed = {};
+  for (const id of spots){
+    const sp = (LOCATIONS[L] && LOCATIONS[L].spots.find(x => x.id === id)) || (CLUB_SPOTS[L] && CLUB_SPOTS[L].id === id ? CLUB_SPOTS[L] : null);
+    const pe = tbl[id];
+    let wgt = 1;
+    if (sp && sp.x != null && spot.x != null){
+      const d = Math.hypot((spot.x - sp.x), (spot.y - sp.y) * 0.6);
+      wgt = 1 / (0.10 + d*d);
+    }
+    sw += wgt; dep += pe.depth * wgt; cov += pe.cover * wgt; flo += pe.flow * wgt;
+    bot[pe.bottom] = (bot[pe.bottom] || 0) + wgt;
+    wed[pe.weed] = (wed[pe.weed] || 0) + wgt;
+  }
+  const top = (o) => Object.keys(o).sort((a,b) => o[b]-o[a])[0];
+  return { depth: sw ? dep/sw : 3, bottom: top(bot) || "sand", cover: sw ? cov/sw : 0.15,
+           weed: top(wed) || "none", flow: sw ? flo/sw : (locEnv(L).flow || 0) };
+}
+
+/* «полка с мягкими краями»: 1 в рабочем диапазоне [lo..hi], 0.25 у границ, 0 дальше.
+   Трапеция, а не узкий колокол: вид переносит и мелководье, и яму — просто не любит крайности. */
+function ecoTrap(x, a, o, b){
+  const span = Math.max(0.1, b - a);
+  const lo1 = o - 0.45 * (o - a);      // ниже этого — уже край
+  const hi1 = o + 0.45 * (b - o);
+  const lo0 = a - 0.15 * span;         // ниже этого — «не живёт»
+  const hi0 = b + 0.35 * span;
+  if (x >= lo1 && x <= hi1) return 1;
+  // за рабочим диапазоном вид не исчезает, а «редко сюда заходит»: 0.15 — почти случайная рыба.
+  // Полный ноль оставлен только там, где жить физически нельзя (соль, лёд, крайности температуры).
+  if (x <= lo0 || x >= hi0) return 0.15;
+  if (x < lo1) return clamp(0.15 + 0.85 * (x - lo0) / Math.max(1e-6, lo1 - lo0), 0.15, 1);
+  return clamp(0.15 + 0.85 * (hi0 - x) / Math.max(1e-6, hi0 - hi1), 0.15, 1);
+}
+const inRange = (x, r) => x >= r[0] - 1e-9 && x <= r[1] + 1e-9;
+
+/* 8.6: «своя приманка» — плюс совместимые насадки той же группы.
+   Например лещ берёт и тесто, и перловку, и горох: игрок не заперт в одной насадке. */
+function baitPairs(F){
+  if (F._pairs) return F._pairs;
+  const list = [F.bait];
+  const B = BAITS[F.bait] || {};
+  if (B.alt) for (const a of B.alt) if (BAITS[a]) list.push(a);
+  return (F._pairs = list);
+}
+const onBaitFor = (F) => baitPairs(F).includes(save.equipped.bait);
+window.__baitsFor = (id) => (FISH[id] ? baitPairs(FISH[id]) : []);
+
+/* «может ли этот вид жить в этой точке» — 0..1.
+   Жёсткими остаются только вещи, которые физически невозможны: солёность, лёд и
+   крайности температуры. Всё остальное (глубина, грунт, течение, трава) — мягкие штрафы. */
+function fishFit(id, spot, loc){
+  const E = FISH_ECO[id];
+  if (!E) return 0.5;                              // без профиля — не мешаем
+  const L = loc || save.loc;
+  const env = locEnv(L), se = spotEnv(spot, L);
+  const salt = env.salt || 0;
+  // морская рыба не живёт в пресном, пресная — в море
+  const marine = salt >= ECO_RULE.saltMinMarine;
+  if (marine && E.s[1] < 0.4) return 0;
+  if (!marine && E.s[0] > 0.3) return 0;
+  const tW = waterTemp(L, se.depth);
+  // физически невозможно: слишком холодно или слишком жарко для вида
+  if (tW < E.t[0] - 9 || tW > E.t[2] + 6) return 0;
+  // теплолюбивые не клюют из-подо льда
+  if (env.ice === "always" && E.t[0] >= 12) return 0;
+  let f = ecoTrap(se.depth, E.dep[0], E.dep[1], E.dep[2]) * ecoTrap(tW, E.t[0], E.t[1], E.t[2]);
+  if (!inRange(se.flow, E.f)) f *= 0.7;           // на струе стоячей рыбы мало
+  // 8.6: штрафуем только если профиль дна известен (у старых тест-точек его нет)
+  const BK = {sand:"s",gravel:"g",clay:"c",silt:"i",mud:"m",stone:"k",shell:"h",reef:"r"};
+  const bk = BK[se.bottom];
+  if (bk && !E.b.includes(bk)) f *= 0.55;
+  const WK = {reeds:"r",grass:"g",snags:"n",rocks:"k",reef:"f",none:"0"};
+  const wk = WK[se.weed];
+  if (wk && !E.w.includes(wk)) f *= 0.82;
+  f *= clamp(1 + 0.4 * E.c * (se.cover - 0.5), 0.7, 1.25);
+  return clamp(f, 0, 1);
+}
+const fitOk = (id, spot, loc) => fishFit(id, spot, loc) >= ECO_RULE.minFit;
+
+/* список видов, которые тут реально держатся (для подсказок), по убыванию «уверенности» */
+function spotKinds(spot, loc, limit){
+  const out = [];
+  const se = spotEnv(spot, loc);
+  for (const k in FISH_ECO){
+    const f = fishFit(k, spot, loc);
+    if (f >= 0.35) out.push({ id:k, f, name:(FISH[k] || {}).name || k });
+  }
+  out.sort((a,b) => b.f - a.f);
+  return limit ? out.slice(0, limit) : out;
+}
+/* подпись точки: «3.4 м · песок · открытая вода» */
+function spotEnvText(spot, loc){
+  const se = spotEnv(spot, loc);
+  const dep = se.depth >= 10 ? Math.round(se.depth) + " м" : (Math.round(se.depth*10)/10).toFixed(1).replace(".", ",") + " м";
+  return dep + " · " + (ECO_BOT_RU[se.bottom] || "дно") + " · " + (ECO_WED_RU[se.weed] || "открытая вода");
+}
+
 /* ---- 8.5: любимые места рыбы ---------------------------------------------
    У каждой точки водоёма есть «свои» виды: там они держатся чаще.
    Правила приманки и силы удочки это не отменяет — только подсказывает, куда бросать. */
@@ -556,17 +688,22 @@ function renderHandBtn(){
 /* ---- зацепы: бросок в коряжник может посадить снасть ---- */
 const SNAGST = { wobble:0, phase:"", t:0, tryT:0, taps:0 };
 function snagChanceHere(){
+  // 8.6: шанс зацепа — следствие дна и укрытий, а не «свойства водоёма»
+  const se = spotEnv(G.spot, save.loc);
+  // точка без профиля дна (служебная/тестовая) — зацепов нет
+  if (!se.weed && !se.bottom) return 0;
+  if (se.weed === "none" && se.cover < 0.35) return 0;
+  // у каждого водоёма свой «характер зацепов»: топь цепляет коряги, горы — камни (реже)
+  const snagBase = locEnv(save.loc).snagBase || 0.10;
+  let k = (0.20 + 0.80 * snagBase) * (0.35 + 0.65 * se.cover) *
+    (se.weed === "snags" ? 1.25 : se.weed === "reeds" || se.weed === "grass" ? 1.0 : 0.7);
+  if (se.bottom === "stone") k += 0.02;
+  if (se.bottom === "reef") k += 0.01;
+  // точный заброс в «сладкую» зону меньше цепляется
+  if ((G.acc || 0) > 0.72) k *= 0.6;
   const base = locMech().snag || 0;
-  if (base <= 0 || !snagWaterOn()) return 0;
-  // чем ближе к «глухому» месту (коряги, трясина), тем выше шанс
-  const sp = G.spot;
-  if (!sp) return base * 0.5;
-  let k = 1;
-  if (sp.id === "drift" || sp.id === "quagmire" || sp.id === "riffle") k = 1.7;
-  else if (sp.depth === "глубоко") k = 1.25;
-  else if (sp.depth === "мелко") k = 0.8;
-  if (sp.free) k *= 0.85;
-  return clamp(base * k, 0, 0.42);
+  if (base > 0) k = Math.max(k, base * 0.55);     // историческая «вязкость» водоёма остаётся полом
+  return clamp(k, 0, 0.42);
 }
 function trySnag(){
   if (G.state !== "waiting" && G.state !== "casting") return false;
@@ -1194,7 +1331,12 @@ function zonePool(x, y){
   for (const n of near){
     const depthBoost = 1 + 0.45*Math.abs(k - clamp((spotPos(n.sp).y - geo().surfaceY)/Math.max(1,(H-geo().surfaceY)),0,1));
     const share = n.wgt/sum * depthBoost;
-    for (const key in n.sp.w) out[key] = (out[key] || 0) + n.sp.w[key] * share;
+    for (const key in n.sp.w){
+      // 8.6: точка вносит вид только если он там может жить
+      const f = fishFit(key, n.sp, save.loc);
+      if (f < ECO_RULE.minFit) continue;
+      out[key] = (out[key] || 0) + n.sp.w[key] * share * (0.4 + 0.6 * f);
+    }
   }
   return out;
 }
@@ -1224,6 +1366,8 @@ function castAt(x, y, quiet){
     w: zonePool(x, y),
     free: true
   };
+  // 8.6: у свободного заброса тоже есть дно и укрытия — интерполируем по точкам
+  sp.env = spotEnv(sp, save.loc);
   selectSpot(sp);
   return sp;
 }
@@ -1319,6 +1463,7 @@ function floatText(text, x, y, color="#ffe9a3"){
 /* ---------------- выбор рыбы ---------------- */
 function pickFish(spot){
   const L = locDef();
+  // 8.6: экологический фильтр точки (жёстко: fit < ECO_RULE.minFit — вида тут нет)
   if (Math.random() < 0.045) {
     const j = JUNK[(Math.random()*JUNK.length)|0];
     return { junk:true, name:j.name, note:j.note, art:j.art };
@@ -1332,11 +1477,15 @@ function pickFish(spot){
     if (!F) continue;
     let v = spot.w[k];
     // ЖЁСТКО: рыба берёт только свою приманку и только снасть нужной прочности
-    if (F.bait !== bait) continue;
+    if (!onBaitFor(F)) continue;
     if (F.reqPower > rod.power) continue;
     if (F.sea && !rod.sea) continue;
     // «снасть на пределе» — такая рыба почти не клюёт
     v *= F.reqPower > rod.power * 0.94 ? 0.35 : 1;
+    // 8.6: вид берётся только там, где подходит глубина, дно, течение и температура
+    const fit = fishFit(k, spot, save.loc);
+    if (fit < ECO_RULE.minFit) continue;
+    v *= 0.35 + 0.65 * fit;            // «в оптимуме» — полный вес, на границе — почти ничего
     // 8.5: в любимой точке вида он берёт заметно охотнее
     if (isFishHome(k, spot)) v *= FISH_ZONE_BONUS;
     if (rod.tier >= 4 && F.aggr >= 0.7) v *= 1.18;
@@ -1344,18 +1493,26 @@ function pickFish(spot){
     w[k] = v; total += v;
   }
   if (!total){
-    const empty = { junk:true, noBite:true, name:"пусто", note:"На эту приманку здесь никто не берёт." };
-    return empty;
+    // 8.6: различаем «не та приманка» и «здесь такая рыба не живёт»
+    const why = spotReason(spot);
+    if (why === "noLife")
+      return { junk:true, noBite:true, noLife:true, name:"пусто",
+               note:"Здесь для твоей снасти никто не живёт: слишком мелко, глубоко или не тот грунт. Смени точку." };
+    return { junk:true, noBite:true, name:"пусто", note:"На эту приманку здесь никто не берёт." };
   }
   let r = Math.random()*total, type = Object.keys(w)[0];
   for (const k in w){ r -= w[k]; if (r <= 0){ type = k; break; } }
   const F = FISH[type];
+  const seK = spotEnv(spot, save.loc);
   const tm = timeMults(save.loc);
   const bigDay = (baitDayOn() ? 0.10 : 0) + (locDayOn() ? 0.05 : 0) +
-    (windowOn() ? 0.07 : 0) + (handActive() ? 0.05 : 0);
+    (windowOn() ? 0.07 : 0) + (handActive() ? 0.05 : 0) +
+    // 8.6: размер зависит от «хозяина» точки — ил и ямы дают крупную рыбу, песок и струя — мелочь
+    (clamp((seK.depth - 1.5) / 9, 0, 1) * 0.16 - (seK.cover > 0.6 ? 0.04 : 0) + (seK.flow > 1.0 ? -0.08 : 0));
   const u = Math.pow(Math.random(), Math.max(0.6, 1.55 + perk("big")*3 - bigDay*2.2));   // наживка дня и лучший день — крупнее рыба
   const waveSize = waveOn(save.loc) ? BITE_WAVE.size : 1;
-  const weight = Math.round((F.wMin + u*(F.wMax-F.wMin)) * L.sizeMul * weatherNow().size *
+  // «своё время» водоёма даёт рыбу крупнее (8.0) — держим этот множитель явно
+  const weight = Math.round((F.wMin + u*(F.wMax-F.wMin)) * L.sizeMul * weatherNow().size * timeMults(save.loc).size *
     (1 + perk("all")) * waveSize);
   const norm = clamp((weight - F.wMin*L.sizeMul) / (F.wMax*L.sizeMul - F.wMin*L.sizeMul), 0, 1);
   return {
@@ -1371,7 +1528,7 @@ function spotPool(spot){
   for (const k in spot.w){
     const F = FISH[k];
     if (!F) continue;
-    out.push({ id:k, F, okBait: F.bait === save.equipped.bait, okRod: F.reqPower <= rodDef().power });
+    out.push({ id:k, F, okBait: onBaitFor(F), okRod: F.reqPower <= rodDef().power });
   }
   return out;
 }
@@ -1541,6 +1698,19 @@ function startCast(){
 /* «заинтересованность»: сколько секунд рыба решает, брать ли приманку.
    Медиана ~7 с, но бывает и сразу (удачная точка), и 15-20 с (приходится подождать) -
    ожидание не мгновенное, но и не нудное. */
+/* 8.6: почему не клюёт — различаем «не та приманка» и «здесь такая рыба не живёт» */
+function spotReason(spot){
+  const sp = spot || G.spot;
+  if (!sp) return "";
+  const all = Object.keys(sp.w || {}).filter(k => FISH[k]);
+  const alive = all.filter(k => fitOk(k, sp, save.loc));
+  if (!alive.length) return "noLife";
+  const onBait = alive.filter(k => onBaitFor(FISH[k]));
+  if (!onBait.length) return "noBait";
+  const byRod = onBait.filter(k => FISH[k].reqPower <= rodDef().power);
+  if (!byRod.length) return "noRod";
+  return "";
+}
 function biteWait(){
   const L = locDef();
   // сколько видов в этой точке реально берут текущую приманку на эту удочку
@@ -1605,8 +1775,11 @@ function beginBite(){
   // приманку на этом месте никто не берёт: не «сход», а просто пустая вода —
   // возвращаем снасть и прямо говорим, что приманка не та
   if (G.fish && G.fish.noBite){
+    const noLife = G.fish.noLife;
     G.fish = null;
-    toast("Тишина", "На «"+((BAITS[save.equipped.bait]||{}).name||"эту приманку")+"» здесь не берут — нужна другая наживка.", 2100);
+    toast(noLife ? "Тут пусто" : "Тишина",
+      noLife ? "Здесь такой рыбы нет — смотри грунт и глубину точки в подписи и бросай в другое место."
+             : "На «"+((BAITS[save.equipped.bait]||{}).name||"эту приманку")+"» здесь не берут — нужна другая наживка.", 2400);
     setState("aim"); updateChips();
     return;
   }
@@ -1849,7 +2022,7 @@ function showCatch(f){
         (handActive() ? '<span class="ok">прикормка</span>' : '') +
         (G.duel && G.duel.active ? '<span class="gold">дуэль · ' + G.duel.left + '</span>' : '') +
         '<span>'+(WEATHER_ICONS[wt.icon]||"")+wt.name+'</span>' +
-        '<span>'+(G.spot ? G.spot.name : "—")+'</span>' +
+        '<span>'+(G.spot ? G.spot.name + ' · ' + spotEnvText(G.spot, save.loc) : "—")+'</span>' +
         '<span>'+BAITS[F.bait].name+'</span>' +
         '<span class="'+(tight ? "warn":"ok")+'">' +
           (tight ? "снасть на пределе" : "снасть держит") + '</span>';
@@ -2812,7 +2985,9 @@ function drawSpots(g){
 
     // подпись
     ctx.font = "800 " + (11*s) + "px -apple-system,Segoe UI,Roboto,sans-serif";
-    const label = sp.name;
+    // 8.6: к названию точки добавляем глубину и грунт — видно до заброса
+    const seLbl = spotEnv(sp, save.loc);
+    const label = sp.name + " · " + (seLbl.depth >= 10 ? Math.round(seLbl.depth) : (Math.round(seLbl.depth*10)/10).toFixed(1).replace(".", ",")) + " м";
     const tw = ctx.measureText(label).width;
     const padX = 8*s, bh = 20*s;
     // если сверху «узко» (свал у льда, подпись под краем) — подпись уходит под точку
@@ -2904,6 +3079,17 @@ function drawSpots(g){
       ctx.fillText(t2, px2 + w2/2, py2 + h2/2 + 0.5);
     }
 
+    // 8.6: «пятно дна» под точкой — цвет грунта читается даже без подписи
+    if (!isClub){
+      const BOT_TONE = {silt:"rgba(146,124,74,", mud:"rgba(112,92,58,", sand:"rgba(226,206,150,",
+        gravel:"rgba(176,172,158,", stone:"rgba(150,160,168,", clay:"rgba(190,140,110,",
+        shell:"rgba(232,226,212,", reef:"rgba(196,164,222,"};
+      const tone = BOT_TONE[seLbl.bottom] || "rgba(200,200,200,";
+      const g2 = ctx.createRadialGradient(x, y, 2, x, y, rx*1.35);
+      g2.addColorStop(0, tone + "0.26)"); g2.addColorStop(1, tone + "0)");
+      ctx.beginPath(); ctx.ellipse(x, y, rx*1.35, ry*1.35, 0, 0, Math.PI*2);
+      ctx.fillStyle = g2; ctx.fill();
+    }
     // маркер глубины
     ctx.beginPath(); ctx.arc(x, y, 2.8*s, 0, Math.PI*2);
     ctx.fillStyle = sel ? "#ffd166" : "rgba(255,255,255,.5)"; ctx.fill();
@@ -3215,9 +3401,8 @@ function drawZoneInfo(g){
   if (!G.spot || !G.spotFree || !["aim","power","casting"].includes(G.state)) return;
   const p = spotPos(G.spot);
   const pool = Object.keys(G.spot.w || {});
-  const onBait = pool.filter(k => FISH[k] && FISH[k].bait === save.equipped.bait).length;
-  const byRod = pool.filter(k => FISH[k] && FISH[k].bait === save.equipped.bait && FISH[k].reqPower <= rodDef().power || (FISH[k] && FISH[k].bait === save.equipped.bait && FISH[k].reqPower <= rodDef().power)).length;
-  const good = pool.filter(k => FISH[k] && FISH[k].bait === save.equipped.bait && FISH[k].reqPower <= rodDef().power).length;
+  const onBait = pool.filter(k => FISH[k] && onBaitFor(FISH[k])).length;
+  const good = pool.filter(k => FISH[k] && onBaitFor(FISH[k]) && FISH[k].reqPower <= rodDef().power).length;
   const k = 0.5 + 0.5*Math.sin(G.clock*2.4);
   ctx.save();
   for (let i=0;i<3;i++){
@@ -3230,13 +3415,16 @@ function drawZoneInfo(g){
   // чип с названием зоны и составом
   const s = clamp(Math.min(W,H)/620, 0.72, 1.5);
   const line1 = G.spot.name;
-  const line2 = good ? (goodLabel(good) + " " + baitOn(save.equipped.bait))
-    : onBait ? "нужна снасть посильнее" : "на " + baitAcc(save.equipped.bait) + " тут не клюёт";
+  // 8.6: под названием — профиль дна и кто тут держится
+  const envTxt = spotEnvText(G.spot, save.loc);
+  const kindTxt = spotKinds(G.spot, save.loc, 3).map(x => x.name.split(" ")[0].toLowerCase()).join(", ");
+  const line2 = good ? (envTxt + (kindTxt ? " · " + kindTxt : ""))
+    : onBait ? envTxt + " · нужна снасть посильнее" : envTxt + " · на " + baitAcc(save.equipped.bait) + " не берут";
   ctx.font = "800 " + (10.5*s) + "px -apple-system,Segoe UI,Roboto,sans-serif";
   const w1 = ctx.measureText(line1).width;
   ctx.font = "700 " + (9.5*s) + "px -apple-system,Segoe UI,Roboto,sans-serif";
   const w2 = ctx.measureText(line2).width;
-  const bw = Math.max(w1, w2) + 20*s, bh = 34*s;
+  const bw = Math.min(Math.max(w1, w2) + 20*s, W - 12*s), bh = 34*s;
   let bx = clamp(p.x - bw/2, 5*s, W - bw - 5*s);
   let by = p.y + 26*s;
   // не залезаем на нижнюю панель снастей: тогда чип уходит над точкой
@@ -4615,7 +4803,11 @@ function syncLocInfo(){
   if (left > 0) parts.push('<span class="li hand on">' + ICONS.feed + ' прикормка ' +
     (left > 60 ? Math.ceil(left/60) + " мин" : left + " с") + '</span>');
   if (m.stream >= 0.4) parts.push('<span class="li stream">' + ICONS.wave + ' течение</span>');
-  if (m.snag > 0) parts.push('<span class="li snag">' + ICONS.knot + ' коряги</span>');
+  // 8.6: что под поплавком — глубина, грунт и температура воды
+  const se = spotEnv(G.spot, save.loc);
+  const tW = waterTemp(save.loc, se.depth);
+  parts.push('<span class="li water" title="' + spotEnvText(G.spot, save.loc) + ', вода ' + tW + ' °C">' +
+    ICONS.drop + ' ' + se.depth.toFixed(1).replace(".", ",") + ' м · ' + (ECO_BOT_RU[se.bottom] || "дно").slice(0, 6) + ' · ' + tW + '°</span>');
   box.innerHTML = parts.join("");
 }
 /* 8.5: чип буя клёва. Показывает либо «идёт буй» с остатком минут, либо «когда будет» */
@@ -4779,7 +4971,15 @@ function locMechRow(key){
   const chips = [];
   chips.push('<span class="mchip water">'+waterName+'</span>');
   if (m.stream >= 0.4) chips.push('<span class="mchip stream">'+ICONS.wave+' течение '+m.stream.toFixed(1)+'</span>');
-  if (m.snag > 0) chips.push('<span class="mchip snag">'+ICONS.knot+' зацепы '+Math.round(m.snag*100)+'%</span>');
+  // 8.6: зацепы и дно — из профиля точек, а не из «характера водоёма»
+  const tbl = SPOT_ENV[key] || {};
+  const worstSnag = Math.max.apply(null, Object.keys(tbl).map(id => {
+    const se = tbl[id];
+    return (0.20 + 0.80 * (locEnv(key).snagBase || 0.10)) * (0.35 + 0.65 * se.cover) * 1.25;
+  }).concat([0]));
+  if (worstSnag > 0.06) chips.push('<span class="mchip snag">'+ICONS.knot+' зацепы до '+Math.round(Math.min(0.42, worstSnag)*100)+'%</span>');
+  const bots = [...new Set(Object.keys(tbl).map(id => ECO_BOT_RU[tbl[id].bottom]).filter(Boolean))];
+  if (bots.length) chips.push('<span class="mchip bot">'+ICONS.fish+' дно: '+bots.slice(0,3).join(", ")+'</span>');
   chips.push('<span class="mchip win'+(on ? " on" : "")+'">'+ICONS.clock+' '+(DAYTIME[m.window]||DAYTIME.day).name+(on ? " · сейчас" : "")+'</span>');
   chips.push('<span class="mchip hand">'+ICONS.feed+' прикормка '+(m.hand ? m.hand.coins : 12)+'</span>');
   return '<div class="locMech">'+chips.join("")+'</div>';
@@ -4861,6 +5061,9 @@ function renderBase(){
           '<span class="tag green">'+L.sizeMul.toFixed(2)+'×</span>' +
         '</div>' +
         locMechRow(key) +
+        '<div class="echoBox"><div class="echoHead"><b>' + ICONS.echo + ' Эхолот · карта глубин</b>' +
+          '<span>вода ' + waterTemp(key, 2) + ' °C · ' + (locEnv(key).type === "sea" || locEnv(key).type === "lagoon" ? "солёная" : "пресная") + '</span></div>' +
+          echoMapSVG(key) + '</div>' +
       '</div>';
     /* наживка дня и лучший день именно для этого водоёма */
     const bd = BAITS[baitOfDay(key)];
@@ -4884,9 +5087,10 @@ function renderBase(){
     // снасть могла быть продана/сброшена — не падаем на неизвестной приманке
     const curBait = BAITS[save.equipped.bait] ? save.equipped.bait : "worm";
     const baitName = (BAITS[curBait] || {name:"приманку"}).name;
-    const here = all.filter(k => FISH[k].bait === curBait);
+    const alive = all.filter(k => L.spots.some(sp => sp.w[k] && fishFit(k, sp, key) >= 0.35));
+    const here = alive.filter(k => onBaitFor(FISH[k]));
     const powered = here.filter(k => FISH[k].reqPower <= rodDef().power);
-    const baitSet = new Set(all.map(k => (BAITS[FISH[k].bait]||{name:"?"}).name));
+    const baitSet = new Set(alive.map(k => (BAITS[FISH[k].bait]||{name:"?"}).name));
     const hintTxt = powered.length
       ? "На «"+baitName+"»: " + fishCount(powered.length)
       : here.length
@@ -5349,6 +5553,70 @@ function renderJournal(){
 }
 
 /* подробная карточка вида: приманка, нужная удочка, водоёмы */
+/* 8.6: ЭХОЛОТ — карта глубин открытого водоёма: изолинии 2/5/10 м, дно цветом.
+   Это не «где рыба», а именно рельеф — как на настоящем эхолоте. */
+function echoMapSVG(loc){
+  const L = loc || save.loc;
+  const spots = (LOCATIONS[L] || LOCATIONS.lake).spots;
+  const tbl = SPOT_ENV[L] || {};
+  const maxD = Math.max.apply(null, spots.map(sp => (tbl[sp.id] || {}).depth || 3));
+  const BOT_C = {silt:"#8d7a4a", mud:"#6f5c3a", sand:"#d8c88f", gravel:"#a8a498",
+    stone:"#8f9aa2", clay:"#b98a6a", shell:"#e0d9c6", reef:"#b48cd8"};
+  const W = 300, Hh = 170;
+  // раскладка: три точки в линию по своим x, но с нужным отступом от подписей
+  const xs = spots.map(sp => 34 + sp.x * (W - 68));
+  const ys = spots.map((sp, i) => 88 + (i - (spots.length - 1)/2) * 26);
+  let svg = '<svg viewBox="0 0 ' + W + ' ' + Hh + '" style="width:100%;height:auto;display:block">';
+  svg += '<defs><radialGradient id="ecG" cx="50%" cy="45%" r="75%">' +
+    '<stop offset="0" stop-color="rgba(84,148,168,.26)"/><stop offset="1" stop-color="rgba(8,26,36,.6)"/>' +
+    '</radialGradient></defs><rect x="0" y="0" width="' + W + '" height="' + Hh + '" rx="10" fill="url(#ecG)"/>';
+  // изолинии: 2 / 5 / 10 м (условные «свалы» от центра)
+  const rings = [[2, 0.42], [5, 0.70], [10, 0.96]];
+  for (const [d, k] of rings){
+    svg += '<ellipse cx="150" cy="92" rx="' + (140*k).toFixed(0) + '" ry="' + (58*k).toFixed(0) +
+      '" fill="none" stroke="rgba(160,225,240,.18)" stroke-width="1" stroke-dasharray="5 6"/>';
+  }
+  // легенда изолиний — в углу, чтобы не наезжать на подписи точек
+  svg += '<text x="12" y="' + (Hh - 10) + '" fill="rgba(190,235,245,.5)" font-size="7.5" font-family="sans-serif">' +
+    'изолинии: 2 · 5 · 10 м</text>';
+  // «луч» эхолота
+  svg += '<path d="M150 92 L262 34" stroke="rgba(150,235,225,.22)" stroke-width="8" stroke-linecap="round"/>';
+  for (let i=0;i<spots.length;i++){
+    const sp = spots[i], e = tbl[sp.id] || {depth:3, bottom:"sand"};
+    const r = 13 + 18 * Math.pow(e.depth / maxD, 0.55);
+    const x = xs[i], y = ys[i];
+    const c = BOT_C[e.bottom] || "#9aa";
+    svg += '<circle cx="' + x.toFixed(0) + '" cy="' + y.toFixed(0) + '" r="' + r.toFixed(0) +
+      '" fill="' + c + '" fill-opacity=".34" stroke="' + c + '" stroke-opacity=".85" stroke-width="1.2"/>';
+    svg += '<circle cx="' + x.toFixed(0) + '" cy="' + y.toFixed(0) + '" r="2.2" fill="#ffe9a8"/>';
+    // подпись: название над точкой, метры — внутри круга
+    svg += '<text x="' + x.toFixed(0) + '" y="' + (y - r - 6).toFixed(0) +
+      '" text-anchor="middle" fill="rgba(242,248,252,.92)" font-size="8.5" font-weight="700" font-family="sans-serif">' +
+      sp.name + '</text>';
+    svg += '<text x="' + x.toFixed(0) + '" y="' + (y + 9).toFixed(0) +
+      '" text-anchor="middle" fill="rgba(18,32,26,.85)" font-size="8.5" font-weight="800" font-family="sans-serif">' +
+      (e.depth >= 10 ? Math.round(e.depth) : (Math.round(e.depth*10)/10).toFixed(1).replace(".", ",")) + ' м</text>';
+    svg += '<text x="' + x.toFixed(0) + '" y="' + (y + r + 12).toFixed(0) +
+      '" text-anchor="middle" fill="rgba(210,235,245,.55)" font-size="7" font-family="sans-serif">' +
+      (ECO_BOT_RU[e.bottom] || "") + '</text>';
+  }
+  svg += '</svg>';
+  return svg;
+}
+
+/* 8.6: «где искать» — глубина, грунт, течение и лучшее время для вида */
+function fishWhereText(id){
+  const E = FISH_ECO[id];
+  if (!E) return "любая вода";
+  const dep = E.dep[1] >= 12 ? "глубина " + Math.round(E.dep[0]) + "–" + Math.round(E.dep[2]) + " м"
+    : "глубина " + (Math.round(E.dep[0]*10)/10).toFixed(1).replace(".", ",") + "–" +
+      (Math.round(E.dep[2]*10)/10).toFixed(1).replace(".", ",") + " м";
+  const bot = E.b.split("").map(c => ({s:"песок",g:"галька",c:"глина",i:"ил",m:"наилок",k:"камни",h:"ракушка",r:"риф"}[c])).filter(Boolean).join(", ");
+  const flow = E.f[1] >= 0.9 ? "течение" : E.f[0] >= 0.4 ? "слабое течение" : "стоячая вода";
+  const temp = "вода " + Math.round(E.t[0]) + "–" + Math.round(E.t[2]) + "°C";
+  const lightTxt = E.l >= 0.5 ? "ночь" : E.l >= 0.15 ? "сумерки" : E.l <= -0.1 ? "день" : "любое время";
+  return dep + " · " + bot + " · " + flow + " · " + temp + " · " + lightTxt;
+}
 function showFishCard(id){
   const F = FISH[id]; if (!F) return;
   const c = save.caught[id];
@@ -5376,6 +5644,7 @@ function showFishCard(id){
     '<div><small>Цена</small><b>'+F.val+'/кг</b></div>' +
     '<div style="grid-column:1/-1"><small>Водоёмы</small><b>'+where.join(" · ")+'</b></div>' +
     '<div style="grid-column:1/-1"><small>Любимая точка</small><b>'+fishHomes(id, 3).map(h => h.name + " — " + h.locName).join(" · ")+'</b></div>' +
+    '<div style="grid-column:1/-1"><small>Где искать</small><b>'+fishWhereText(id)+'</b></div>' +
     (c ? '<div><small>Поймано</small><b>×'+c.n+'</b></div><div><small>Рекорд</small><b>'+fmtKg(c.best)+' кг</b></div>' : "");
   el.classList.add("on");
 }
@@ -5645,7 +5914,9 @@ function renderHelp(){
     ["9","<b>Прикормка</b> — кнопка у шкалы силы: за монеты клёв +35% и рыба крупнее на полторы минуты. Работает в том водоёме, где сыпал."],
     ["10","<b>Дуэль «стенка на стенку»</b>: в Топи, Горном озере и Лагуне вызывай соперника на 12 забросов. Побеждаешь по весу — жемчуг."],
     ["11","<b>Буй клёва</b> — час активности водоёма: поклёвки почти вдвое быстрее, рыба крупнее. Смотри прогноз на «Базе» и чип в HUD, чтобы не пропустить. Во время буя у поплавка всплывает <b>сигнальный шар</b> — тапни по нему и забери монеты."],
-    ["12","<b>Любимые места.</b> У каждого вида есть своя точка: бросай туда — он берёт чаще. Любимую точку видно в карточке вида в дневнике."]
+    ["12","<b>Любимые места.</b> У каждого вида есть своя точка: бросай туда — он берёт чаще. Любимую точку видно в карточке вида в дневнике."],
+    ["13","<b>Вода — как в жизни (8.6).</b> У каждой точки есть глубина в метрах, грунт (ил, песок, камни), трава и течение. Каждый вид держится в своих условиях: карась — у камыша на иле, судак — на песчаной бровке, форель — на камнях в холодной воде. Морская рыба в пресном озере не клюнет вовсе."],
+    ["14","<b>Эхолот</b> на «Базе» в карточке водоёма показывает карту глубин: изолинии 2/5/10 м и грунт под каждой точкой. Подпись точки на воде тоже говорит глубину, а чип сверху — что под поплавком сейчас."]
   ].map(([n,t]) => '<div class="step"><div class="n">'+n+'</div><p>'+t+'</p></div>').join("")
 }
 
@@ -6029,6 +6300,15 @@ window.__tSnagChance = (kind) => {
   G.spot = saved;
   return ch;
 };
+window.__tSnagChanceAt = (loc, spotId) => {
+  const savedLoc = save.loc, savedSpot = G.spot;
+  save.loc = loc || save.loc;
+  const L = LOCATIONS[save.loc];
+  G.spot = L.spots.find(x => x.id === spotId) || null;
+  const ch = snagChanceHere();
+  save.loc = savedLoc; G.spot = savedSpot;
+  return ch;
+};
 window.__tSnagRoll = (kind) => {
   if (typeof SNAGST !== "undefined") SNAGST.cool = 0;
   const saved = G.spot;
@@ -6120,4 +6400,80 @@ function bootPWA(){
 
 if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", boot);
 else setTimeout(boot, 0);
+/* ---- 8.6: тест-хуки экологии ---- */
+window.__fitWhy = (id, spotId, loc) => {
+  const L = loc || save.loc;
+  const sp = spotId ? (LOCATIONS[L].spots.find(x => x.id === spotId) || (CLUB_SPOTS[L] && CLUB_SPOTS[L].id === spotId ? CLUB_SPOTS[L] : null)) : G.spot;
+  const E = FISH_ECO[id]; const env = locEnv(L), se = spotEnv(sp, L);
+  const tW = waterTemp(L, se.depth);
+  const BK = {sand:"s",gravel:"g",clay:"c",silt:"i",mud:"m",stone:"k",shell:"h",reef:"r"};
+  const WK = {reeds:"r",grass:"g",snags:"n",rocks:"k",reef:"f",none:"0"};
+  return { id, spot:sp && sp.id, depth:se.depth, bottom:se.bottom, weed:se.weed, flow:se.flow, cover:se.cover,
+    tW, salt:env.salt, need:E,
+    depK:+ecoTrap(se.depth, E.dep[0],E.dep[1],E.dep[2]).toFixed(2),
+    tempK:+ecoTrap(tW, E.t[0],E.t[1],E.t[2]).toFixed(2),
+    botOK:E.b.includes(BK[se.bottom]), flowOK:inRange(se.flow,E.f), weedOK:E.w.includes(WK[se.weed]),
+    fit:+fishFit(id,sp,L).toFixed(3) };
+};
+window.__env = (loc) => {
+  const L = loc || save.loc, env = locEnv(L);
+  return { loc:L, type:env.type, salt:env.salt, flow:env.flow, clarity:env.clarity,
+           tWater:+waterTemp(L, 3).toFixed(1) };
+};
+window.__spotEnv = (id, loc) => {
+  const L = loc || save.loc;
+  const tbl = SPOT_ENV[L] || {};
+  const e = id ? tbl[id] : tbl[(LOCATIONS[L].spots[0] || {}).id];
+  return e ? { ...e, tWeb:undefined, text: spotEnvText({ id: id || LOCATIONS[L].spots[0].id }, L) } : null;
+};
+window.__fit = (id, spotId, loc) => {
+  const L = loc || save.loc;
+  const sp = spotId
+    ? (LOCATIONS[L].spots.find(x => x.id === spotId) || (CLUB_SPOTS[L] && CLUB_SPOTS[L].id === spotId ? CLUB_SPOTS[L] : null))
+    : G.spot;
+  return sp ? +fishFit(id, sp, L).toFixed(3) : -1;
+};
+window.__kinds = (spotId, loc, n) => {
+  const L = loc || save.loc;
+  const sp = spotId ? LOCATIONS[L].spots.find(x => x.id === spotId) : G.spot;
+  return spotKinds(sp, L, n || 6).map(x => x.name + ":" + x.f.toFixed(2));
+};
+window.__reason = () => spotReason(G.spot);
+/* проверка «мир не опустел»: на каждой точке и водоёме — сколько видов доступно новичку */
+window.__census = (rodId, baitList) => {
+  const out = {};
+  const oldRod = save.equipped.rod, oldBait = save.equipped.bait;
+  const rod = RODS[rodId || "bamboo"];
+  save.equipped.rod = rodId || "bamboo";
+  const baits = baitList || Object.keys(BAITS);
+  for (const L in LOCATIONS){
+    const spots = LOCATIONS[L].spots.concat(CLUB_SPOTS[L] ? [CLUB_SPOTS[L]] : []);
+    out[L] = {};
+    for (const sp of spots){
+      let best = 0, via = "", ids = [];
+      for (const b of baits){
+        save.equipped.bait = b;
+        const list = Object.keys(sp.w).filter(k => FISH[k] && onBaitFor(FISH[k]) && FISH[k].reqPower <= rod.power
+          && fishFit(k, sp, L) >= 0.25);
+        if (list.length > best){ best = list.length; via = b; ids = list; }
+      }
+      out[L][sp.id + "|ids"] = ids;
+      // 8.6: «доступен» = берёт приманку, удочка держит и вид тут реально живёт (fit ≥ 0.25)
+      out[L][sp.id] = best + (via ? ":" + via : "");
+    }
+  }
+  save.equipped.rod = oldRod; save.equipped.bait = oldBait;
+  return out;
+};
+/* виды, которые после фильтра не ловятся нигде — таких быть не должно */
+window.__orphans = () => {
+  const seen = new Set();
+  for (const L in LOCATIONS){
+    const spots = LOCATIONS[L].spots.concat(CLUB_SPOTS[L] ? [CLUB_SPOTS[L]] : []);
+    for (const sp of spots) for (const k in sp.w){
+      if (FISH[k] && fishFit(k, sp, L) >= 0.25) seen.add(k);
+    }
+  }
+  return Object.keys(FISH).filter(k => !seen.has(k));
+};
 })();

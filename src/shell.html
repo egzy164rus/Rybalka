@@ -10,16 +10,16 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="Тихая заводь">
 <meta name="description" content="Тихая заводь — рыбалка: 105 видов рыбы, 8 водоёмов, дуэли, премиум-снасти. Работает офлайн.">
-<link rel="manifest" href="manifest.webmanifest?v=724">
-<link rel="icon" href="favicon-32.png?v=724" sizes="32x32" type="image/png">
+<link rel="manifest" href="manifest.webmanifest?v=725">
+<link rel="icon" href="favicon-32.png?v=725" sizes="32x32" type="image/png">
 <!-- iOS: иконка «На экран Домой». Safari берёт последний подходящий размер,
      поэтому перечисляем все типовые; ?v= — чтобы не подхватилась старая копия из кэша -->
-<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=724">
-<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=724">
-<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=724">
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=724">
-<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=724">
-<link rel="apple-touch-icon" href="icon-180.png?v=724">
+<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=725">
+<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=725">
+<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=725">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=725">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=725">
+<link rel="apple-touch-icon" href="icon-180.png?v=725">
 <title>Тихая заводь — рыбалка</title>
 <style>
 :root{
@@ -492,6 +492,19 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 .sheet-head .sub{font-size:11.5px;color:var(--muted);font-weight:650;margin-top:2px}
 .sheet-body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:4px 14px calc(env(safe-area-inset-bottom,0px) + 22px);-webkit-overflow-scrolling:touch}
 .sheet-body::-webkit-scrollbar{width:0}
+
+
+/* ============ 8.6: эхолот — карта глубин водоёма ============ */
+.locMech .mchip.bot{color:#cfe4d0;border-color:rgba(150,220,170,.30)}
+.echoBox{margin-top:8px;padding:8px 8px 6px;border-radius:12px;
+  background:linear-gradient(180deg,rgba(12,38,50,.72),rgba(8,24,32,.72));
+  border:1px solid rgba(120,210,235,.22)}
+.echoHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 6px}
+.echoHead b{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:850;
+  letter-spacing:.3px;text-transform:uppercase;color:rgba(200,240,250,.85)}
+.echoHead b svg{width:14px;height:14px;flex:none;color:#8fd7f0}
+.echoHead span{font-size:10px;font-weight:800;color:rgba(190,230,240,.6)}
+.echoBox svg{border-radius:10px;overflow:hidden}
 
 /* ============ 8.5: прогноз клёва ============ */
 #forecastBox{margin:2px 0 13px}
@@ -1242,7 +1255,7 @@ button.buy.prem:disabled{opacity:.5}
     <div class="sheet-head">
       <div style="flex:1">
         <h2>Как играть</h2>
-        <div class="sub">Двенадцать шагов и восемь правил</div>
+        <div class="sub">Четырнадцать шагов и восемь правил</div>
       </div>
       <button class="roundbtn" data-close="sheetHelp" aria-label="Закрыть">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
@@ -1262,6 +1275,8 @@ button.buy.prem:disabled{opacity:.5}
         <div class="hr"><span class="hrIco" data-ico="buoy"></span><div><b>Буй клёва</b>У водоёма есть «час активности»: поклёвки почти вдвое быстрее, рыба крупнее. Прогноз часов — на «Базе», чип в HUD подскажет, сколько ждать.</div></div>
         <div class="hr"><span class="hrIco" data-ico="bait"></span><div><b>Любимое место</b>У каждого вида своя точка — там он берёт чаще. Карточка вида в дневнике показывает, где искать.</div></div>
         <div class="hr"><span class="hrIco" data-ico="bolt"></span><div><b>Сигнальный шар</b>Во время буя у поплавка всплывает бирюзовый буёк: тапни по нему — внутри монеты.</div></div>
+        <div class="hr"><span class="hrIco" data-ico="echo"></span><div><b>Глубина и грунт</b>У каждой точки есть метры, грунт и укрытия, а у рыбы — свои требования. Эхолот на «Базе» рисует карту глубин водоёма.</div></div>
+        <div class="hr"><span class="hrIco" data-ico="drop"></span><div><b>Температура воды</b>Горное озеро холодное (форель, хариус), лагуна тёплая (горбыль, дорадо), топь душная (линь, ротан). Вода показана в HUD и на карточке водоёма.</div></div>
         <div class="hr"><span class="hrIco" data-ico="star"></span><div><b>Квесты</b>53 задания и 3 ежедневные цели дают монеты, опыт и снасти.</div></div>
       </div>
       <button class="btn" id="btnHelpOk">Понятно, на воду</button>

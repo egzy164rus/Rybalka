@@ -45,7 +45,8 @@ const rules = await p.evaluate(() => {
           const f = __test.pickFish(sp);
           out.checked++;
           if (f.junk) continue;
-          if (__test.FISH[f.type].bait !== bait) out.bad.push([loc, rod, bait, f.type, "bait"]);
+          // 8.6: «своя приманка» = основная + совместимые насадки той же группы
+          if (!window.__baitsFor(f.type).includes(bait)) out.bad.push([loc, rod, bait, f.type, "bait"]);
           if (__test.FISH[f.type].reqPower > R.power) out.bad.push([loc, rod, bait, f.type, "power"]);
           if (__test.FISH[f.type].sea && !R.sea) out.bad.push([loc, rod, bait, f.type, "sea"]);
         }
@@ -126,18 +127,21 @@ const snag = await p.evaluate(() => {
   for (let i=0;i<400;i++){ if (__tSnagRoll(0)) nClean++; }
   for (let i=0;i<300;i++){ if (__tSnagRoll(1)) nClean++; }
   s.loc = "mountain";
-  const mChance = __tSnagChance(1);
+  // 8.6: зацепы считаются по профилю дна — берём каменистую косу, а не служебную точку
+  const mChance = __tSnagChanceAt("mountain", "stones");
+  const mClean = __tSnagChanceAt("lake", "open");   // открытая вода без травы и коряг
   // три мягких подёргивания освобождают
   __setSnag(true);
   const r1 = __snagTap("soft"), r2 = __snagTap("soft"), r3 = __snagTap("soft");
   const unsnags = __mech().unsnags;
   // «гладкий» водоём без зацепов
-  return { rate: +(n/400).toFixed(2), cleanRate: +(nClean/300).toFixed(2), mChance: +mChance.toFixed(3),
+  return { rate: +(n/400).toFixed(2), cleanRate: +(nClean/300).toFixed(2), mChance: +mChance.toFixed(3), mClean: +mClean.toFixed(3),
     phases:[r1.phase, r2.phase, r3.phase], unsnags };
 });
-check("в топи зацепы частые, в тихой заводи их нет вовсе", snag.rate > 0.04 && snag.cleanRate === 0, snag);
+check("в топи зацепы частые, на чистой воде их нет", snag.rate > 0.04 && snag.cleanRate === 0, snag);
 check("три подёргивания освобождают снасть", snag.phases[2] === "free", snag.phases);
-check("в горах зацеп только о камни и реже, чем в топи", snag.mChance > 0 && snag.mChance < 0.14, { m: snag.mChance, swamp: snag.rate });
+check("в горах зацеп о камни реже, чем в топи, и его нет на открытой воде",
+  snag.mChance > 0 && snag.mChance < 0.14 && snag.mClean === 0, { m: snag.mChance, inflow: snag.mClean, swamp: snag.rate });
 
 /* ---------- 6. дуэли ---------- */
 const duelLocked = await p.evaluate(() => {

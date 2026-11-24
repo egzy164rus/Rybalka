@@ -15,36 +15,36 @@ const RARITY = {
 /* price — цена наживки, расходуется за заброс */
 const BAITS = {
   // растительные
-  corn:     {name:"Кукуруза",       tier:1, price:4,   desc:"Сладкие зёрна. Карповые и «белая» рыба.",            emoji:"corn"},
-  bread:    {name:"Хлебный мякиш",  tier:1, price:4,   desc:"Универсальный мякиш для мирной мелочи.",             emoji:"bread"},
-  pearl:    {name:"Перловка",       tier:2, price:8,   desc:"Распаренное зерно для крупной карповой.",            emoji:"pearl"},
-  peas:     {name:"Горох",          tier:2, price:9,   desc:"Крупный карп, сазан и амур его обожают.",            emoji:"peas"},
-  dough:    {name:"Тесто",          tier:2, price:8,   desc:"Мягкая приманка для леща и густеры.",                emoji:"dough"},
-  algae:    {name:"Водоросли",      tier:3, price:14,  desc:"Главная еда белого амура и толстолобика.",           emoji:"weed"},
+  corn:     {name:"Кукуруза",       tier:1, price:4,   desc:"Сладкие зёрна. Карповые и «белая» рыба.",            emoji:"corn", alt:["bread","pearl","peas"]},
+  bread:    {name:"Хлебный мякиш",  tier:1, price:4,   desc:"Универсальный мякиш для мирной мелочи.",             emoji:"bread", alt:["corn","dough","maggot"]},
+  pearl:    {name:"Перловка",       tier:2, price:8,   desc:"Распаренное зерно для крупной карповой.",            emoji:"pearl", alt:["corn","peas","dough"]},
+  peas:     {name:"Горох",          tier:2, price:9,   desc:"Крупный карп, сазан и амур его обожают.",            emoji:"peas", alt:["corn","pearl","dough"]},
+  dough:    {name:"Тесто",          tier:2, price:8,   desc:"Мягкая приманка для леща и густеры.",                emoji:"dough", alt:["bread","pearl","peas"]},
+  algae:    {name:"Водоросли",      tier:3, price:14,  desc:"Главная еда белого амура и толстолобика.",           emoji:"weed", alt:["dough","peas","pearl"]},
   // животные
-  worm:     {name:"Земляной червь", tier:1, price:5,   desc:"Классика: окунь, ёрш, плотва, линь.",                emoji:"worm"},
-  bloodworm:{name:"Мотыль",         tier:1, price:6,   desc:"Мелкая красная личинка: елец, уклейка, пескарь.",     emoji:"moth"},
-  maggot:   {name:"Опарыш",         tier:2, price:8,   desc:"Белая личинка для плотвы, густеры и подлещика.",      emoji:"worm"},
-  caddis:   {name:"Ручейник",       tier:2, price:10,  desc:"Сиговые и хариус предпочтут его любому червю.",      emoji:"worm"},
-  mayfly:   {name:"Подёнка",        tier:3, price:14,  desc:"Вечерний вылет — жерех, голавль, елец.",              emoji:"fly"},
-  shell:    {name:"Ракушка",        tier:3, price:16,  desc:"Палтус, камбала и зубатка ищут корм у дна.",          emoji:"shell"},
-  shrimp:   {name:"Креветка",       tier:3, price:18,  desc:"Морская рыба любых размеров.",                       emoji:"shrimp"},
+  worm:     {name:"Земляной червь", tier:1, price:5,   desc:"Классика: окунь, ёрш, плотва, линь.",                emoji:"worm", alt:["maggot","bloodworm","caddis"]},
+  bloodworm:{name:"Мотыль",         tier:1, price:6,   desc:"Мелкая красная личинка: елец, уклейка, пескарь.",     emoji:"moth", alt:["maggot","worm","caddis"]},
+  maggot:   {name:"Опарыш",         tier:2, price:8,   desc:"Белая личинка для плотвы, густеры и подлещика.",      emoji:"worm", alt:["bloodworm","worm","caddis"]},
+  caddis:   {name:"Ручейник",       tier:2, price:10,  desc:"Сиговые и хариус предпочтут его любому червю.",      emoji:"worm", alt:["maggot","worm","mayfly"]},
+  mayfly:   {name:"Подёнка",        tier:3, price:14,  desc:"Вечерний вылет — жерех, голавль, елец.",              emoji:"fly", alt:["caddis","fly","maggot"]},
+  shell:    {name:"Ракушка",        tier:3, price:16,  desc:"Палтус, камбала и зубатка ищут корм у дна.",          emoji:"shell", alt:["crab","shrimp","fishmeat"]},
+  shrimp:   {name:"Креветка",       tier:3, price:18,  desc:"Морская рыба любых размеров.",                       emoji:"shrimp", alt:["shell","crab","fishmeat"]},
   // приманки-имитации
-  spoon:    {name:"Блесна",         tier:2, price:18,  desc:"Щука, окунь, берш, жерех.",                           emoji:"spoon"},
-  wobbler:  {name:"Воблер",         tier:3, price:26,  desc:"Цапляет щуку, басса, павлиньего окуня.",             emoji:"wobbler"},
-  jig:      {name:"Джиг",           tier:3, price:30,  desc:"Донный хищник: судак, налим, змееголов.",             emoji:"jig"},
-  spinner:  {name:"Вращалка",       tier:3, price:24,  desc:"Лососи, жерех, голавль на течении.",                  emoji:"spoon"},
-  fly:      {name:"Мушка",          tier:2, price:14,  desc:"Нахлыстовая классика: хариус, таймень, ленок.",      emoji:"fly"},
+  spoon:    {name:"Блесна",         tier:2, price:18,  desc:"Щука, окунь, берш, жерех.",                           emoji:"spoon", alt:["spinner","wobbler","jig"]},
+  wobbler:  {name:"Воблер",         tier:3, price:26,  desc:"Цапляет щуку, басса, павлиньего окуня.",             emoji:"wobbler", alt:["spoon","spinner","jig"]},
+  jig:      {name:"Джиг",           tier:3, price:30,  desc:"Донный хищник: судак, налим, змееголов.",             emoji:"jig", alt:["spoon","spinner","wobbler"]},
+  spinner:  {name:"Вращалка",       tier:3, price:24,  desc:"Лососи, жерех, голавль на течении.",                  emoji:"spoon", alt:["spoon","wobbler","jig"]},
+  fly:      {name:"Мушка",          tier:2, price:14,  desc:"Нахлыстовая классика: хариус, таймень, ленок.",      emoji:"fly", alt:["mayfly","caddis","maggot"]},
   // живые и «мясные»
-  livebait: {name:"Живец",          tier:3, price:34,  desc:"Щука, сом, таймень, бурый хищник.",                  emoji:"fish"},
-  frog:     {name:"Лягушка",        tier:4, price:48,  desc:"Сом, змееголов, крупный налим.",                     emoji:"frog"},
-  fishmeat: {name:"Рыбное филе",    tier:3, price:26,  desc:"Кусок рыбы для угря и осетровых.",                   emoji:"fish"},
-  crab:     {name:"Крабовое мясо",  tier:4, price:56,  desc:"Акула, палтус, крупный морской окунь.",              emoji:"crab"},
+  livebait: {name:"Живец",          tier:3, price:34,  desc:"Щука, сом, таймень, бурый хищник.",                  emoji:"fish", alt:["fishmeat","frog","jig"]},
+  frog:     {name:"Лягушка",        tier:4, price:48,  desc:"Сом, змееголов, крупный налим.",                     emoji:"frog", alt:["livebait","wobbler","fishmeat"]},
+  fishmeat: {name:"Рыбное филе",    tier:3, price:26,  desc:"Кусок рыбы для угря и осетровых.",                   emoji:"fish", alt:["shell","shrimp","livebait"]},
+  crab:     {name:"Крабовое мясо",  tier:4, price:56,  desc:"Акула, палтус, крупный морской окунь.",              emoji:"crab", alt:["shrimp","shell","fishmeat"]},
   // эксклюзив
-  glow:     {name:"Светлячок",      tier:4, price:70,  desc:"Ночной «светляк»: мифическая рыба тёмных водоёмов.", emoji:"glow"},
-  squid:    {name:"Кальмар",        tier:4, price:64,  desc:"Тунец, марлин, меч-рыба берут только его.",          emoji:"squid"},
-  octopus:  {name:"Осьминог",       tier:5, price:110, desc:"Только для акулы мако и глубин.",                     emoji:"squid"},
-  blood:    {name:"Минога",         tier:4, price:52,  desc:"Угорь, налим и минога не устоят.",                    emoji:"eel"}
+  glow:     {name:"Светлячок",      tier:4, price:70,  desc:"Ночной «светляк»: мифическая рыба тёмных водоёмов.", emoji:"glow", alt:["shrimp","squid","jig"]},
+  squid:    {name:"Кальмар",        tier:4, price:64,  desc:"Тунец, марлин, меч-рыба берут только его.",          emoji:"squid", alt:["octopus","fishmeat","shrimp"]},
+  octopus:  {name:"Осьминог",       tier:5, price:110, desc:"Только для акулы мако и глубин.",                     emoji:"squid", alt:["squid","fishmeat","crab"]},
+  blood:    {name:"Минога",         tier:4, price:52,  desc:"Угорь, налим и минога не устоят.",                    emoji:"eel", alt:["worm","shell","fishmeat"]}
 };
 
 /* ---------------- РЫБА: 105 видов ----------------
@@ -191,7 +191,7 @@ const LOCATIONS = {
       {id:"open", name:"Открытая вода", x:0.49, y:0.527, sweet:[0.45,0.68], depth:"средне",
        w:{lesh:9, gustera:8, plotva:7, karas_s:7, beloglaz:5, sinets:4, okun:6, zhereh:4, karp:4, tolst_b:2, chehon:3, ukleyka:5, vobla:2, tolst_p:2}},
       {id:"deep", name:"Глубина", x:0.80, y:0.573, sweet:[0.70,0.95], depth:"глубоко",
-       w:{karp:9, karp_z:4, lesh:6, shchuka:7, sudak:3, nalim:4, som:3, tolst_b:3, amur_w:2, sterlyad:2, ugor:3, bersh:2, amur_b:1, ersh:2}}
+       w:{karp:9, karp_z:4, lesh:6, shchuka:7, sudak:3, nalim:4, som:3, tolst_b:3, amur_w:2, ugor:3, bersh:2, amur_b:1, ersh:2, okun:4, zhereh:3}}
     ]
   },
   river: {
@@ -202,9 +202,9 @@ const LOCATIONS = {
       {id:"riffle", name:"Перекат", x:0.30, y:0.500, sweet:[0.25,0.48], depth:"мелко",
        w:{golavl:9, elec:8, peskar:6, ukleyka:6, harius_e:6, forel_r:5, zhereh:4, podust:4, shemaya:3, minoga:3, shipovka:3, rybets:2, golets_whale:2}},
       {id:"pool", name:"Затишок", x:0.56, y:0.575, sweet:[0.48,0.70], depth:"средне",
-       w:{harius_e:6, forel_r:5, forel_rd:5, yaz:5, golavl:4, shchuka:4, zhereh:3, usach:3, chehon:4, ryapushka:3, bass:2, peacock:1}},
+       w:{harius_e:6, forel_r:5, forel_rd:5, yaz:5, golavl:4, shchuka:4, zhereh:3, usach:3, chehon:4, ryapushka:3, bass:2, peacock:1,okun:5,lesh:3,podust:3,bersh:2,sudak:2}},
       {id:"rapid", name:"Порог", x:0.745, y:0.630, sweet:[0.72,0.96], depth:"глубоко",
-       w:{taimen:5, lenok:5, harius_s:5, forel_rd:4, forel_l:3, usach:4, nelma:3, gorbusha:3, keta:3, golec_ar:2, losos:2, nerka:2, chavycha:1}}
+       w:{taimen:5, lenok:5, harius_s:5, forel_rd:4, forel_l:3, usach:4, nelma:3, gorbusha:3, keta:3, golec_ar:2, losos:2, nerka:2, chavycha:1,forel_r:5,harius_e:5}}
     ]
   },
   night: {
@@ -213,11 +213,11 @@ const LOCATIONS = {
     desc:"Поклёвки редкие, но рыба трофейная. Налим, угорь, сом и осетровые.",
     spots:[
       {id:"mist", name:"Туман", x:0.44, y:0.455, sweet:[0.24,0.46], depth:"мелко",
-       w:{lin:8, nalim:7, karas_g:6, karas_s:5, vyun:4, rotan:4, ugor:4, karp:3, lesh:3, ershor:3, minoga:3}},
+       w:{lin:8, nalim:7, karas_g:6, karas_s:5, vyun:4, rotan:4, ugor:4, karp:3, lesh:3, ershor:3, minoga:3, tench_b:3}},
       {id:"moon", name:"Лунная дорожка", x:0.605, y:0.515, sweet:[0.46,0.70], depth:"средне",
-       w:{sudak:7, bersh:5, nalim:5, shchuka:5, ugor:4, taimen:2, zhereh:3, som_amur:3, kizhuch:2, keta:2}},
+       w:{sudak:7, bersh:5, nalim:5, shchuka:5, ugor:4, taimen:2, zhereh:3, som_amur:3, kizhuch:2, keta:2,okun:4,som:3}},
       {id:"abyss", name:"Омут", x:0.845, y:0.585, sweet:[0.72,0.96], depth:"глубоко",
-       w:{som:6, beluga:3, sterlyad:4, oster_r:3, oster_s:3, sevryuga:2, ship:2, karp_z:3, karp_g:3, som_amur:3, zmeegolov:3, kaluga:1}}
+       w:{som:6, beluga:3, sterlyad:4, oster_r:3, oster_s:3, sevryuga:2, ship:2, karp_z:3, karp_g:3, som_amur:3, zmeegolov:3, kaluga:1,nalim:5,ugor:5,sudak:4,shchuka:4,bersh:3}}
     ]
   },
   winter: {
@@ -228,9 +228,9 @@ const LOCATIONS = {
       {id:"hole", name:"Лунка у берега", x:0.20, y:0.610, sweet:[0.22,0.46], depth:"мелко",
        w:{plotva:7, okun:7, rotan:6, ershor:5, ryapushka:5, peskar:4, karas_s:3, tugun:3, ersh:3}},
       {id:"slope", name:"Свал в глубину", x:0.50, y:0.680, sweet:[0.45,0.70], depth:"средне",
-       w:{sig:7, pelyad:6, chir:5, omul:4, muksun:3, tugun:4, paliya:4, nalim:4, sudak:3}},
+       w:{sig:7, pelyad:6, chir:5, omul:4, muksun:3, tugun:4, paliya:4, nalim:4, sudak:3,okun:4}},
       {id:"pit", name:"Яма", x:0.80, y:0.780, sweet:[0.72,0.96], depth:"глубоко",
-       w:{nalim:6, paliya:5, chir:4, omul:4, oster_s:3, sig:4, som:2, beluga:1, lenok:5, karas_g:2}}
+       w:{nalim:6, paliya:5, chir:4, omul:4, oster_s:3, sig:4, som:2, beluga:1, lenok:5, karas_g:2,sudak:4,bersh:3,lesh:2}}
     ]
   },
   sea: {
@@ -243,7 +243,7 @@ const LOCATIONS = {
       {id:"banks", name:"Банки", x:0.50, y:0.590, sweet:[0.46,0.70], depth:"средне",
        w:{cod:7, haddock:6, saida:5, pollock:4, sea_perch:4, zubatka:4, kambala:3, skumbria:3}},
       {id:"deepsea", name:"Глубина", x:0.80, y:0.625, sweet:[0.72,0.96], depth:"глубоко",
-       w:{paltus:5, tuna:4, marlin:2, swordfish:2, mako:2, dorado:3, barracuda:4, angler:3, zubatka:3, chavycha:1}}
+       w:{paltus:5, tuna:4, marlin:2, swordfish:2, mako:2, dorado:3, barracuda:4, angler:3, zubatka:3, chavycha:1,cod:5,haddock:4,pollock:4,sea_perch:3}}
     ]
   },
 
@@ -256,9 +256,9 @@ const LOCATIONS = {
       {id:"lilies", name:"Кувшинки", x:0.24, y:0.600, sweet:[0.24,0.46], depth:"мелко",
        w:{lin:8, rotan:7, karas_g:6, karas_s:5, vyun:5, gorchak:4, verhovka:3, tench_b:5, bowfin:3, krasnop:3}},
       {id:"drift", name:"Коряжник", x:0.53, y:0.660, sweet:[0.46,0.70], depth:"средне",
-       w:{som_amur:6, bowfin:5, zmeegolov:5, nalim:4, lin:4, ugor:3, tench_b:4, minoga:3, som:2}},
+       w:{som_amur:6, bowfin:5, zmeegolov:5, nalim:4, lin:4, ugor:3, tench_b:4, minoga:3, som:2,rotan:5,vyun:3}},
       {id:"quagmire", name:"Трясина", x:0.79, y:0.720, sweet:[0.72,0.96], depth:"глубоко",
-       w:{som:7, zmeegolov:4, bowfin:4, ugor:4, nalim:4, beluga:1, bowfin_b:2, som_amur:3}}
+       w:{som:7, zmeegolov:4, bowfin:4, ugor:4, nalim:4, beluga:1, bowfin_b:2, som_amur:3,rotan:4,lin:3,tench_b:3}}
     ]
   },
   mountain: {
@@ -269,9 +269,9 @@ const LOCATIONS = {
       {id:"inflow", name:"Впадина реки", x:0.23, y:0.560, sweet:[0.24,0.46], depth:"мелко",
        w:{forel_r:7, forel_rd:6, harius_e:6, elec:4, peskar:4, golec_ar:3, forel_l:3}},
       {id:"stones", name:"Каменистая коса", x:0.51, y:0.615, sweet:[0.46,0.70], depth:"средне",
-       w:{paliya:6, lenok:5, harius_s:5, forel_l:5, golavl:4, taimen:3, golec_ar:4, nelma:2}},
+       w:{paliya:6, lenok:5, harius_s:5, forel_l:5, golavl:4, taimen:3, golec_ar:4, nelma:2,forel_r:6,forel_rd:5}},
       {id:"depth", name:"Глубина у скалы", x:0.78, y:0.665, sweet:[0.72,0.96], depth:"глубоко",
-       w:{taimen:6, paliya:5, nelma:4, forel_l:4, lenok:5, harius_s:4, chavycha:2, golets_whale:3}}
+       w:{taimen:6, paliya:5, nelma:4, forel_l:4, lenok:5, harius_s:4, chavycha:2, golets_whale:3,golec_ar:3}}
     ]
   },
   lagoon: {
@@ -280,11 +280,11 @@ const LOCATIONS = {
     desc:"Прогретая вода у рифа. Нужна морская снасть — здесь берут быстрые и зубастые.",
     spots:[
       {id:"shoal", name:"Песчаная отмель", x:0.25, y:0.585, sweet:[0.24,0.46], depth:"мелко",
-       w:{barabulka:7, stavrida:6, kefal:5, skumbria:5, lag_kefal:4, lago_bar:3, seld:3}},
+       w:{barabulka:7, stavrida:6, kefal:5, skumbria:5, lag_kefal:4, lago_bar:3, seld:3,sea_perch:3,dorado:2}},
       {id:"reef", name:"Риф", x:0.52, y:0.630, sweet:[0.46,0.70], depth:"средне",
-       w:{lago_bar:6, sea_perch:5, dorado:4, barracuda:4, zubatka:3, kizhuch:2, kefal:3}},
+       w:{lago_bar:6, sea_perch:5, dorado:4, barracuda:4, zubatka:3, kizhuch:2, kefal:3,lag_kefal:4}},
       {id:"wall", name:"Стенка рифа", x:0.79, y:0.675, sweet:[0.72,0.96], depth:"глубоко",
-       w:{dorado:5, barracuda:5, tuna:4, marlin:2, swordfish:2, mako:2, angler:3, chavycha:2}}
+       w:{dorado:5, barracuda:5, tuna:4, marlin:2, swordfish:2, mako:2, angler:3, chavycha:2,sea_perch:4}}
     ]
   },
 };
@@ -471,6 +471,210 @@ const LOC_MECH = {
              weather:["sunny","thunder"], tip:"Тёплая бирюза: после грозы риф оживает — поклёвки идут одна за другой."}
 };
 
+
+/* ---------------- 8.6: ЭКОЛОГИЯ ВИДОВ --------------------------------
+   Кто где живёт. Ключи короткие, чтобы не раздувать сборку:
+   dep — глубина [мин, оптимум, макс] в метрах, t — температура воды
+   b — дно (s песок, g галька, c глина, i ил, m наилок, k камни, h ракушка, r риф)
+   c — укрытия (>0 любит траву и коряжник), f — течение м/с, s — солёность,
+   w — трава/укрытие (r камыш, g трава, n коряги, k камни, f риф, 0 открыто),
+   l — свет (>0 сумерки/ночь), sc — стайность 0..1 */
+const FISH_ECO = {
+  karas_g: {dep:[0.4,1.1,2.4],t:[14,22,30],b:"imc",c:0.4,f:[0,0.4],s:[0,0.05],w:"rg",l:-0.1,sc:0.4},
+  karas_s: {dep:[0.6,1.5,3.2],t:[12,20,28],b:"imc",c:0.3,f:[0,0.4],s:[0,0.05],w:"rg",l:-0.1,sc:0.4},
+  karp: {dep:[1.5,4,9],t:[12,20,28],b:"imc",c:0.1,f:[0,0.4],s:[0,0.6],w:"gr0",l:-0.1,sc:0.4},
+  karp_z: {dep:[1.5,4,9],t:[12,20,28],b:"imc",c:0.1,f:[0,0.4],s:[0,0.05],w:"gr0",l:-0.1,sc:0.4},
+  karp_g: {dep:[1.5,4,9],t:[13,21,28],b:"imc",c:0.1,f:[0,0.4],s:[0,0.05],w:"gr0",l:-0.1,sc:0.4},
+  lesh: {dep:[2,4.5,9],t:[8,17,24],b:"icm",c:0,f:[0,0.4],s:[0,0.05],w:"gr0",l:-0.1,sc:0.4},
+  gustera: {dep:[0.5,1.8,4],t:[6,16,26],b:"sgc",c:-0.2,f:[0,0.7],s:[0,0.05],w:"gr0",l:-0.2,sc:0.7},
+  plotva: {dep:[0.5,1.8,4],t:[6,16,26],b:"sgc",c:-0.2,f:[0,0.7],s:[0,0.05],w:"gr0",l:-0.2,sc:0.7},
+  krasnop: {dep:[0.5,1.8,4],t:[6,16,26],b:"sgc",c:-0.2,f:[0,0.7],s:[0,0.05],w:"gr0",l:-0.2,sc:0.7},
+  lin: {dep:[1.5,4,9],t:[14,22,28],b:"imc",c:0.6,f:[0,0.4],s:[0,0.05],w:"gr",l:-0.1,sc:0.4},
+  yaz: {dep:[1.5,4,9],t:[10,20,28],b:"imc",c:0.2,f:[0,0.4],s:[0,0.05],w:"gr0",l:-0.1,sc:0.4},
+  golavl: {dep:[0.6,1.8,4],t:[8,16,22],b:"gks",c:0.2,f:[0.4,1.3],s:[0,0.05],w:"0k",l:0,sc:0.5},
+  elec: {dep:[0.5,1.8,4],t:[6,16,26],b:"gk",c:-0.2,f:[0.4,1.4],s:[0,0.05],w:"gr0",l:-0.2,sc:0.7},
+  peskar: {dep:[0.4,1.2,3],t:[6,16,26],b:"sg",c:-0.2,f:[0,0.9],s:[0,0.05],w:"gr0",l:-0.2,sc:0.7},
+  ukleyka: {dep:[0.3,1.2,3.5],t:[6,16,26],b:"sgc",c:-0.2,f:[0,0.8],s:[0,0.05],w:"gr0",l:-0.2,sc:0.7},
+  podust: {dep:[0.6,1.8,4],t:[8,16,22],b:"gks",c:0.2,f:[0.5,1.3],s:[0,0.05],w:"0k",l:0,sc:0.5},
+  amur_w: {dep:[1.5,4,9],t:[10,20,28],b:"imc",c:0.2,f:[0,0.4],s:[0,0.05],w:"gr0",l:-0.1,sc:0.4},
+  amur_b: {dep:[1.5,4,9],t:[10,20,28],b:"imc",c:0.2,f:[0,0.4],s:[0,0.05],w:"gr0",l:-0.1,sc:0.4},
+  tolst_b: {dep:[1.5,4,9],t:[10,20,28],b:"imc",c:0.2,f:[0,0.4],s:[0,0.05],w:"gr0",l:-0.1,sc:0.4},
+  tolst_p: {dep:[1.5,4,9],t:[10,20,28],b:"imc",c:0.2,f:[0,0.4],s:[0,0.05],w:"gr0",l:-0.1,sc:0.4},
+  chehon: {dep:[0.5,1.8,4],t:[6,16,26],b:"sgc",c:-0.2,f:[0,0.7],s:[0,0.05],w:"gr0",l:-0.2,sc:0.7},
+  sinets: {dep:[0.5,1.8,4],t:[6,16,26],b:"sgc",c:-0.2,f:[0,0.7],s:[0,0.05],w:"gr0",l:-0.2,sc:0.7},
+  beloglaz: {dep:[0.5,1.8,4],t:[6,16,26],b:"sgc",c:-0.2,f:[0,0.7],s:[0,0.05],w:"gr0",l:-0.2,sc:0.7},
+  vobla: {dep:[0.5,1.8,4],t:[6,16,26],b:"sgc",c:-0.2,f:[0,0.7],s:[0,0.05],w:"gr0",l:-0.2,sc:0.7},
+  taran: {dep:[0.5,1.8,4],t:[6,16,26],b:"sgc",c:-0.2,f:[0,0.7],s:[0,0.05],w:"gr0",l:-0.2,sc:0.7},
+  rybets: {dep:[1,2.5,6],t:[4,12,18],b:"gk",c:0.2,f:[0.5,1.4],s:[0,0.05],w:"gr0",l:-0.1,sc:0.4},
+  usach: {dep:[0.6,1.8,4],t:[8,16,22],b:"gks",c:0.2,f:[0.5,1.4],s:[0,0.05],w:"0k",l:0,sc:0.5},
+  shemaya: {dep:[0.6,1.8,4],t:[8,16,22],b:"gks",c:0.2,f:[0.6,1.5],s:[0,0.05],w:"0k",l:0,sc:0.5},
+  verhovka: {dep:[0.3,0.8,2],t:[6,16,26],b:"sgc",c:-0.2,f:[0,0.7],s:[0,0.05],w:"gr0",l:-0.2,sc:0.7},
+  gorchak: {dep:[0.3,0.9,2.2],t:[6,16,26],b:"sgc",c:-0.2,f:[0,0.7],s:[0,0.05],w:"gr0",l:-0.2,sc:0.7},
+  vyun: {dep:[0.3,1,2.5],t:[12,22,30],b:"im",c:0.4,f:[0,0.2],s:[0,0.02],w:"rgn",l:0.1,sc:0.4},
+  shipovka: {dep:[0.2,0.8,2],t:[6,16,26],b:"sgc",c:-0.2,f:[0,0.7],s:[0,0.05],w:"gr0",l:-0.2,sc:0.7},
+  golets_whale: {dep:[0.3,1,2.5],t:[6,16,26],b:"sgc",c:-0.2,f:[0,0.7],s:[0,0.05],w:"gr0",l:-0.2,sc:0.7},
+  rotan: {dep:[0.3,1,3],t:[10,20,30],b:"im",c:0.4,f:[0,0.2],s:[0,0.02],w:"rg",l:0.1,sc:0.4},
+  sig: {dep:[2,8,20],t:[1,7,10],b:"sg",c:-0.3,f:[0.1,0.6],s:[0,0.1],w:"0",l:0.2,sc:0.8},
+  pelyad: {dep:[2,8,20],t:[1,7,10],b:"sg",c:-0.3,f:[0.1,0.6],s:[0,0.1],w:"0",l:0.2,sc:0.8},
+  chir: {dep:[2,8,20],t:[1,7,10],b:"sg",c:-0.3,f:[0.1,0.6],s:[0,0.1],w:"0",l:0.2,sc:0.8},
+  muksun: {dep:[3,10,25],t:[1,7,10],b:"sg",c:-0.3,f:[0.1,0.6],s:[0,0.1],w:"0",l:0.2,sc:0.8},
+  omul: {dep:[3,12,30],t:[1,7,10],b:"sg",c:-0.3,f:[0.1,0.6],s:[0,0.1],w:"0",l:0.2,sc:0.8},
+  ryapushka: {dep:[1,5,12],t:[6,16,26],b:"sgc",c:-0.2,f:[0,0.7],s:[0,0.05],w:"gr0",l:-0.2,sc:0.7},
+  tugun: {dep:[1,4,10],t:[6,16,26],b:"sgc",c:-0.2,f:[0,0.7],s:[0,0.05],w:"gr0",l:-0.2,sc:0.7},
+  shchuka: {dep:[0.8,2.5,6],t:[4,14,20],b:"isg",c:0.8,f:[0,0.5],s:[0,0.05],w:"rgn",l:0.2,sc:0.1},
+  okun: {dep:[1.5,4.5,10],t:[6,16,22],b:"skg",c:0.3,f:[0.2,0.9],s:[0,0.05],w:"0kg",l:0.2,sc:0.6},
+  sudak: {dep:[1.5,4.5,10],t:[6,16,22],b:"skg",c:0.3,f:[0.2,0.9],s:[0,0.05],w:"0kg",l:0.2,sc:0.6},
+  bersh: {dep:[1.5,4.5,10],t:[6,16,22],b:"skg",c:0.3,f:[0.2,0.9],s:[0,0.05],w:"0kg",l:0.2,sc:0.6},
+  ersh: {dep:[1.5,4.5,10],t:[6,16,22],b:"skg",c:0.3,f:[0.2,0.9],s:[0,0.05],w:"0kg",l:0.2,sc:0.6},
+  ershor: {dep:[1.5,4.5,10],t:[6,16,22],b:"skg",c:0.3,f:[0.2,0.9],s:[0,0.05],w:"0kg",l:0.2,sc:0.6},
+  som: {dep:[4,9,18],t:[16,22,28],b:"imc",c:0.9,f:[0,0.5],s:[0,0.05],w:"n0",l:0.9,sc:0.1},
+  som_amur: {dep:[3,8,16],t:[16,23,29],b:"imc",c:0.8,f:[0,0.5],s:[0,0.05],w:"n0",l:0.9,sc:0.1},
+  nalim: {dep:[2,7,14],t:[0,8,14],b:"kci",c:0.5,f:[0.1,1],s:[0,0.05],w:"n0k",l:0.8,sc:0.2},
+  zhereh: {dep:[0.6,1.8,4],t:[8,16,22],b:"gks",c:0.2,f:[0.4,1.3],s:[0,0.05],w:"0k",l:0,sc:0.5},
+  forel_r: {dep:[0.5,1.8,6],t:[2,11,16],b:"kg",c:0.3,f:[0.4,1.6],s:[0,0.1],w:"0k",l:0.1,sc:0.3},
+  forel_rd: {dep:[0.5,1.8,6],t:[2,11,16],b:"kg",c:0.3,f:[0.4,1.6],s:[0,0.1],w:"0k",l:0.1,sc:0.3},
+  forel_l: {dep:[2,8,20],t:[4,9,14],b:"kg",c:0.3,f:[0.4,1.6],s:[0,0.1],w:"0k",l:0.1,sc:0.3},
+  harius_e: {dep:[0.5,1.8,6],t:[2,11,16],b:"kg",c:0.3,f:[0.4,1.6],s:[0,0.1],w:"0k",l:0.1,sc:0.3},
+  harius_s: {dep:[0.5,1.8,6],t:[1,7,13],b:"kg",c:0.3,f:[0.4,1.6],s:[0,0.1],w:"0k",l:0.1,sc:0.3},
+  taimen: {dep:[1,4,10],t:[2,11,16],b:"kg",c:0.3,f:[0.5,1.6],s:[0,0.1],w:"0k",l:0.1,sc:0.3},
+  lenok: {dep:[0.5,1.8,6],t:[2,11,16],b:"kg",c:0.3,f:[0.5,1.5],s:[0,0.1],w:"0k",l:0.1,sc:0.3},
+  golec_ar: {dep:[0.5,1.8,6],t:[2,11,16],b:"kg",c:0.3,f:[0.4,1.6],s:[0,0.1],w:"0k",l:0.1,sc:0.3},
+  paliya: {dep:[3,10,25],t:[0,6,11],b:"kg",c:0.3,f:[0.2,1],s:[0,0.1],w:"0k",l:0.2,sc:0.3},
+  nelma: {dep:[2,8,18],t:[2,9,14],b:"kg",c:0.2,f:[0.5,1.4],s:[0,0.9],w:"0k",l:0.1,sc:0.5},
+  zmeegolov: {dep:[1,3,7],t:[16,24,30],b:"imc",c:0.8,f:[0,0.5],s:[0,0.05],w:"grn",l:0.6,sc:0.1},
+  bass: {dep:[1,3,7],t:[14,20,26],b:"isg",c:0.6,f:[0,0.4],s:[0,0.6],w:"grn",l:0,sc:0.3},
+  peacock: {dep:[1,4,12],t:[16,22,27],b:"isk",c:0.4,f:[0,0.5],s:[0,0.6],w:"gr0",l:0,sc:0.3},
+  oster_r: {dep:[4,12,28],t:[6,14,22],b:"sg",c:0.3,f:[0.2,1.2],s:[0,0.3],w:"0",l:0.2,sc:0.2},
+  oster_s: {dep:[4,13,30],t:[6,14,22],b:"sg",c:0.3,f:[0.2,1.2],s:[0,0.3],w:"0",l:0.2,sc:0.2},
+  sterlyad: {dep:[2,7,15],t:[6,14,22],b:"sg",c:0.3,f:[0.3,1.3],s:[0,0.3],w:"0",l:0.2,sc:0.2},
+  sevryuga: {dep:[5,14,30],t:[6,14,22],b:"sg",c:0.3,f:[0.2,1.2],s:[0,0.3],w:"0",l:0.2,sc:0.2},
+  beluga: {dep:[6,18,40],t:[8,16,22],b:"sg",c:0.3,f:[0.2,1.2],s:[0,0.3],w:"0",l:0.2,sc:0.2},
+  ship: {dep:[5,14,30],t:[6,14,22],b:"sg",c:0.3,f:[0.2,1.2],s:[0,0.3],w:"0",l:0.2,sc:0.2},
+  kaluga: {dep:[6,16,35],t:[6,13,20],b:"sg",c:0.3,f:[0.2,1.2],s:[0,0.3],w:"0",l:0.2,sc:0.2},
+  losos: {dep:[0.5,2,8],t:[2,9,14],b:"kg",c:0.2,f:[0.6,1.6],s:[0,0.9],w:"0k",l:0.1,sc:0.5},
+  gorbusha: {dep:[0.5,2,8],t:[2,9,14],b:"kg",c:0.2,f:[0.6,1.6],s:[0,0.9],w:"0k",l:0.1,sc:0.5},
+  keta: {dep:[0.5,2,8],t:[2,9,14],b:"kg",c:0.2,f:[0.6,1.6],s:[0,0.9],w:"0k",l:0.1,sc:0.5},
+  nerka: {dep:[0.5,2,8],t:[2,9,14],b:"kg",c:0.2,f:[0.6,1.6],s:[0,0.9],w:"0k",l:0.1,sc:0.5},
+  kizhuch: {dep:[1,3,10],t:[2,10,16],b:"gk",c:0.2,f:[0.5,1.6],s:[0,0.9],w:"0k",l:0.1,sc:0.5},
+  chavycha: {dep:[2,6,15],t:[2,9,14],b:"kg",c:0.2,f:[0.6,1.6],s:[0,0.9],w:"0k",l:0.1,sc:0.5},
+  ugor: {dep:[1,4,10],t:[10,17,24],b:"imc",c:0.8,f:[0,0.5],s:[0,0.05],w:"n0",l:0.8,sc:0.1},
+  minoga: {dep:[1,3,8],t:[4,10,16],b:"kg",c:0.2,f:[0.6,1.6],s:[0,0.9],w:"0k",l:0.1,sc:0.5},
+  cod: {dep:[5,18,50],t:[1,8,14],b:"sgk",c:-0.1,f:[0.2,0.8],s:[0.9,1],w:"0k",l:0,sc:0.7},
+  haddock: {dep:[3,15,40],t:[2,9,14],b:"skh",c:-0.2,f:[0.2,0.8],s:[0.9,1],w:"0k",l:0,sc:0.8},
+  saida: {dep:[5,20,60],t:[0,7,13],b:"sgk",c:0,f:[0.3,1],s:[0.9,1],w:"0",l:0,sc:0.6},
+  pollock: {dep:[5,25,80],t:[0,6,12],b:"sg",c:0,f:[0.3,1],s:[0.9,1],w:"0",l:0,sc:0.7},
+  navaga: {dep:[3,12,40],t:[0,8,14],b:"sgk",c:-0.2,f:[0.2,0.9],s:[0.9,1],w:"0k",l:0,sc:0.9},
+  kambala: {dep:[2,10,40],t:[2,9,14],b:"shm",c:-0.2,f:[0.2,0.8],s:[0.9,1],w:"0k",l:0,sc:0.8},
+  paltus: {dep:[5,25,300],t:[2,8,13],b:"shk",c:0,f:[0.2,1],s:[0.5,1],w:"0",l:0.1,sc:0.4},
+  skumbria: {dep:[1,10,40],t:[8,16,24],b:"sg",c:-0.2,f:[0.2,1],s:[0.4,1],w:"0",l:0,sc:0.8},
+  stavrida: {dep:[2,12,50],t:[10,18,26],b:"sg",c:-0.2,f:[0.2,1],s:[0.4,1],w:"0",l:0,sc:0.8},
+  seld: {dep:[1,10,40],t:[4,12,20],b:"s",c:-0.3,f:[0.1,1],s:[0.4,1],w:"0",l:0,sc:0.9},
+  kefal: {dep:[1,5,15],t:[8,18,26],b:"sg",c:0,f:[0.1,0.8],s:[0.4,1],w:"0g",l:0,sc:0.6},
+  barabulka: {dep:[2,10,40],t:[8,17,24],b:"sgm",c:-0.2,f:[0.1,0.8],s:[0.4,1],w:"0g",l:0,sc:0.7},
+  sea_perch: {dep:[2,12,35],t:[4,14,24],b:"shgk",c:0.3,f:[0.1,0.8],s:[0.4,1],w:"k0r",l:0,sc:0.4},
+  zubatka: {dep:[3,20,250],t:[2,8,14],b:"shk",c:0,f:[0.2,1],s:[0.5,1],w:"0",l:0.1,sc:0.4},
+  angler: {dep:[10,80,400],t:[2,7,12],b:"sk",c:0,f:[0.3,1],s:[0.5,1],w:"0",l:0.1,sc:0.4},
+  tuna: {dep:[5,30,150],t:[8,16,24],b:"skh",c:0,f:[0.3,1],s:[0.5,1],w:"0",l:0,sc:0.4},
+  marlin: {dep:[5,25,120],t:[10,17,26],b:"skh",c:0,f:[0.3,1],s:[0.5,1],w:"0",l:0,sc:0.2},
+  swordfish: {dep:[5,30,300],t:[8,15,22],b:"skh",c:0,f:[0.3,1],s:[0.5,1],w:"0",l:0,sc:0.2},
+  dorado: {dep:[1,8,40],t:[16,23,29],b:"skh",c:0,f:[0.2,1],s:[0.5,1],w:"0k",l:0,sc:0.4},
+  barracuda: {dep:[2,10,40],t:[14,22,29],b:"skh",c:0.1,f:[0.3,1],s:[0.4,1],w:"0k",l:0,sc:0.4},
+  tench_b: {dep:[2,8,15],t:[14,22,28],b:"imc",c:0.6,f:[0,0.5],s:[0,0.05],w:"n0",l:0.6,sc:0.1},
+  bowfin: {dep:[2,8,15],t:[14,22,28],b:"imc",c:0.8,f:[0,0.5],s:[0,0.05],w:"n0",l:0.5,sc:0.1},
+  bowfin_b: {dep:[2,8,15],t:[14,22,28],b:"imc",c:0.8,f:[0,0.5],s:[0,0.05],w:"n0",l:0.5,sc:0.1},
+  lago_bar: {dep:[1,6,22],t:[12,19,26],b:"shgk",c:0.4,f:[0.1,0.7],s:[0.4,1],w:"k0r",l:0,sc:0.4},
+  lag_kefal: {dep:[1,6,22],t:[12,19,26],b:"shgk",c:0.3,f:[0.1,0.7],s:[0.4,1],w:"k0r",l:0,sc:0.5},
+  mako: {dep:[5,30,200],t:[8,15,22],b:"skh",c:0,f:[0.3,1],s:[0.5,1],w:"0",l:0,sc:0.2}
+};
+const ECO_BOT = {s:"sand",g:"gravel",c:"clay",i:"silt",m:"mud",k:"stone",h:"shell",r:"reef"};
+const ECO_WED = {r:"reeds",g:"grass",n:"snags",k:"rocks",f:"reef","0":"none"};
+const ECO_BOT_RU = {sand:"песок",gravel:"галька",clay:"глина",silt:"ил",mud:"наилок",stone:"камни",shell:"ракушка",reef:"риф"};
+const ECO_WED_RU = {reeds:"камыш",grass:"трава",snags:"коряги",rocks:"камни",reef:"риф",none:"открытая вода"};
+
+/* ---------------- 8.6: ПАСПОРТ ВОДОЁМА -----------------------------------
+   Вместо «+10% к клёву» — физика: солёность, течение, прозрачность, тип.
+   salt — 0 пресная … 1 океан; flow — м/с; clarity — 0 мутная … 1 прозрачная;
+   size — «объём воды» (трофейность и ожидание); ice — never | seasonal | always */
+const LOC_ENV = {
+  lake:     {type:"lake",   salt:0.00, flow:0.25, clarity:0.55, size:0.35, ice:"seasonal", tempOff:0,
+             note:"Лесное озеро: мягкая вода, ил у камыша, яма на выходе из залива."},
+  river:    {type:"river",  salt:0.00, flow:0.95, clarity:0.70, size:0.60, ice:"part",     tempOff:-2,
+             note:"Горная река: перекаты и пороги, вода холодная и быстрая."},
+  night:    {type:"lake",   salt:0.00, flow:0.15, clarity:0.40, size:0.80, ice:"seasonal", tempOff:0,
+             note:"Тёмное озеро с омутами: днём пусто, ночью выходит трофей."},
+  winter:   {type:"lake",   salt:0.00, flow:0.05, clarity:0.80, size:0.50, ice:"always",   tempOff:-9,
+             note:"Северное озеро: лёд почти весь год, под ним холодная вода +2…+4."},
+  sea:      {type:"sea",    salt:1.00, flow:0.45, clarity:0.65, size:1.00, ice:"never",    tempOff:-5,
+             note:"Открытое море: банки, свалы и пелагиаль."},
+  swamp:    {type:"bog",    salt:0.00, flow:0.08, clarity:0.20, size:0.40, ice:"never",    tempOff:2, snagBase:0.17,
+             note:"Топь: вода цвета чая, тина и коряги, кислорода мало."},
+  mountain: {type:"brook",  salt:0.00, flow:1.25, clarity:0.95, size:0.30, ice:"part",     tempOff:-4, snagBase:0.06,
+             note:"Горное озеро с впадающей рекой: прозрачная вода, камни, течение."},
+  lagoon:   {type:"lagoon", salt:0.75, flow:0.30, clarity:0.80, size:0.50, ice:"never",    tempOff:3,
+             note:"Тёплая лагуна у рифа: солёная вода, песок и кораллы."}
+};
+
+/* профиль дна точки: глубина в метрах, грунт, укрытия, трава, локальное течение.
+   Ключи точек совпадают с LOCATIONS/CLUB_SPOTS — id не меняем. */
+const SPOT_ENV = {
+  lake: {
+    reeds:{depth:1.2, bottom:"silt",  cover:0.75, weed:"reeds", flow:0.05, drop:"flat"},
+    open: {depth:3.4, bottom:"sand",  cover:0.10, weed:"none",  flow:0.25, drop:"flat"},
+    deep: {depth:7.0, bottom:"silt",  cover:0.25, weed:"none",  flow:0.10, drop:"edge"},
+    prem_lake:{depth:6.0, bottom:"silt", cover:0.45, weed:"snags", flow:0.15, drop:"pit"}
+  },
+  river: {
+    riffle:{depth:0.8, bottom:"stone", cover:0.35, weed:"rocks", flow:1.40, drop:"flat"},
+    pool:  {depth:2.2, bottom:"gravel",cover:0.25, weed:"none",  flow:0.50, drop:"edge"},
+    rapid: {depth:3.6, bottom:"stone", cover:0.45, weed:"rocks", flow:1.90, drop:"pit"},
+    prem_river:{depth:4.2, bottom:"stone", cover:0.35, weed:"rocks", flow:1.10, drop:"pit"}
+  },
+  night: {
+    mist:  {depth:1.0, bottom:"silt", cover:0.70, weed:"reeds", flow:0.05, drop:"flat"},
+    moon:  {depth:4.0, bottom:"sand", cover:0.15, weed:"none",  flow:0.15, drop:"hump"},
+    abyss: {depth:9.5, bottom:"silt", cover:0.30, weed:"snags", flow:0.05, drop:"pit"},
+    prem_night:{depth:11.0, bottom:"silt", cover:0.40, weed:"snags", flow:0.05, drop:"pit"}
+  },
+  winter: {
+    hole:  {depth:1.5, bottom:"sand",  cover:0.20, weed:"grass", flow:0.02, drop:"flat"},
+    slope: {depth:4.5, bottom:"gravel",cover:0.15, weed:"none",  flow:0.05, drop:"edge"},
+    pit:   {depth:11.0,bottom:"silt",  cover:0.45, weed:"snags", flow:0.02, drop:"pit"},
+    prem_winter:{depth:14.0, bottom:"silt", cover:0.30, weed:"none", flow:0.02, drop:"pit"}
+  },
+  sea: {
+    shelf: {depth:6.0,  bottom:"sand", cover:0.10, weed:"none",  flow:0.50, drop:"flat"},
+    banks: {depth:18.0, bottom:"stone",cover:0.30, weed:"rocks", flow:0.60, drop:"hump"},
+    deepsea:{depth:45.0, bottom:"sand",cover:0.00, weed:"none",  flow:0.45, drop:"edge"},
+    prem_sea:{depth:60.0, bottom:"sand", cover:0.10, weed:"none", flow:0.40, drop:"pit"}
+  },
+  swamp: {
+    lilies:{depth:0.9, bottom:"silt", cover:0.80, weed:"grass", flow:0.02, drop:"flat"},
+    drift: {depth:2.0, bottom:"silt", cover:0.85, weed:"snags", flow:0.08, drop:"flat"},
+    quagmire:{depth:3.2, bottom:"mud", cover:0.60, weed:"snags", flow:0.02, drop:"pit"},
+    prem_swamp:{depth:4.0, bottom:"mud", cover:0.70, weed:"snags", flow:0.02, drop:"pit"}
+  },
+  mountain: {
+    inflow:{depth:0.7, bottom:"stone", cover:0.28, weed:"rocks", flow:1.10, drop:"flat"},
+    stones:{depth:1.6, bottom:"stone", cover:0.40, weed:"rocks", flow:0.60, drop:"flat"},
+    depth: {depth:8.5, bottom:"stone", cover:0.30, weed:"rocks", flow:0.30, drop:"edge"},
+    prem_mountain:{depth:10.0, bottom:"stone", cover:0.35, weed:"rocks", flow:0.35, drop:"pit"}
+  },
+  lagoon: {
+    shoal: {depth:1.2, bottom:"sand",  cover:0.10, weed:"none",  flow:0.30, drop:"flat"},
+    reef:  {depth:6.0, bottom:"reef",  cover:0.72, weed:"reef",  flow:0.35, drop:"hump"},
+    wall:  {depth:22.0,bottom:"reef",  cover:0.62, weed:"reef",  flow:0.40, drop:"edge"},
+    prem_lagoon:{depth:26.0, bottom:"reef", cover:0.55, weed:"reef", flow:0.40, drop:"pit"}
+  }
+};
+
+/* жёсткие пороги отбора: ниже — вид в этой точке не берётся вовсе */
+const ECO_RULE = {
+  minFit: 0.12,          // «может ли жить здесь»
+  saltMaxFresh: 0.12,    // пресная вода
+  saltMinMarine: 0.5,    // морская/солоноватая
+  iceBlock: 1            // теплолюбивые подо льдом не клюют
+};
+
 /* время суток: локальное время игрока, 4 отрезка по 6 часов */
 const DAYTIME = {
   dawn:  {name:"рассвет",  from:4,  to:10, icon:"sunrise"},
@@ -560,6 +764,8 @@ const WEATHER_ICONS = {
 
 /* ---------------- SVG иконки ---------------- */
 const ICONS = {
+  echo: '<svg viewBox="0 0 24 24" fill="none" stroke="#8fd7f0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="12" rx="2.4"/><path d="M3 11h3l2-3 2.5 6L13 8l2 3h6"/><path d="M8 20h8"/></svg>',
+  drop: '<svg viewBox="0 0 24 24" fill="none" stroke="#9fd8f0" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2c3.2 4 5.6 6.7 5.6 9.4a5.6 5.6 0 0 1-11.2 0c0-2.7 2.4-5.4 5.6-9.4z"/></svg>',
   coin: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" fill="#f7c948"/><circle cx="12" cy="12" r="9" stroke="#b8860b" stroke-width="1.6"/><path d="M12 7v10M9.5 9.2h4.2a1.9 1.9 0 0 1 0 3.8H9.5h4.4a1.9 1.9 0 0 1 0 3.8H9.5" stroke="#8a5a00" stroke-width="1.5" stroke-linecap="round"/></svg>',
   fish: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12c3-4.5 7-6 11-6 2.6 0 5 .8 6.6 2.2L18 12l2.6 3.8A11 11 0 0 1 14 18c-4 0-8-1.5-11-6z"/><circle cx="16.4" cy="10.6" r=".9" fill="currentColor" stroke="none"/></svg>',
   rod: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20L18 4"/><path d="M18 4c1.6 1.2 2.4 3 2.4 5"/><path d="M4 20c2 .4 3.4-.2 4.4-1.4"/><path d="M20.4 9c-2.2.4-4.6 2-5.4 4.4"/></svg>',
