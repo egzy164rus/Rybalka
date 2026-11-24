@@ -10,16 +10,16 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="Тихая заводь">
 <meta name="description" content="Тихая заводь — рыбалка: 105 видов рыбы, 8 водоёмов, дуэли, премиум-снасти. Работает офлайн.">
-<link rel="manifest" href="manifest.webmanifest?v=723">
-<link rel="icon" href="favicon-32.png?v=723" sizes="32x32" type="image/png">
+<link rel="manifest" href="manifest.webmanifest?v=724">
+<link rel="icon" href="favicon-32.png?v=724" sizes="32x32" type="image/png">
 <!-- iOS: иконка «На экран Домой». Safari берёт последний подходящий размер,
      поэтому перечисляем все типовые; ?v= — чтобы не подхватилась старая копия из кэша -->
-<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=723">
-<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=723">
-<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=723">
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=723">
-<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=723">
-<link rel="apple-touch-icon" href="icon-180.png?v=723">
+<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=724">
+<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=724">
+<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=724">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=724">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=724">
+<link rel="apple-touch-icon" href="icon-180.png?v=724">
 <title>Тихая заводь — рыбалка</title>
 <style>
 :root{
@@ -310,6 +310,29 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 #locInfo .li.stream{color:#cbeafd;border-color:rgba(127,200,238,.35)}
 #locInfo .li.snag{color:#ffd2b3;border-color:rgba(255,162,104,.32)}
 
+/* 8.5: буй клёва — горит, когда у водоёма «час активности» */
+#waveChip{position:absolute;z-index:12;left:50%;transform:translateX(-50%);
+  top:calc(env(safe-area-inset-top,0px) + 152px);
+  display:none;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;cursor:pointer;
+  background:linear-gradient(180deg,rgba(28,92,104,.92),rgba(12,54,64,.94));
+  border:1px solid rgba(140,240,225,.45);color:#dcfff8;
+  font:800 11.5px/1 -apple-system,Segoe UI,Roboto,sans-serif;
+  box-shadow:0 8px 22px rgba(0,40,50,.45);backdrop-filter:blur(10px)}
+#waveChip.on{display:inline-flex}
+#waveChip svg{width:13px;height:13px}
+#waveChip b{color:#8ef0d8}
+#waveChip.hot{border-color:rgba(255,225,150,.7);color:#fff7dd;
+  background:linear-gradient(180deg,rgba(120,86,20,.94),rgba(74,52,10,.95));
+  animation:waveGlow 1.6s ease-in-out infinite}
+#waveChip.hot b{color:#ffd979}
+@keyframes waveGlow{0%,100%{box-shadow:0 8px 22px rgba(0,40,50,.45),0 0 0 rgba(255,210,90,0)}
+  50%{box-shadow:0 8px 22px rgba(0,40,50,.45),0 0 22px rgba(255,210,90,.45)}}
+#waveChip i{font-style:normal;background:rgba(255,255,255,.14);padding:2px 6px;border-radius:6px;
+  font-variant-numeric:tabular-nums}
+@media (max-width:470px){
+  #waveChip{top:calc(env(safe-area-inset-top,0px) + 166px)}
+}
+
 /* кнопка прикормки у шкалы силы */
 #handBtn{position:absolute;z-index:13;right:11px;
   bottom:calc(env(safe-area-inset-bottom,0px) + 214px);
@@ -399,7 +422,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
   color:#eaf6ff;letter-spacing:.1px}
 #locMap .mapHead svg{width:14px;height:14px;color:#ffc145}
 #locMap .mapHead span{font:700 10px/1.2 -apple-system,Segoe UI,Roboto,sans-serif;color:rgba(234,246,255,.45);margin-left:auto;text-align:right}
-.mapWrap{position:relative;width:100%;height:214px;margin-top:6px}
+.mapWrap{position:relative;width:100%;height:224px;margin-top:6px}
 .mapLinks{position:absolute;inset:0;width:100%;height:100%}
 .mapLinks line{stroke:rgba(160,220,240,.20);stroke-width:.5;stroke-dasharray:2 2}
 .mapDot{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:1px;
@@ -423,6 +446,15 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 .mapDot .md-win{position:absolute;top:-10px;left:50%;transform:translateX(-50%);font:900 7px/1 -apple-system,Segoe UI,Roboto,sans-serif;
   letter-spacing:.3px;text-transform:uppercase;background:rgba(74,222,128,.92);color:#06240f;
   border-radius:999px;padding:2px 5px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.45)}
+/* 8.5: буй клёва на карте — водоём «горит» */
+.mapDot.wave .md-ico{border-color:rgba(255,225,150,.85);
+  box-shadow:0 0 0 3px rgba(255,215,120,.20),0 0 18px rgba(255,210,90,.5);animation:mapWave 1.8s ease-in-out infinite}
+.mapDot.wave .md-name{color:#ffe9a3}
+.mapDot .md-wave{position:absolute;bottom:-15px;left:50%;transform:translateX(-50%);
+  font:900 7px/1 -apple-system,Segoe UI,Roboto,sans-serif;letter-spacing:.3px;text-transform:uppercase;
+  background:linear-gradient(180deg,#ffd979,#f0a51f);color:#3a2a05;border-radius:999px;padding:2px 5px;white-space:nowrap}
+@keyframes mapWave{0%,100%{box-shadow:0 0 0 2px rgba(255,215,120,.16),0 0 14px rgba(255,210,90,.35)}
+  50%{box-shadow:0 0 0 4px rgba(255,215,120,.24),0 0 24px rgba(255,210,90,.6)}}
 .mapDot:active{transform:translate(-50%,-50%) scale(.94)}
 
 /* «пустой заброс»: приманку здесь не берут */
@@ -460,6 +492,42 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 .sheet-head .sub{font-size:11.5px;color:var(--muted);font-weight:650;margin-top:2px}
 .sheet-body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:4px 14px calc(env(safe-area-inset-bottom,0px) + 22px);-webkit-overflow-scrolling:touch}
 .sheet-body::-webkit-scrollbar{width:0}
+
+/* ============ 8.5: прогноз клёва ============ */
+#forecastBox{margin:2px 0 13px}
+.fc-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 7px}
+.fc-head b{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:850;
+  letter-spacing:1px;text-transform:uppercase;color:rgba(243,236,221,.5)}
+.fc-head b svg{width:14px;height:14px;flex:none;color:#ffd979}
+.fc-now .dot{flex-direction:column;line-height:1}
+.fc-head span{font-size:10.5px;font-weight:800;color:rgba(243,236,221,.38)}
+.fc-card{border-radius:18px;border:1px solid var(--stroke);background:rgba(255,255,255,.045);
+  padding:12px 13px;display:flex;flex-direction:column;gap:9px}
+.fc-now{display:flex;align-items:center;gap:11px}
+.fc-now .dot{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;flex:none;
+  font-weight:900;font-size:15px;border:1px solid rgba(255,255,255,.16)}
+.fc-now .ttl{flex:1;min-width:0}
+.fc-now .ttl b{display:block;font-size:14.5px;font-weight:900;letter-spacing:-.2px}
+.fc-now .ttl small{display:block;font-size:11px;font-weight:700;color:rgba(243,236,221,.55);margin-top:2px}
+.fc-bar{height:7px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden;position:relative}
+.fc-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:999px;transition:width .4s}
+.fc-why{display:flex;flex-wrap:wrap;gap:5px}
+.fc-why span{font-size:10px;font-weight:800;padding:3px 7px;border-radius:999px;
+  background:rgba(255,255,255,.07);color:rgba(243,236,221,.72)}
+.fc-why span.good{background:rgba(74,222,128,.14);color:#a7f0bd}
+.fc-why span.bad{background:rgba(255,120,90,.14);color:#ffb3a0}
+.fc-hours{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;margin-top:2px}
+.fc-hours::-webkit-scrollbar{display:none}
+.fc-h{flex:none;min-width:46px;text-align:center;border-radius:11px;padding:6px 4px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07)}
+.fc-h b{display:block;font-size:11.5px;font-weight:900;font-variant-numeric:tabular-nums}
+.fc-h small{display:block;font-size:8.5px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;
+  color:rgba(243,236,221,.4);margin-top:2px}
+.fc-h.wave{border-color:rgba(255,210,90,.55);background:linear-gradient(180deg,rgba(255,205,90,.2),rgba(255,205,90,.07))}
+.fc-h.wave b{color:#ffe9a3}
+.fc-h.wave small{color:rgba(255,233,163,.75)}
+.fc-h.now{box-shadow:0 0 0 1px rgba(167,240,189,.55) inset}
+.fc-note{font-size:10.5px;font-weight:700;color:rgba(243,236,221,.42);line-height:1.45}
 
 /* ============ base / locations ============ */
 .locCard{
@@ -1047,6 +1115,7 @@ button.buy.prem:disabled{opacity:.5}
   </div>
   <div id="xpbar"><div id="xpfill"></div></div>
   <div id="locInfo"></div>
+  <button id="waveChip" aria-label="Буй клёва"></button>
   <div id="duelChip"></div>
 
   <div id="hint"></div>
@@ -1107,6 +1176,7 @@ button.buy.prem:disabled{opacity:.5}
       </button>
     </div>
     <div class="sheet-body">
+      <div id="forecastBox"></div>
       <div id="locMap"></div>
       <div id="locList"></div>
       <div class="secTitle">Снаряжение</div>
@@ -1172,7 +1242,7 @@ button.buy.prem:disabled{opacity:.5}
     <div class="sheet-head">
       <div style="flex:1">
         <h2>Как играть</h2>
-        <div class="sub">Десять шагов и восемь правил</div>
+        <div class="sub">Двенадцать шагов и восемь правил</div>
       </div>
       <button class="roundbtn" data-close="sheetHelp" aria-label="Закрыть">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
@@ -1189,7 +1259,10 @@ button.buy.prem:disabled{opacity:.5}
         <div class="hr"><span class="hrIco" data-ico="knot"></span><div><b>Зацепы</b>В коряжнике снасть садится: короткие подёргивания освобождают почти без потерь, сильный рывок — быстрее, но с риском.</div></div>
         <div class="hr"><span class="hrIco" data-ico="feed"></span><div><b>Прикормка</b>Кнопка у шкалы силы: за монеты клёв и размер рыбы растут на полторы минуты.</div></div>
         <div class="hr"><span class="hrIco" data-ico="swords"></span><div><b>Дуэли</b>Топь, Горное озеро и Лагуна: 12 забросов против соперника, победа по весу даёт жемчуг.</div></div>
-        <div class="hr"><span class="hrIco" data-ico="star"></span><div><b>Квесты</b>50 заданий и 3 ежедневные цели дают монеты, опыт и снасти.</div></div>
+        <div class="hr"><span class="hrIco" data-ico="buoy"></span><div><b>Буй клёва</b>У водоёма есть «час активности»: поклёвки почти вдвое быстрее, рыба крупнее. Прогноз часов — на «Базе», чип в HUD подскажет, сколько ждать.</div></div>
+        <div class="hr"><span class="hrIco" data-ico="bait"></span><div><b>Любимое место</b>У каждого вида своя точка — там он берёт чаще. Карточка вида в дневнике показывает, где искать.</div></div>
+        <div class="hr"><span class="hrIco" data-ico="bolt"></span><div><b>Сигнальный шар</b>Во время буя у поплавка всплывает бирюзовый буёк: тапни по нему — внутри монеты.</div></div>
+        <div class="hr"><span class="hrIco" data-ico="star"></span><div><b>Квесты</b>53 задания и 3 ежедневные цели дают монеты, опыт и снасти.</div></div>
       </div>
       <button class="btn" id="btnHelpOk">Понятно, на воду</button>
     </div>
@@ -1713,6 +1786,19 @@ const CLUB_SPOTS = {
    Чем выше ранг, тем щедрее набор — это ещё одно преимущество уровня. */
 /* НАЖИВКА ДНЯ (новая механика 7.5): раз в сутки в каждом водоёме есть приманка,
    на которую рыба берёт заметно охотнее. Множитель клёва и бонус к опыту. */
+/* ---------------- 8.5: ПРОГНОЗ КЛЁВА ----------------
+   Набор «живых» факторов, из которых складывается ожидание поклёвки.
+   Прогноз ничего не отменяет — он показывает, куда и когда идти. */
+const FORECAST = {
+  great: {name:"отличный клёв", color:"#a7f0bd", ico:"bolt"},
+  good:  {name:"хороший клёв",  color:"#ffe9a3", ico:"sun"},
+  fair:  {name:"средний клёв",  color:"#cbeafd", ico:"wave"},
+  poor:  {name:"вялый клёв",    color:"#ffb3a0", ico:"clock"}
+};
+/* ---------------- 8.5: ЛЮБИМЫЕ МЕСТА РЫБЫ ----------------
+   Вид «привязан» к точке: у трёх точек водоёма разные любимчики.
+   Попал в любимую точку — этот вид клюёт чаще; карточка вида показывает, где его искать. */
+const FISH_ZONE_BONUS = 1.55;
 const BAIT_DAY = {
   mul: 1.42,        // клёв на приманку дня
   xp: 0.10,         // бонус к опыту
@@ -1772,6 +1858,17 @@ const HAND = {                                                        // при�
   klyov:1.35,      // множитель клёва
   size:1.06,       // рыба чуть крупнее
   xp:0.05
+};
+/* ---------------- 8.5: БУЙ КЛЁВА (окно активности) ----------------
+   У каждого водоёма есть свой «час клёва»: рыба поднимается и клюёт вдвое охотнее.
+   Часы разные по дням (детерминированно от даты и водоёма), поэтому у игрока есть
+   смысл заглядывать в водоём в разное время — и «ехать на буй», когда он загорится. */
+const BITE_WAVE = {
+  dur: 60,          // окно действует час (60 минут)
+  every: 3,         // начинается раз в ~3 часа (ровные слоты суток)
+  klyov: 0.52,      // ожидание поклёвки ×0.52 — примерно вдвое быстрее
+  size: 1.10,
+  coins: 1.05
 };
 const SNAG = {
   loseBait:0.45,   // шанс потерять приманку при зацепе
@@ -1865,6 +1962,7 @@ const ICONS = {
   knot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17c-2.4 0-4-1.7-4-3.8 0-1.6 1-3 2.6-3.6C6.2 7.4 8.1 6 10.4 6c2 0 3.6.9 4.6 2.4"/><path d="M15 8.4c2.2 0 4 1.6 4 3.7 0 2.1-1.8 3.7-4 3.7-.9 0-1.7-.2-2.4-.6"/><path d="M9.4 11.2c-1 0-1.8.8-1.8 1.8s.8 1.8 1.8 1.8c1.4 0 2.4-1 3.4-2.4 1-1.4 2-2.4 3.4-2.4"/></svg>',
   feed: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.4 8.2A2.6 2.6 0 0 1 15 18.4H9a2.6 2.6 0 0 1-2.6-2.2L5 8z"/><path d="M8 5.4l1 2.6M12 4.4l0 3.2M16 5.4l-1 2.6"/><path d="M7 21h10"/></svg>',
   swords: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l9 9M4 4v3.4M4 4h3.4M20 4l-9 9M20 4v3.4M20 4h-3.4"/><path d="M7.6 15.4l2.8 2.8M16.4 15.4l-2.8 2.8"/><path d="M5 21l3-3M19 21l-3-3"/></svg>',
+  buoy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5a5.5 5.5 0 0 1 5.5 5.5c0 3-2.4 5.2-5.5 8.2C8.9 14.2 6.5 12 6.5 9A5.5 5.5 0 0 1 12 3.5z"/><path d="M4 20h16"/></svg>',
   sunrise: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v3M5.6 7.6L7.4 9.4M2.6 14h3M18.4 7.6l-1.8 1.8M18.4 14h3"/><path d="M7 17a5 5 0 0 1 10 0"/><path d="M3 20h18"/></svg>',
   sunset: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v3M5.6 7.6L7.4 9.4M2.6 14h3M18.4 7.6l-1.8 1.8M18.4 14h3"/><path d="M7 17a5 5 0 0 1 10 0"/><path d="M3 20h18"/><path d="M10 12l2 2 2-2"/></svg>'
 };
@@ -2060,6 +2158,19 @@ QUESTS.push(
   {id:"q_alllocs", chapter:"Восемь",  title:"Все водоёмы",     sub:"Поймай рыбу в каждом из 8 водоёмов",
    goal:{type:"allLocs", n:8},  reward:{coins:1500, xp:700, pearl:2},
    tip:"Топь, Горное озеро и Лагуна — самые «дорогие» по уровню, но и самые богатые."}
+);
+
+/* --- 8.5: буй клёва и прогноз --- */
+QUESTS.push(
+  {id:"q_wave",    chapter:"Приметы", title:"На буй",       sub:"Поймай 5 рыб во время буя клёва",
+   goal:{type:"wave", n:5},  reward:{coins:520, xp:260, bait:"caddis", baitN:25},
+   tip:"Буй клёва горит в HUD, когда у водоёма «час активности». В прогоде на «Базе» видно, когда ждать."},
+  {id:"q_home",    chapter:"Приметы", title:"Любимое место", sub:"Поймай 6 рыб в их любимых точках",
+   goal:{type:"home", n:6},  reward:{coins:640, xp:300, pearl:1},
+   tip:"В карточке вида из дневника написано, в какой точке он держится чаще."},
+  {id:"q_forecast",chapter:"Приметы", title:"Сигнальный шар", sub:"Забери 2 сигнальных шара из воды",
+   goal:{type:"signal", n:2}, reward:{coins:480, xp:230, bait:"corn", baitN:30},
+   tip:"Сигнальный шар всплывает у поплавка во время буя: удержи его барраж за пару секунд."}
 );
 
 /* ежедневные цели: обновляются по дате (стабильны в течение дня) */
@@ -2464,6 +2575,131 @@ function timeMults(loc){
   if (windowOn(loc)) return {klyov:WINDOW_K.klyov, size:WINDOW_K.size, coins:WINDOW_K.coins, pearl:WINDOW_K.pearl};
   return {klyov:OFF_WINDOW_K, size:1, coins:1, pearl:0};
 }
+/* ---- 8.5: любимые места рыбы ---------------------------------------------
+   У каждой точки водоёма есть «свои» виды: там они держатся чаще.
+   Правила приманки и силы удочки это не отменяет — только подсказывает, куда бросать. */
+function fishHomeSpots(id, locKey){
+  const L = LOCATIONS[locKey || save.loc] || LOCATIONS.lake;
+  const out = [];
+  for (const sp of L.spots) if (sp.w && sp.w[id]) out.push(sp);
+  // «дом» — точка, где вид весит больше всего относительно своего обычного веса
+  out.sort((a,b) => (b.w[id]/avgW(b)) - (a.w[id]/avgW(a)));
+  return out;
+}
+/* любимые точки вида во всех водоёмах: [{loc, name}] — для карточки дневника */
+function fishHomes(id, limit){
+  const out = [];
+  for (const lk in LOCATIONS){
+    const home = fishHomeSpots(id, lk)[0];
+    if (home) out.push({ loc: lk, locName: LOCATIONS[lk].name, name: home.name });
+  }
+  return limit ? out.slice(0, limit) : out;
+}
+const avgW = (sp) => {
+  const v = Object.values(sp.w || {});
+  return v.length ? v.reduce((a,b) => a+b, 0)/v.length : 1;
+};
+/* точка считается любимой для вида, если она входит в топ-1 по «плотности» */
+function isFishHome(id, sp){
+  if (!sp || !sp.w || !sp.w[id]) return false;
+  // свободный заброс: считаем «домом» ближайшую именованную точку — так любимые места
+  // работают и когда игрок бросает в любое место воды
+  if (sp.free && sp.x != null){
+    const L = LOCATIONS[save.loc] || LOCATIONS.lake;
+    let best = null, bd = 1e9;
+    for (const q of L.spots){
+      const d = Math.hypot((sp.x - q.x)*W, (sp.y - q.y)*H);
+      if (d < bd){ bd = d; best = q; }
+    }
+    if (best) return isFishHome(id, best);
+  }
+  const home = fishHomeSpots(id)[0];
+  return !!home && home.id === sp.id;
+}
+
+/* ---- 8.5: прогноз клёва ---------------------------------------------------
+   Складываем то, что игрок видит своими глазами: время суток водоёма, буй, погоду,
+   прикормку и свою точность заброса. Правила приманки и силы удочки не учитываем —
+   они и так видны в карточке вида. */
+function biteForecast(loc){
+  loc = loc || save.loc;
+  const m = locMech(loc);
+  const wt = (loc === save.loc) ? weatherNow() : (WEATHER[m.weather[0]] || WEATHER.sunny);
+  let k = 1, why = [];
+  if (windowOn(loc)){ k *= WINDOW_K.klyov; why.push("своё время"); } else { k *= OFF_WINDOW_K; why.push("не своё время"); }
+  if (waveOn(loc)){ k *= 1/BITE_WAVE.klyov; why.push("буй клёва"); }
+  k *= clamp(wt.bite, 0.5, 1.5);
+  if (wt.bite >= 1.05) why.push(wt.name.toLowerCase());
+  else if (wt.bite < 0.8) why.push(wt.name.toLowerCase() + " мешает");
+  if (loc === save.loc && handActive()){ k *= HAND.klyov; why.push("прикормка"); }
+  if (m.stream >= 0.5) k *= 1 / (1 + m.stream*0.12);
+  const score = clamp((k - 0.7) / 0.75, 0, 1);
+  const level = score >= 0.78 ? "great" : score >= 0.55 ? "good" : score >= 0.33 ? "fair" : "poor";
+  return { score, level, def: FORECAST[level], why, mult: k };
+}
+
+/* 8.5: подмена «сейчас» для тестов прогноза (null — реальные часы устройства) */
+let WAVE_FORCE = null;
+const waveNowHour = () => WAVE_FORCE === null ? new Date().getHours() : WAVE_FORCE;
+/* ---- 8.5: буй клёва —«час активности» водоёма -------------------------------
+   Часы выбираются детерминированно: одинаковые у всех, не «моргают» при перезагрузке.
+   Водоём получает один слот каждые `every` часов; конкретный час зависит от даты и водоёма,
+   поэтому у каждого дня свой «буй» и есть смысл заглянуть в водоём в разное время. */
+function waveSeed(loc, d){
+  const key = todayKey() + "|" + (loc || save.loc);
+  let h = 0;
+  for (const ch of key) h = (h*31 + ch.charCodeAt(0)) % 99991;
+  return (h + d * 7) % 24;
+}
+/* слот буя по локальным часам (UTC+3 у игрока — берём локальные часы устройства) */
+function waveHourNow(){
+  const d = new Date();
+  const slot = Math.floor(waveNowHour() / BITE_WAVE.every) * BITE_WAVE.every;
+  return slot + (waveSeed(null, slot) % BITE_WAVE.every);
+}
+/* сколько минут осталось до конца окна (для чипа в HUD) */
+const waveMinsLeft = () => {
+  const d = new Date();
+  return Math.max(1, BITE_WAVE.dur - d.getMinutes());
+};
+function waveSlot(loc, d){
+  const slot = Math.floor(d/BITE_WAVE.every)*BITE_WAVE.every;
+  return (slot + (waveSeed(loc, slot) % BITE_WAVE.every)) % 24;
+}
+function waveOn(loc){
+  const d = new Date();
+  if (waveSlot(loc, waveNowHour()) !== waveNowHour()) return false;
+  return (d.getMinutes() % BITE_WAVE.dur) < BITE_WAVE.dur;
+}
+/* когда следующий буй: «через 1 ч 20 мин» */
+function waveIn(loc){
+  const d = new Date();
+  const nowMin = waveNowHour()*60 + d.getMinutes();
+  for (let k=0;k<8;k++){
+    const base = Math.floor(waveNowHour()/BITE_WAVE.every) + k;
+    const slotH = base * BITE_WAVE.every % 24;
+    const h = (slotH + (waveSeed(loc, (base*BITE_WAVE.every)) % BITE_WAVE.every)) % 24;
+    let at = h*60;
+    if (at <= nowMin) at += 24*60;
+    const diff = at - nowMin;
+    if (diff >= 0) return Math.max(0, diff);
+  }
+  return 180;
+}
+const fmtMins = m => m >= 60 ? Math.floor(m/60) + " ч " + (m%60 ? (m%60) + " мин" : "").trim() : m + " мин";
+const waveMult = (loc) => waveOn(loc) ? 1 / BITE_WAVE.klyov : 1;
+/* прогноз на ближайшие часы: [час, будет ли буй] — для панели прогноза */
+function waveForecast(loc, n){
+  const out = [];
+  for (let k=0;k<(n||6);k++){
+    const base = Math.floor(waveNowHour()/BITE_WAVE.every) + k;
+    const slotH = (base * BITE_WAVE.every) % 24;
+    const h = (slotH + (waveSeed(loc, base*BITE_WAVE.every) % BITE_WAVE.every)) % 24;
+    out.push({h, on: h === waveNowHour() && waveOn(loc)});
+  }
+  return out;
+}
+
 /* ---- прикормка: игрок «сыплет» её в точку и получает ускорение клёва ---- */
 function handActive(){
   if (!save.hand) return false;
@@ -2640,6 +2876,75 @@ function updateSnag(dt){
   }
 }
 
+/* ---- 8.5: сигнальный шар ---------------------------------------------------
+   Во время буя клёва у поплавка иногда всплывает сигнальный шар: пара секунд внимания —
+   и он твой (монеты + опыт + счёт в квест). Пропустил — утонул, ничего страшного. */
+const BUOY = { x:0, y:0, t:0, ttl:0, active:false, bob:0, taken:0 };
+function maybeSpawnBuoy(){
+  if (!waveOn(save.loc)) return false;
+  if (BUOY.active) return false;
+  if (Math.random() > 0.22) return false;      // не в каждом забросе
+  BUOY.active = true; BUOY.t = 0; BUOY.ttl = 4.2;
+  // шар всплывает рядом, но не под поплавком: сбоку и чуть ниже по воде
+  const side = G.bobX > W*0.5 ? -1 : 1;
+  BUOY.x = clamp(G.bobX + side*rnd(86, 148), W*0.08, W*0.92);
+  BUOY.y = wY() + rnd(2, 22);
+  BUOY.bob = 0;
+  // подпись держим внутри экрана: у правого края уезжает за кадр
+  floatText("шар!", clamp(BUOY.x, W*0.16, W*0.84), BUOY.y - 34, "#8ef0d8");
+  return true;
+}
+function takeBuoy(){
+  if (!BUOY.active) return false;
+  BUOY.active = false; BUOY.taken = (BUOY.taken||0) + 1;
+  const coins = 40 + Math.round(levelInfo().lvl * 6);
+  save.coins += coins; save.xp += 12;
+  questBump("signal");
+  persist(); updateChips();
+  burst(BUOY.x, BUOY.y, 18, 200); ring(BUOY.x);
+  sfx.buy ? sfx.buy() : sfx.tap();
+  floatText("+" + coins + " монет", BUOY.x, BUOY.y - 30, "#ffe9a3");
+  toast("Сигнальный шар", "Внутри " + coins + " монет и немного опыта.", 1600);
+  return true;
+}
+function updateBuoy(dt){
+  if (!BUOY.active) return;
+  BUOY.t += dt; BUOY.bob += dt;
+  if (BUOY.t > BUOY.ttl){
+    BUOY.active = false;
+    floatText("шар утонул", BUOY.x, BUOY.y - 26, "#8fb3c4");
+  }
+}
+function drawBuoy(g){
+  if (!BUOY.active) return;
+  const k = 1 - clamp(BUOY.t / BUOY.ttl, 0, 1);
+  const y = BUOY.y + Math.sin(BUOY.bob*2.4)*3;
+  ctx.save();
+  // круги на воде под шаром
+  for (let i=0;i<2;i++){
+    const ph = ((BUOY.bob*0.8 + i*0.5) % 1);
+    ctx.beginPath();
+    ctx.ellipse(BUOY.x, y + 8, 10 + ph*26, 4 + ph*9, 0, 0, Math.PI*2);
+    ctx.strokeStyle = "rgba(200,240,255," + (0.30*(1-ph)*k) + ")";
+    ctx.lineWidth = 1.4; ctx.stroke();
+  }
+  // сам шар: бирюзовый сигнальный буёк, светится — его не спутать с поплавком
+  const glow = 0.55 + 0.45*Math.sin(BUOY.bob*3.4);
+  ctx.beginPath(); ctx.arc(BUOY.x, y, 15, 0, Math.PI*2);
+  ctx.fillStyle = "rgba(120,240,225," + (0.10 + glow*0.12) + ")"; ctx.fill();
+  ctx.beginPath(); ctx.arc(BUOY.x, y, 9, 0, Math.PI*2);
+  const bg = ctx.createRadialGradient(BUOY.x-3, y-3.5, 1.5, BUOY.x, y, 10);
+  bg.addColorStop(0, "#f2fffd"); bg.addColorStop(0.5, "#6fe9dc"); bg.addColorStop(1, "#159c96");
+  ctx.fillStyle = bg; ctx.fill();
+  ctx.strokeStyle = "rgba(220,255,250,"+(0.45 + glow*0.4)+")"; ctx.lineWidth = 1.4; ctx.stroke();
+  // антенка с маячком
+  ctx.beginPath(); ctx.moveTo(BUOY.x, y - 8); ctx.lineTo(BUOY.x, y - 15);
+  ctx.strokeStyle = "rgba(230,255,250,.75)"; ctx.lineWidth = 1.6; ctx.stroke();
+  ctx.beginPath(); ctx.arc(BUOY.x, y - 16, 2.6, 0, Math.PI*2);
+  ctx.fillStyle = "rgba(255,250,200," + (0.55 + 0.45*Math.sin(BUOY.bob*7)) + ")"; ctx.fill();
+  ctx.restore();
+}
+
 /* ---- дуэли: 12 забросов против соперника, приз — жемчуг ---- */
 function duelRival(loc){
   const id = DUEL.locs[loc || save.loc];
@@ -2738,6 +3043,8 @@ function renderDuelChip(){
   const d = G.duel;
   if (!d || !d.active){ el.classList.remove("on"); return; }
   el.classList.add("on");
+  // 8.5: чип буя уступает место чипу дуэли, чтобы не наезжали друг на друга
+  const wc = $("waveChip"); if (wc) wc.classList.remove("on");
   el.innerHTML = '<span class="dc-vs">vs</span><b>' + d.rival.name.split(" ")[0] + '</b>' +
     '<span class="dc-score">' + fmtKg(d.mine) + ' : ' + fmtKg(d.theirs) + '</span>' +
     '<i>' + d.left + '</i>';
@@ -2763,6 +3070,8 @@ function questDone(id){ return !!(save.quests[id] && save.quests[id].done); }
 function questProgress(q){
   const st = questState(q.id);
   const g = q.goal;
+  // 8.5: счётчики «примет»
+  if (["wave","home","signal","waveBest"].includes(g.type)) return {cur: Math.min(st.prog||0, g.n), max: g.n};
   if (g.type === "species") return {cur: g.list.filter(k => save.caught[k]).length, max: g.list.length};
   if (g.type === "allLocs"){
     const n = Object.keys(LOCATIONS).filter(l => save.locsCaught[l]).length;
@@ -3223,6 +3532,8 @@ function pickFish(spot){
     if (F.sea && !rod.sea) continue;
     // «снасть на пределе» — такая рыба почти не клюёт
     v *= F.reqPower > rod.power * 0.94 ? 0.35 : 1;
+    // 8.5: в любимой точке вида он берёт заметно охотнее
+    if (isFishHome(k, spot)) v *= FISH_ZONE_BONUS;
     if (rod.tier >= 4 && F.aggr >= 0.7) v *= 1.18;
     if (F.rar === "mythic") v *= 0.55;
     w[k] = v; total += v;
@@ -3238,7 +3549,9 @@ function pickFish(spot){
   const bigDay = (baitDayOn() ? 0.10 : 0) + (locDayOn() ? 0.05 : 0) +
     (windowOn() ? 0.07 : 0) + (handActive() ? 0.05 : 0);
   const u = Math.pow(Math.random(), Math.max(0.6, 1.55 + perk("big")*3 - bigDay*2.2));   // наживка дня и лучший день — крупнее рыба
-  const weight = Math.round((F.wMin + u*(F.wMax-F.wMin)) * L.sizeMul * weatherNow().size * (1 + perk("all")));
+  const waveSize = waveOn(save.loc) ? BITE_WAVE.size : 1;
+  const weight = Math.round((F.wMin + u*(F.wMax-F.wMin)) * L.sizeMul * weatherNow().size *
+    (1 + perk("all")) * waveSize);
   const norm = clamp((weight - F.wMin*L.sizeMul) / (F.wMax*L.sizeMul - F.wMin*L.sizeMul), 0, 1);
   return {
     junk:false, type, name:F.name, rar:F.rar, note:F.note, weight, norm,
@@ -3444,8 +3757,10 @@ function biteWait(){
   const tm = timeMults(save.loc);
   const timeK = 1 / Math.max(0.7, tm.klyov);
   const handK = handActive() ? 1 / (HAND.klyov * (1 + (save.hand.gain || 0))) : 1;
+  // 8.5: буй клёва —«час активности» водоёма (ожидание почти вдвое короче)
+  const waveK = waveMult(save.loc);
   const streamK = 1 / (1 + (locMech().stream || 0) * 0.12);
-  const mean = 4.4 * richK * wxK * calmK * accK * (1 - perk("bite")) * dayK * locDayK * timeK * handK * streamK;
+  const mean = 4.4 * richK * wxK * calmK * accK * (1 - perk("bite")) * dayK * locDayK * timeK * handK * streamK * waveK;
   // сумма двух равномерных: чаще 4-8 с, реже крайности
   const g = (Math.random() + Math.random()) / 2;
   let t = mean * (0.42 + g * 1.32);
@@ -3456,6 +3771,8 @@ function biteWait(){
 function startWaiting(){
   // 8.0: коряжник может посадить снасть — зацеп решается до начала ожидания
   if (trySnag()) return;
+  // 8.5: во время буя клёва у поплавка может всплыть сигнальный шар
+  maybeSpawnBuoy();
   // ветер гонит поплавок в сторону
   const stream = locMech().stream || 0;
   const streamDrift = (stream > 0.4) ? stream * 0.42 : 0;
@@ -3663,7 +3980,8 @@ function showCatch(f){
     toast("Точная работа", "Серия точных подсечек ×" + (1 + Math.min(0.18, G.perfectStreak*0.02)).toFixed(2) + " к монетам.", 2400);
   }
     const tmC = timeMults(save.loc);
-    const dayCoinK = (baitDayOn() ? 1.10 : 1) * (locDayOn() ? LOC_DAY_K.coins : 1) * tmC.coins;
+    const dayCoinK = (baitDayOn() ? 1.10 : 1) * (locDayOn() ? LOC_DAY_K.coins : 1) * tmC.coins *
+      (waveOn(save.loc) ? BITE_WAVE.coins : 1);
     const coins = Math.round(f.weight/1000 * f.val * (1 + G.acc*0.35) * perfectBonus * (1 + perk("coin")) * dayCoinK);
     const dayXpK = 1 + (baitDayOn() ? BAIT_DAY.xp : 0);
     const xp = Math.round((f.xp + f.weight/1000*4) * (1 + perk("xp")) * dayXpK * (handActive() ? 1 + HAND.xp : 1));
@@ -3703,6 +4021,9 @@ function showCatch(f){
       }
     }
     G.perfectOnce = false;
+    // 8.5: приметы — буй клёва и любимая точка вида
+    if (waveOn(save.loc)) questBump("wave");
+    if (G.spot && isFishHome(f.type, G.spot)) questBump("home");
     questOnCatch(f);
   }
   // чипы-детали: погода, точка, точность заброса, запас прочности снасти
@@ -3719,6 +4040,7 @@ function showCatch(f){
         (baitDayOn() ? '<span class="gold">наживка дня +' + Math.round(BAIT_DAY.xp*100) + '% опыта</span>' : '') +
         (locDayOn() ? '<span class="gold">лучший день водоёма</span>' : '') +
         (windowOn() ? '<span class="gold">своё время +' + Math.round((WINDOW_K.klyov-1)*100) + '%</span>' : '') +
+        (waveOn(save.loc) ? '<span class="gold">буй клёва ×' + BITE_WAVE.size.toFixed(2) + '</span>' : '') +
         (handActive() ? '<span class="ok">прикормка</span>' : '') +
         (G.duel && G.duel.active ? '<span class="gold">дуэль · ' + G.duel.left + '</span>' : '') +
         '<span>'+(WEATHER_ICONS[wt.icon]||"")+wt.name+'</span>' +
@@ -3774,6 +4096,7 @@ function update(dt){
   const g = geo();
   updateWX(dt);
   updateIce(dt);
+  updateBuoy(dt);
 
   if (G.leap){
     G.leap.t += dt;
@@ -4573,8 +4896,39 @@ function drawPerfectFlash(g){
   ctx.restore();
 }
 
+/* 8.5: буй клёва на воде — мягкий круг у самой «живой» точки водоёма */
+function drawWaveZone(g){
+  const spots = locSpots();
+  if (!spots.length) return;
+  // «горячая» точка — та, что богаче остальных по весам (стабильно в течение окна)
+  let best = spots[0], bw = -1;
+  for (const sp of spots){
+    const wsum = Object.values(sp.w || {}).reduce((a,b) => a+b, 0);
+    if (wsum > bw){ bw = wsum; best = sp; }
+  }
+  const p = spotPos(best);
+  const k = 0.5 + 0.5*Math.sin(G.clock*1.6);
+  const s = clamp(Math.min(W,H)/620, 0.7, 1.5);
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y, (52 + k*8)*s, (17 + k*3)*s, 0, 0, Math.PI*2);
+  ctx.strokeStyle = "rgba(255,225,150," + (0.22 + k*0.12) + ")";
+  ctx.lineWidth = 1.8*s; ctx.setLineDash([6*s, 7*s]); ctx.stroke();
+  ctx.setLineDash([]);
+  // искры, поднимающиеся со дна — «рыба гуляет»
+  for (let i=0;i<5;i++){
+    const ph = ((G.clock*0.5 + i*0.21) % 1);
+    ctx.beginPath();
+    ctx.arc(p.x + Math.sin(i*2.1 + G.clock)*20*s, p.y + 6 - ph*30*s, 1.6*s*(1-ph*0.5), 0, Math.PI*2);
+    ctx.fillStyle = "rgba(255,235,180," + (0.5*(1-ph)) + ")";
+    ctx.fill();
+  }
+  ctx.restore();
+}
 function drawSpots(g){
   if (!["idle","aim","power","casting"].includes(G.state)) return;
+  // 8.5: подсвечиваем точку, где сейчас идёт буй клёва (там рыба ходит плотнее)
+  if (waveOn(save.loc)) drawWaveZone(g);
   const spots = locSpots();
   const s = clamp(Math.min(W,H)/620, 0.7, 1.5);
   for (const sp of spots){
@@ -6174,6 +6528,7 @@ function draw(){
   drawFightSwirl(g);
   drawPerfectFlash(g);
   drawBobber(g);
+  drawBuoy(g);
   drawPatience(g);
   drawFishTail(g);
   drawLine(g);
@@ -6191,6 +6546,7 @@ function draw(){
     if (typeof syncLocInfo === "function") syncLocInfo();
     if (typeof renderHandBtn === "function") renderHandBtn();
     if (typeof renderDuelChip === "function") renderDuelChip();
+    if (typeof renderWaveChip === "function") renderWaveChip();
     if (handActive() && !G._handToast){
       G._handToast = true;
       setTimeout(() => { G._handToast = false; }, 30000);
@@ -6436,6 +6792,7 @@ function updateChips(){
   renderHandBtn();
   renderDuelChip();
   syncLocInfo();
+  renderWaveChip();
   updateQuestDot();
 }
 
@@ -6456,6 +6813,32 @@ function syncLocInfo(){
   if (m.snag > 0) parts.push('<span class="li snag">' + ICONS.knot + ' коряги</span>');
   box.innerHTML = parts.join("");
 }
+/* 8.5: чип буя клёва. Показывает либо «идёт буй» с остатком минут, либо «когда будет» */
+function renderWaveChip(){
+  const el = $("waveChip");
+  if (!el) return;
+  if (["fight","power","casting","bite","snag"].includes(G.state)){ el.classList.remove("on","hot"); return; }
+  if (G.duel && G.duel.active){ el.classList.remove("on","hot"); return; }   // дуэль показывает свой чип
+  const on = waveOn(save.loc);
+  el.classList.add("on");
+  el.classList.toggle("hot", on);
+  if (on){
+    el.innerHTML = ICONS.buoy + '<b>буй клёва</b><i>' + waveMinsLeft() + ' мин</i>';
+    el.title = "Час активности: поклёвки почти вдвое быстрее, рыба крупнее. Не уходи с воды.";
+  } else {
+    el.innerHTML = ICONS.buoy + '<b>буй</b><i>через ' + fmtMins(waveIn(save.loc)) + '</i>';
+    el.title = "Буй клёва у этого водоёма начнётся через " + fmtMins(waveIn(save.loc)) +
+      ". Прогноз всех водоёмов — на «Базе».";
+  }
+  el.onclick = () => {
+    const f = biteForecast(save.loc);
+    toast("Прогноз: " + f.def.name,
+      (on ? "Буй идёт ещё " + waveMinsLeft() + " мин. " : "Буй через " + fmtMins(waveIn(save.loc)) + ". ") +
+      (f.why.length ? "Сейчас: " + f.why.join(", ") + "." : ""), 2600);
+    sfx.tap();
+  };
+}
+
 function updateTabState(){
   const fishing = ["idle","aim","power","casting","waiting","bite","fight"].includes(G.state);
   document.querySelectorAll(".tab").forEach(t => {
@@ -6549,17 +6932,20 @@ function renderLocMap(){
     const sea = L.seaReq && !rodDef().sea;
     const act = save.loc === k;
     const on = windowOn(k);
-    return '<button class="mapDot'+(act?" on":"")+(locked?" locked":"")+(sea?" sea":"")+(on?" win":"")+
+    const wv = waveOn(k);                    // 8.5: у водоёма идёт буй клёва
+    return '<button class="mapDot'+(act?" on":"")+(locked?" locked":"")+(sea?" sea":"")+(on?" win":"")+(wv?" wave":"")+
       '" data-map="'+k+'" style="left:'+(P.x*100)+'%;top:'+(P.y*100)+'%">' +
       '<span class="md-ico">'+(LOC_ICON[k]||"~")+'</span>' +
       '<span class="md-name">'+L.short+'</span>' +
-      (locked ? '<span class="md-lvl">'+L.unlock+'</span>' : on ? '<span class="md-win">сейчас</span>' : '') +
+      (locked ? '<span class="md-lvl">'+L.unlock+'</span>' : wv ? '<span class="md-wave">буй</span>' : on ? '<span class="md-win">сейчас</span>' : '') +
       '</button>';
   }).join("");
   box.innerHTML =
     '<div class="mapHead"><b>'+ICONS.map+' Карта водоёмов</b>' +
       '<span>'+Object.keys(save.locsCaught||{}).length+' из '+keys.length+' освоено · тап — перейти</span></div>' +
     '<div class="mapWrap"><svg class="mapLinks" viewBox="0 0 100 100" preserveAspectRatio="none">'+pts+'</svg>'+dots+'</div>';
+  // 8.5: после открытия карты полоска прогноза должна быть свежей
+  if (typeof renderForecast === "function") setTimeout(renderForecast, 0);
   box.querySelectorAll("[data-map]").forEach(b => {
     b.addEventListener("click", () => {
       const k = b.dataset.map, L = LOCATIONS[k];
@@ -6594,8 +6980,55 @@ function locMechRow(key){
   return '<div class="locMech">'+chips.join("")+'</div>';
 }
 
+/* ---- 8.5: панель прогноза на «Базе» -------------------------------------
+   Одна карточка «как сейчас клюёт» и полоска ближайших часов с буями.
+   Всё честно: считается из тех же множителей, что и сама поклёвка. */
+function renderForecast(){
+  const box = $("forecastBox");
+  if (!box) return;
+  const f = biteForecast(save.loc);
+  const on = waveOn(save.loc);
+  const hours = waveForecast(save.loc, 6);
+  const nowH = new Date().getHours();
+  const pct = Math.round(f.score * 100);
+  const col = f.def.color;
+  const bar = '<div class="fc-bar"><i style="width:' + pct + '%;background:linear-gradient(90deg,' +
+    col + '55,' + col + ')"></i></div>';
+  const why = f.why.map(w => {
+    const bad = /не своё|мешает/.test(w);
+    return '<span class="' + (bad ? "bad" : "good") + '">' + w + '</span>';
+  }).join("");
+  box.innerHTML =
+    '<div class="fc-head"><b>' + ICONS.bolt + ' Прогноз клёва</b><span>' +
+      (on ? "буй клёва · " + waveMinsLeft() + " мин" : "буй через " + fmtMins(waveIn(save.loc))) + '</span></div>' +
+    '<div class="fc-card">' +
+      '<div class="fc-now">' +
+        '<div class="dot" style="color:' + col + ';background:' + col + '1f;border-color:' + col + '55">' +
+          pct + '<small style="font-size:8px">%</small></div>' +
+        '<div class="ttl"><b style="color:' + col + '">' + f.def.name + '</b>' +
+          '<small>' + locDef().name + ' · ' + (DAYTIME[dayTimeNow()] || DAYTIME.day).name +
+          (on ? ' · буй' : '') + '</small></div>' +
+      '</div>' + bar +
+      (why ? '<div class="fc-why">' + why + '</div>' : "") +
+      '<div class="fc-hours">' + hours.map(h =>
+        '<div class="fc-h' + (h.on ? " wave" : "") + (h.h === nowH ? " now" : "") + '">' +
+          '<b>' + String(h.h).padStart(2,"0") + ':00</b><small>' + (h.on ? "буй" : "—") + '</small></div>').join("") +
+      '</div>' +
+      '<div class="fc-note">' + (on
+        ? "Буй идёт: поклёвки почти вдвое быстрее, рыба крупнее. Самое время бросать."
+        : "Буй — час активности водоёма. В прогнозе часы, когда он загорится: приходи к этому времени.") +
+      '</div>' +
+    '</div>';
+  box.querySelectorAll(".fc-h.wave").forEach(el => el.addEventListener("click", () => {
+    sfx.tap();
+    toast("Буй", "В этот час у водоёма «час активности»: клёв ×" + Math.round(1/BITE_WAVE.klyov*10)/10 +
+      " быстрее, рыба +" + Math.round((BITE_WAVE.size-1)*100) + "% к весу.", 2400);
+  }));
+}
+
 function renderBase(){
   const li = levelInfo();
+  renderForecast();
   renderLocMap();
   const list = $("locList");
   list.innerHTML = "";
@@ -6868,9 +7301,10 @@ function questRewardText(r){
   const p = [];
   if (r.coins) p.push('<span class="rw coins">'+ICONS.coin + r.coins+'</span>');
   if (r.xp) p.push('<span class="rw xp">'+ICONS.star + r.xp+'</span>');
-  if (r.rod) p.push('<span class="rw item">'+ICONS.rod + RODS[r.rod].name+'</span>');
-  if (r.line) p.push('<span class="rw item">'+ICONS.line + LINES[r.line].name+'</span>');
-  if (r.bait) p.push('<span class="rw item">'+ICONS.bait + r.baitN+'×'+BAITS[r.bait].name+'</span>');
+  // защита от опечаток в таблице квестов: неизвестный предмет просто не показываем
+  if (r.rod && RODS[r.rod]) p.push('<span class="rw item">'+ICONS.rod + RODS[r.rod].name+'</span>');
+  if (r.line && LINES[r.line]) p.push('<span class="rw item">'+ICONS.line + LINES[r.line].name+'</span>');
+  if (r.bait && BAITS[r.bait]) p.push('<span class="rw item">'+ICONS.bait + r.baitN+'×'+BAITS[r.bait].name+'</span>');
   return p.join("");
 }
 /* клубная карточка: уровень, перки и ежедневный набор */
@@ -7136,6 +7570,7 @@ function showFishCard(id){
     '<div><small>Вес</small><b>'+fmtKg(F.wMin)+'–'+fmtKg(F.wMax)+' кг</b></div>' +
     '<div><small>Цена</small><b>'+F.val+'/кг</b></div>' +
     '<div style="grid-column:1/-1"><small>Водоёмы</small><b>'+where.join(" · ")+'</b></div>' +
+    '<div style="grid-column:1/-1"><small>Любимая точка</small><b>'+fishHomes(id, 3).map(h => h.name + " — " + h.locName).join(" · ")+'</b></div>' +
     (c ? '<div><small>Поймано</small><b>×'+c.n+'</b></div><div><small>Рекорд</small><b>'+fmtKg(c.best)+' кг</b></div>' : "");
   el.classList.add("on");
 }
@@ -7189,6 +7624,11 @@ function pressStart(x, y, fromButton){
     }
     case "power": break;
     case "waiting": {
+      // 8.5: сигнальный шар важнее подёргивания — если он всплыл, тап забирает его
+      if (BUOY.active && x != null){
+        const d = Math.hypot(x - BUOY.x, y - BUOY.y);
+        if (d < 58){ takeBuoy(); break; }
+      }
       // подёргивание приманки (зимой — мормышки): рыба «оживает» и интерес растёт
       if (G.jigT <= 0){
         G.jigT = 0.42;
@@ -7398,7 +7838,9 @@ function renderHelp(){
     ["7","<b>Жемчуг</b> падает за редкую рыбу, за квесты и за победу в дуэли. За него в магазине берут премиум-снасти — навсегда."],
     ["8","<b>У каждого водоёма свой характер.</b> Течение тянет поплавок, в коряжнике снасть садится на зацеп, а в «своё» время суток клёв и рыба заметно лучше — всё написано в карточке водоёма."],
     ["9","<b>Прикормка</b> — кнопка у шкалы силы: за монеты клёв +35% и рыба крупнее на полторы минуты. Работает в том водоёме, где сыпал."],
-    ["10","<b>Дуэль «стенка на стенку»</b>: в Топи, Горном озере и Лагуне вызывай соперника на 12 забросов. Побеждаешь по весу — жемчуг."]
+    ["10","<b>Дуэль «стенка на стенку»</b>: в Топи, Горном озере и Лагуне вызывай соперника на 12 забросов. Побеждаешь по весу — жемчуг."],
+    ["11","<b>Буй клёва</b> — час активности водоёма: поклёвки почти вдвое быстрее, рыба крупнее. Смотри прогноз на «Базе» и чип в HUD, чтобы не пропустить. Во время буя у поплавка всплывает <b>сигнальный шар</b> — тапни по нему и забери монеты."],
+    ["12","<b>Любимые места.</b> У каждого вида есть своя точка: бросай туда — он берёт чаще. Любимую точку видно в карточке вида в дневнике."]
   ].map(([n,t]) => '<div class="step"><div class="n">'+n+'</div><p>'+t+'</p></div>').join("")
 }
 
@@ -7738,6 +8180,21 @@ window.__mech = () => ({
   locs: Object.keys(LOCATIONS).length, fish: Object.keys(FISH).length, quests: QUESTS.length
 });
 window.__setTime = (h) => { DAY_FORCE = (h === null || h === undefined) ? null : h; syncLocInfo(); updateChips(); return dayTimeNow(); };
+window.__setWave = (h) => { WAVE_FORCE = (h === null || h === undefined) ? null : h; updateChips(); return { hour: waveNowHour(), on: waveOn(save.loc) }; };
+window.__wave = (loc) => ({
+  on: waveOn(loc || save.loc), hour: waveNowHour(), left: waveMinsLeft(), inMin: waveIn(loc || save.loc),
+  forecast: waveForecast(loc || save.loc, 6).map(x => x.h),
+  buoy: { active: BUOY.active, taken: BUOY.taken || 0 },
+  mult: waveMult(save.loc)
+});
+window.__forecast = (loc) => { const f = biteForecast(loc); return { score:+f.score.toFixed(3), level:f.level, why:f.why, mult:+f.mult.toFixed(3) }; };
+window.__homes = (id) => fishHomes(id);
+window.__isHome = (id, spotId) => {
+  const sp = spotId ? locSpots().find(x => x.id === spotId) : G.spot;
+  return !!(sp && isFishHome(id, sp));
+};
+window.__buoySpawn = () => { G.state = "waiting"; G.bobX = W*0.5; maybeSpawnBuoy(); return { active: BUOY.active, x: Math.round(BUOY.x), y: Math.round(BUOY.y) }; };
+window.__buoyTake = () => takeBuoy();
 window.__dropHand = () => dropHand();
 window.__setSnag = (on) => {
   if (on && G.state !== "snag"){ enterSnag(); return G.state; }

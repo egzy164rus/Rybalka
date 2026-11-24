@@ -24,7 +24,7 @@ const world = await p.evaluate(() => ({
   mechAll: Object.keys(__test.LOCATIONS).every(k => !!__locMech(k)),
   clubSpots: Object.keys(__test.LOCATIONS).every(k => !!__club().spots.length)
 }));
-check("8 водоёмов, 105 видов, 50 квестов", world.locs === 8 && world.fish === 105 && world.quests === 50, world);
+check("8 водоёмов, 105 видов, 53 квеста", world.locs === 8 && world.fish === 105 && world.quests === 53, world);
 check("у каждого водоёма есть механика и точки", world.mechAll && world.clubSpots);
 
 /* ---------- 2. правила: своя приманка и сила удочки на всех водоёмах ---------- */
@@ -72,17 +72,21 @@ check("окно водоёма ускоряет клёв", time.inWin < time.off
 check("время суток определяется по часам", JSON.stringify(time.map) === JSON.stringify(["night","dawn","day","dusk"]), time.map);
 
 const sizeWin = await p.evaluate(() => {
+  // 8.5: чтобы тест мерил только «своё время», гасим буй клёва (он тоже влияет на вес)
+  const f = __wave().forecast;
+  __setWave((f[0] + 1) % 24);
+  while (__wave().on) __setWave((__wave().hour + 1) % 24);
   const avgW = (h) => {
     __setTime(h);
     let sum = 0, n = 0;
-    for (let i=0;i<200;i++){
+    for (let i=0;i<260;i++){
       const f = __test.pickFish(__test.LOCATIONS.swamp.spots[1]);
       if (!f.junk){ sum += f.weight; n++; }
     }
     return +(sum/Math.max(1,n)).toFixed(0);
   };
   const w = avgW(19), o = avgW(9);
-  __setTime(null);
+  __setTime(null); __setWave(null);
   return { inWin:w, off:o };
 });
 check("в своё время рыба крупнее", sizeWin.inWin >= sizeWin.off, sizeWin);
@@ -240,6 +244,52 @@ const catchLive = await p.evaluate(async () => {
   return { name, total: __test.save().total - n0 };
 });
 check("ловля в новых водоёмах работает", catchLive.total === 1, catchLive);
+
+/* ---------- 10. 8.5: буй клёва, прогноз, любимые точки, сигнальный шар ---------- */
+const wave = await p.evaluate(() => {
+  const base = window.__wave();
+  window.__setWave(base.forecast[0]);
+  const on = window.__wave();
+  const hours = on.forecast;
+  // «через сколько» в обычный час
+  window.__setWave((hours[0] + 1) % 24);
+  const off = window.__wave();
+  const fcOn = window.__forecast();
+  return { base, on, off, fcOn, hours };
+});
+check("буй клёва включается в свой час и ускоряет клёв",
+  wave.on.on === true && wave.off.on === false && wave.on.mult > 1.5 && wave.on.left > 0, wave.on);
+check("прогноз отдаёт ближайшие часы буя", wave.hours.length === 6 && wave.hours.every(h => h >= 0 && h < 24), wave.hours);
+check("прогноз клёва считает множители", wave.fcOn.mult > 0.5 && wave.fcOn.mult < 3 && !!wave.fcOn.level, wave.fcOn);
+
+const homes = await p.evaluate(() => {
+  const h = window.__homes("som");
+  const spots = window.__test.save().loc;
+  return { h };
+});
+check("у вида есть любимые точки в разных водоёмах", homes.h.length >= 2 && homes.h[0].name, homes.h);
+
+const buoy = await p.evaluate(() => {
+  const base = window.__wave();
+  window.__setWave(base.forecast[0]);            // гарантированно «час буя»
+  let r = null;
+  for (let i=0;i<40;i++){ r = window.__buoySpawn(); if (r.active) break; }
+  const s = window.__test.save();
+  const before = s.coins;
+  const took = window.__buoyTake();
+  const after = window.__test.save().coins;
+  const again = window.__buoyTake();
+  window.__setWave((base.forecast[0] + 1) % 24); // вернуть обычный час
+  return { r, took, gain: after - before, again };
+});
+check("сигнальный шар всплывает, забирается и даёт монеты",
+  buoy.r.active && buoy.took === true && buoy.gain > 0 && buoy.again === false, buoy);
+
+const homesB = await p.evaluate(() => {
+  const k = window.__homes("karp")[0] || null;
+  return { karp: k, list: window.__homes("karp").length };
+});
+check("карточка вида знает любимую точку карпа", homesB.karp && homesB.list >= 1, homesB);
 // в песочнице fps шумит от загрузки машины: проверяем нижнюю границу кадра
 check("fps в новых водоёмах > 19", Object.values(live).every(v => v.fps > 19), live);
 

@@ -10,16 +10,16 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="Тихая заводь">
 <meta name="description" content="Тихая заводь — рыбалка: 105 видов рыбы, 8 водоёмов, дуэли, премиум-снасти. Работает офлайн.">
-<link rel="manifest" href="manifest.webmanifest?v=723">
-<link rel="icon" href="favicon-32.png?v=723" sizes="32x32" type="image/png">
+<link rel="manifest" href="manifest.webmanifest?v=724">
+<link rel="icon" href="favicon-32.png?v=724" sizes="32x32" type="image/png">
 <!-- iOS: иконка «На экран Домой». Safari берёт последний подходящий размер,
      поэтому перечисляем все типовые; ?v= — чтобы не подхватилась старая копия из кэша -->
-<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=723">
-<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=723">
-<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=723">
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=723">
-<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=723">
-<link rel="apple-touch-icon" href="icon-180.png?v=723">
+<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=724">
+<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=724">
+<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=724">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=724">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=724">
+<link rel="apple-touch-icon" href="icon-180.png?v=724">
 <title>Тихая заводь — рыбалка</title>
 <style>
 :root{
@@ -310,6 +310,29 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 #locInfo .li.stream{color:#cbeafd;border-color:rgba(127,200,238,.35)}
 #locInfo .li.snag{color:#ffd2b3;border-color:rgba(255,162,104,.32)}
 
+/* 8.5: буй клёва — горит, когда у водоёма «час активности» */
+#waveChip{position:absolute;z-index:12;left:50%;transform:translateX(-50%);
+  top:calc(env(safe-area-inset-top,0px) + 152px);
+  display:none;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;cursor:pointer;
+  background:linear-gradient(180deg,rgba(28,92,104,.92),rgba(12,54,64,.94));
+  border:1px solid rgba(140,240,225,.45);color:#dcfff8;
+  font:800 11.5px/1 -apple-system,Segoe UI,Roboto,sans-serif;
+  box-shadow:0 8px 22px rgba(0,40,50,.45);backdrop-filter:blur(10px)}
+#waveChip.on{display:inline-flex}
+#waveChip svg{width:13px;height:13px}
+#waveChip b{color:#8ef0d8}
+#waveChip.hot{border-color:rgba(255,225,150,.7);color:#fff7dd;
+  background:linear-gradient(180deg,rgba(120,86,20,.94),rgba(74,52,10,.95));
+  animation:waveGlow 1.6s ease-in-out infinite}
+#waveChip.hot b{color:#ffd979}
+@keyframes waveGlow{0%,100%{box-shadow:0 8px 22px rgba(0,40,50,.45),0 0 0 rgba(255,210,90,0)}
+  50%{box-shadow:0 8px 22px rgba(0,40,50,.45),0 0 22px rgba(255,210,90,.45)}}
+#waveChip i{font-style:normal;background:rgba(255,255,255,.14);padding:2px 6px;border-radius:6px;
+  font-variant-numeric:tabular-nums}
+@media (max-width:470px){
+  #waveChip{top:calc(env(safe-area-inset-top,0px) + 166px)}
+}
+
 /* кнопка прикормки у шкалы силы */
 #handBtn{position:absolute;z-index:13;right:11px;
   bottom:calc(env(safe-area-inset-bottom,0px) + 214px);
@@ -399,7 +422,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
   color:#eaf6ff;letter-spacing:.1px}
 #locMap .mapHead svg{width:14px;height:14px;color:#ffc145}
 #locMap .mapHead span{font:700 10px/1.2 -apple-system,Segoe UI,Roboto,sans-serif;color:rgba(234,246,255,.45);margin-left:auto;text-align:right}
-.mapWrap{position:relative;width:100%;height:214px;margin-top:6px}
+.mapWrap{position:relative;width:100%;height:224px;margin-top:6px}
 .mapLinks{position:absolute;inset:0;width:100%;height:100%}
 .mapLinks line{stroke:rgba(160,220,240,.20);stroke-width:.5;stroke-dasharray:2 2}
 .mapDot{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:1px;
@@ -423,6 +446,15 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 .mapDot .md-win{position:absolute;top:-10px;left:50%;transform:translateX(-50%);font:900 7px/1 -apple-system,Segoe UI,Roboto,sans-serif;
   letter-spacing:.3px;text-transform:uppercase;background:rgba(74,222,128,.92);color:#06240f;
   border-radius:999px;padding:2px 5px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.45)}
+/* 8.5: буй клёва на карте — водоём «горит» */
+.mapDot.wave .md-ico{border-color:rgba(255,225,150,.85);
+  box-shadow:0 0 0 3px rgba(255,215,120,.20),0 0 18px rgba(255,210,90,.5);animation:mapWave 1.8s ease-in-out infinite}
+.mapDot.wave .md-name{color:#ffe9a3}
+.mapDot .md-wave{position:absolute;bottom:-15px;left:50%;transform:translateX(-50%);
+  font:900 7px/1 -apple-system,Segoe UI,Roboto,sans-serif;letter-spacing:.3px;text-transform:uppercase;
+  background:linear-gradient(180deg,#ffd979,#f0a51f);color:#3a2a05;border-radius:999px;padding:2px 5px;white-space:nowrap}
+@keyframes mapWave{0%,100%{box-shadow:0 0 0 2px rgba(255,215,120,.16),0 0 14px rgba(255,210,90,.35)}
+  50%{box-shadow:0 0 0 4px rgba(255,215,120,.24),0 0 24px rgba(255,210,90,.6)}}
 .mapDot:active{transform:translate(-50%,-50%) scale(.94)}
 
 /* «пустой заброс»: приманку здесь не берут */
@@ -460,6 +492,42 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 .sheet-head .sub{font-size:11.5px;color:var(--muted);font-weight:650;margin-top:2px}
 .sheet-body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:4px 14px calc(env(safe-area-inset-bottom,0px) + 22px);-webkit-overflow-scrolling:touch}
 .sheet-body::-webkit-scrollbar{width:0}
+
+/* ============ 8.5: прогноз клёва ============ */
+#forecastBox{margin:2px 0 13px}
+.fc-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 7px}
+.fc-head b{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:850;
+  letter-spacing:1px;text-transform:uppercase;color:rgba(243,236,221,.5)}
+.fc-head b svg{width:14px;height:14px;flex:none;color:#ffd979}
+.fc-now .dot{flex-direction:column;line-height:1}
+.fc-head span{font-size:10.5px;font-weight:800;color:rgba(243,236,221,.38)}
+.fc-card{border-radius:18px;border:1px solid var(--stroke);background:rgba(255,255,255,.045);
+  padding:12px 13px;display:flex;flex-direction:column;gap:9px}
+.fc-now{display:flex;align-items:center;gap:11px}
+.fc-now .dot{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;flex:none;
+  font-weight:900;font-size:15px;border:1px solid rgba(255,255,255,.16)}
+.fc-now .ttl{flex:1;min-width:0}
+.fc-now .ttl b{display:block;font-size:14.5px;font-weight:900;letter-spacing:-.2px}
+.fc-now .ttl small{display:block;font-size:11px;font-weight:700;color:rgba(243,236,221,.55);margin-top:2px}
+.fc-bar{height:7px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden;position:relative}
+.fc-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:999px;transition:width .4s}
+.fc-why{display:flex;flex-wrap:wrap;gap:5px}
+.fc-why span{font-size:10px;font-weight:800;padding:3px 7px;border-radius:999px;
+  background:rgba(255,255,255,.07);color:rgba(243,236,221,.72)}
+.fc-why span.good{background:rgba(74,222,128,.14);color:#a7f0bd}
+.fc-why span.bad{background:rgba(255,120,90,.14);color:#ffb3a0}
+.fc-hours{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;margin-top:2px}
+.fc-hours::-webkit-scrollbar{display:none}
+.fc-h{flex:none;min-width:46px;text-align:center;border-radius:11px;padding:6px 4px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07)}
+.fc-h b{display:block;font-size:11.5px;font-weight:900;font-variant-numeric:tabular-nums}
+.fc-h small{display:block;font-size:8.5px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;
+  color:rgba(243,236,221,.4);margin-top:2px}
+.fc-h.wave{border-color:rgba(255,210,90,.55);background:linear-gradient(180deg,rgba(255,205,90,.2),rgba(255,205,90,.07))}
+.fc-h.wave b{color:#ffe9a3}
+.fc-h.wave small{color:rgba(255,233,163,.75)}
+.fc-h.now{box-shadow:0 0 0 1px rgba(167,240,189,.55) inset}
+.fc-note{font-size:10.5px;font-weight:700;color:rgba(243,236,221,.42);line-height:1.45}
 
 /* ============ base / locations ============ */
 .locCard{
@@ -1047,6 +1115,7 @@ button.buy.prem:disabled{opacity:.5}
   </div>
   <div id="xpbar"><div id="xpfill"></div></div>
   <div id="locInfo"></div>
+  <button id="waveChip" aria-label="Буй клёва"></button>
   <div id="duelChip"></div>
 
   <div id="hint"></div>
@@ -1107,6 +1176,7 @@ button.buy.prem:disabled{opacity:.5}
       </button>
     </div>
     <div class="sheet-body">
+      <div id="forecastBox"></div>
       <div id="locMap"></div>
       <div id="locList"></div>
       <div class="secTitle">Снаряжение</div>
@@ -1172,7 +1242,7 @@ button.buy.prem:disabled{opacity:.5}
     <div class="sheet-head">
       <div style="flex:1">
         <h2>Как играть</h2>
-        <div class="sub">Десять шагов и восемь правил</div>
+        <div class="sub">Двенадцать шагов и восемь правил</div>
       </div>
       <button class="roundbtn" data-close="sheetHelp" aria-label="Закрыть">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
@@ -1189,7 +1259,10 @@ button.buy.prem:disabled{opacity:.5}
         <div class="hr"><span class="hrIco" data-ico="knot"></span><div><b>Зацепы</b>В коряжнике снасть садится: короткие подёргивания освобождают почти без потерь, сильный рывок — быстрее, но с риском.</div></div>
         <div class="hr"><span class="hrIco" data-ico="feed"></span><div><b>Прикормка</b>Кнопка у шкалы силы: за монеты клёв и размер рыбы растут на полторы минуты.</div></div>
         <div class="hr"><span class="hrIco" data-ico="swords"></span><div><b>Дуэли</b>Топь, Горное озеро и Лагуна: 12 забросов против соперника, победа по весу даёт жемчуг.</div></div>
-        <div class="hr"><span class="hrIco" data-ico="star"></span><div><b>Квесты</b>50 заданий и 3 ежедневные цели дают монеты, опыт и снасти.</div></div>
+        <div class="hr"><span class="hrIco" data-ico="buoy"></span><div><b>Буй клёва</b>У водоёма есть «час активности»: поклёвки почти вдвое быстрее, рыба крупнее. Прогноз часов — на «Базе», чип в HUD подскажет, сколько ждать.</div></div>
+        <div class="hr"><span class="hrIco" data-ico="bait"></span><div><b>Любимое место</b>У каждого вида своя точка — там он берёт чаще. Карточка вида в дневнике показывает, где искать.</div></div>
+        <div class="hr"><span class="hrIco" data-ico="bolt"></span><div><b>Сигнальный шар</b>Во время буя у поплавка всплывает бирюзовый буёк: тапни по нему — внутри монеты.</div></div>
+        <div class="hr"><span class="hrIco" data-ico="star"></span><div><b>Квесты</b>53 задания и 3 ежедневные цели дают монеты, опыт и снасти.</div></div>
       </div>
       <button class="btn" id="btnHelpOk">Понятно, на воду</button>
     </div>
