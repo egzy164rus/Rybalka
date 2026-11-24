@@ -37,11 +37,5 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
-      # deploy-pages изредка падает с «No artifacts named github-pages» — это сбой на стороне
-      # сервиса, поэтому пробуем второй раз в том же прогоне
-      - id: deploy1
-        uses: actions/deploy-pages@v4
-        continue-on-error: true
       - id: deployment
-        if: steps.deploy1.outcome == 'failure'
         uses: actions/deploy-pages@v4
