@@ -99,6 +99,8 @@ function deepMerge(base, extra){
 function persist(){
   if (!save.firstDay) save.firstDay = todayKey();     // 8.7: точка отсчёта сезонов
   try { localStorage.setItem(KEY, JSON.stringify(save)); } catch(e){}
+  // 9.2: на Яндекс Играх прогресс дублируется в облако — один сейв на всех устройствах
+  if (typeof ygCloudSave === "function" && typeof YG !== "undefined" && YG.ready) ygCloudSave();
 }
 
 /* ---------------- экономика / уровни ---------------- */
@@ -165,6 +167,148 @@ function restockCost(ids){
 /* «сила снасти» — минимум из удочки и лески; если рыба сильнее, она уйдёт */
 const gearPower = () => Math.min(rodDef().power, lineDef().power);
 /* ============================================================================
+   9.2: ЯНДЕКС ИГРЫ — платформа, через которую идут живые деньги
+   Три источника дохода, все три уже встроены:
+   1) реклама (главный) — межстраничная и за награду;
+   2) покупки через Яндекс Pay — ими и продаётся «Клубная карта»;
+   3) Яндекс Плюс платит за время игры подписчиков (начисляется платформой сама).
+   Игра остаётся одной HTML-страницей и работает без SDK: на своём домене
+   просто не будет рекламы и покупок, всё остальное живо.
+   ========================================================================== */
+const YG = { sdk:null, payments:null, player:null, ready:false, lang:"ru", device:"desktop", adsLeft:{}, busy:false };
+const YG_PRODUCTS = {
+  pass_week:  { plan:"week",  id:"pass_week",  title:"Клубная карта · неделя",  price:99,   days:7 },
+  pass_month: { plan:"month", id:"pass_month", title:"Клубная карта · месяц",  price:249,  days:30 },
+  pass_year:  { plan:"year",  id:"pass_year",  title:"Клубная карта · год",    price:1790, days:365 },
+  pearls_100: { pearls:100,   id:"pearls_100", title:"100 жемчуга" },
+  pearls_500: { pearls:500,   id:"pearls_500", title:"500 жемчуга" }
+};
+const ygOn = () => YG.ready;
+
+/* загрузка SDK: один внешний скрипт, только на платформе; офлайн-игра не страдает */
+function ygLoad(){
+  return new Promise(resolve => {
+    if (window.YaGames) return resolve(window.YaGames);
+    if (!/yandex|games\.s3|app-/.test(location.hostname + location.search) && !window.__ygForce) return resolve(null);
+    const sc = document.createElement("script");
+    sc.src = "https://yandex.ru/games/sdk/v2";
+    sc.onload = () => resolve(window.YaGames || null);
+    sc.onerror = () => resolve(null);
+    document.head.appendChild(sc);
+    setTimeout(() => resolve(window.YaGames || null), 6000);
+  });
+}
+async function ygInit(){
+  const sdk = await ygLoad();
+  if (!sdk) return false;
+  try {
+    YG.sdk = await sdk.init({ adv: { onAdvClose: () => { YG.busy = false; } } });
+    YG.ready = true;
+    try {
+      const env = YG.sdk.environment || {};
+      YG.lang = (env.i18n && env.i18n.lang) || "ru";
+      YG.device = (env.deviceInfo && env.deviceInfo.type) || "desktop";
+    } catch(_) {}
+    // игрок и облачные сохранения: один прогресс на всех устройствах
+    try {
+      YG.player = await YG.sdk.getPlayer({ scopes:false });
+      const cloud = await YG.player.getData(["save"]);
+      const local = save;
+      const cloudSave = cloud && cloud.save;
+      const pick = cloudSave && (cloudSave.total || 0) > (local.total || 0) ? cloudSave : local;
+      if (pick !== local){ Object.keys(save).forEach(k => delete save[k]); Object.assign(save, pick); }
+      if (typeof updateChips === "function") updateChips();
+    } catch(_) {}
+    try { YG.payments = await YG.sdk.getPayments({ signed:false }); } catch(_) { YG.payments = null; }
+    return true;
+  } catch(e){ YG.ready = false; return false; }
+}
+/* сохранить прогресс в облако (не чаще раза в 20 с) */
+let ygSaveAt = 0;
+function ygCloudSave(force){
+  if (!YG.player) return;
+  const now = Date.now();
+  if (!force && now - ygSaveAt < 20000) return;
+  ygSaveAt = now;
+  try { YG.player.setData({ save }, false).catch(() => {}); } catch(_) {}
+}
+/* показать рекламу: 'interstitial' — между забросами, 'rewarded' — за награду */
+function ygAd(kind){
+  if (!YG.ready || YG.busy) return Promise.resolve({ ok:false, why:"нет платформы" });
+  YG.busy = true;
+  return new Promise(resolve => {
+    const done = (ok, why) => { YG.busy = false; resolve({ ok, why }); };
+    try {
+      if (kind === "rewarded" && YG.sdk.adv.showRewardedVideo){
+        YG.sdk.adv.showRewardedVideo({
+          callbacks: {
+            onRewarded: () => done(true),
+            onClose: () => done(YG.adsLeft.rewardGiven === true),
+            onError: () => done(false, "ошибка рекламы")
+          }
+        });
+      } else if (YG.sdk.adv.showFullscreenAdv){
+        YG.sdk.adv.showFullscreenAdv({ callbacks: {
+          onClose: (wasShown) => done(!!wasShown),
+          onError: () => done(false, "ошибка рекламы")
+        }});
+      } else done(false, "нет рекламы");
+    } catch(e){ done(false, String(e && e.message || e)); }
+  });
+}
+/* реклама между забросами: не чаще раза в 4 минуты и не в первый час игры */
+let ygAdAt = 0, ygCasts = 0;
+function ygMaybeInterstitial(){
+  if (!YG.ready || save.noAds) return;
+  ygCasts++;
+  if (ygCasts < 6) return;                       // первые забросы — без рекламы
+  const now = Date.now();
+  if (now - ygAdAt < 240000) return;
+  ygAdAt = now;
+  ygAd("interstitial");
+}
+
+/* --- покупки через Яндекс Pay --- */
+/* что уже куплено: нерасходуемые покупки (карта, «без рекламы») проверяем при старте */
+async function ygRestorePurchases(){
+  if (!YG.payments) return [];
+  try {
+    const list = await YG.payments.getPurchases();
+    for (const p of list || []){
+      const prod = YG_PRODUCTS[p.productID];
+      if (!prod) continue;
+      if (prod.plan) passGrant(prod.plan);
+      if (prod.id === "no_ads"){ save.noAds = 1; persist(); }
+      if (prod.pearls){ /* расходуемые — выдадим через consume, чтобы не дублировать */ }
+    }
+    if (list && list.length){ if (typeof renderPaySheet === "function") renderPaySheet(); }
+    return list || [];
+  } catch(_){ return []; }
+}
+async function ygBuy(productId){
+  const prod = YG_PRODUCTS[productId];
+  if (!prod) return { ok:false, why:"нет такого товара" };
+  if (!YG.payments) return { ok:false, why:"покупки недоступны" };
+  try {
+    const purchase = await YG.payments.purchase({ id: productId });
+    // товар получен: выдаём и закрываем покупку (для расходуемых — consume)
+    if (prod.plan){ passGrant(prod.plan); }
+    else if (prod.pearls){ save.pearl = (save.pearl || 0) + prod.pearls; }
+    else if (productId === "no_ads"){ save.noAds = 1; }
+    persist(); syncPassBtn();
+    if (typeof renderPaySheet === "function") renderPaySheet();
+    if (typeof updateChips === "function") updateChips();
+    try { await YG.payments.consumePurchase(purchase.purchaseToken); } catch(_) {}
+    toast("Покупка прошла", prod.title + " — уже у тебя.", 2600);
+    try { sfx.level(); } catch(_) {}
+    return { ok:true };
+  } catch(e){
+    toast("Покупка не прошла", "Платёж отменён или не подтверждён. Деньги не списаны.", 2600);
+    return { ok:false, why:String(e && e.message || e) };
+  }
+}
+
+/* ============================================================================
    9.1: ОПЛАТА ПРИВИЛЕГИЙ
    Принцип: игра ничего не «включает» сама. Она просит сервер выдать ссылку на оплату
    и принимает доступ только в виде подписанного ключа, который выдаёт сервер после
@@ -221,6 +365,11 @@ const passDaysLeft = () => { const c = passCheck(); return c.ok ? c.left : 0; };
 /* Открыть оплату. Без платёжного сервиса честно говорим, что он ещё не подключён. */
 async function payStart(planId){
   const plan = passPlan(planId);
+  // на Яндекс Играх оплата идёт только через их SDK (по правилам платформы)
+  if (ygOn() && YG.payments){
+    const prodId = Object.keys(YG_PRODUCTS).find(k => YG_PRODUCTS[k].plan === plan.id);
+    if (prodId) return ygBuy(prodId);
+  }
   if (!payReady()){
     toast("Оплата не подключена", "Платёжный сервис ещё не подключён к этой копии игры. Включим — карта откроется здесь же.", 3400);
     return { ok:false, why:"нет платёжного сервиса" };
@@ -242,6 +391,11 @@ async function payStart(planId){
 }
 /* Проверить оплату: просим сервер отдать ключ по коду игрока */
 async function payCheck(showToast){
+  if (ygOn()){
+    const list = await ygRestorePurchases();
+    if (passOn()){ if (showToast) toast("Клубная карта активна", "До " + passEndText(), 2400); return { ok:true, left:passCheck().left }; }
+    if (showToast && (!list || !list.length)) toast("Покупок не найдено", "Если оплата прошла — подожди минуту и проверь снова.", 2600);
+  }
   if (!payReady()){
     if (showToast) toast("Проверка недоступна", "Платёжный сервис не подключён — проверить нечего.", 2400);
     return { ok:false, why:"нет платёжного сервиса" };
@@ -2075,6 +2229,8 @@ function biteWait(){
   return clamp(t, 2.0, 16);
 }
 function startWaiting(){
+  // 9.2: изредка, между забросами — межстраничная реклама (доход платформы и наш)
+  if (typeof ygMaybeInterstitial === "function") ygMaybeInterstitial();
   // 8.0: коряжник может посадить снасть — зацеп решается до начала ожидания
   if (trySnag()) return;
   // 8.5: во время буя клёва у поплавка может всплыть сигнальный шар
@@ -5753,14 +5909,17 @@ function renderPaySheet(){
     '</button>';
   }).join("");
 
+  const platform = ygOn();
   const foot =
     '<div class="pay-foot">' +
-      '<div class="pay-code"><span>код игрока</span><b id="payCode">' + playerCode() + '</b>' +
-        '<button class="pay-copy" id="payCopy" type="button">скопировать</button></div>' +
-      '<button class="pay-buy" id="payBuy"' + (ready ? "" : " disabled") + ' type="button">' +
-        (ready ? 'Оплатить и открыть клуб' : 'Оплата скоро подключится') + '</button>' +
-      '<button class="pay-check" id="payCheck" type="button"' + (ready ? "" : " disabled") + '>' +
-        'Уже оплатил — проверить оплату</button>' +
+      (platform ? '' :
+        '<div class="pay-code"><span>код игрока</span><b id="payCode">' + playerCode() + '</b>' +
+          '<button class="pay-copy" id="payCopy" type="button">скопировать</button></div>') +
+      '<button class="pay-buy" id="payBuy"' + (ready || platform ? "" : " disabled") + ' type="button">' +
+        (platform ? 'Оплатить через Яндекс' : ready ? 'Оплатить и открыть клуб' : 'Оплата скоро подключится') + '</button>' +
+      (platform ? '<button class="pay-ad" id="payAd" type="button">Посмотреть рекламу — +15 жемчуга</button>' : '') +
+      '<button class="pay-check" id="payCheck" type="button"' + (ready || platform ? "" : " disabled") + '>' +
+        'Уже оплатил — проверить покупку</button>' +
       '<div class="pay-help">' + CLUB_PASS.help.map(x => '<p>' + x + '</p>').join("") + '</div>' +
       '<div class="pay-alt">Не хочешь подписку? Премиум-предметы за жемчуг по-прежнему открывают клуб навсегда.</div>' +
     '</div>';
@@ -5783,9 +5942,19 @@ function renderPaySheet(){
   });
   const buy = $("payBuy");
   if (buy) buy.addEventListener("click", () => {
-    if (!payReady()){ payStart(planPick); return; }
+    if (!payReady() && !ygOn()){ payStart(planPick); return; }
     sfx.tap();
     payStart(planPick);
+  });
+  const adBtn = $("payAd");
+  if (adBtn) adBtn.addEventListener("click", async () => {
+    sfx.tap();
+    const r = await ygAd("rewarded");
+    if (r.ok){
+      save.pearl = (save.pearl || 0) + 15;
+      persist(); updateChips(); syncPassBtn();
+      toast("Спасибо!", "+15 жемчуга за просмотр.", 2200);
+    } else toast("Реклама не показалась", "Попробуй позже — награда никуда не денется.", 2200);
   });
   const chk = $("payCheck");
   if (chk) chk.addEventListener("click", () => { payCheck(true); });
@@ -6887,6 +7056,12 @@ function boot(){
   requestAnimationFrame(t => { last = t; requestAnimationFrame(loop); });
   // PWA: кнопка установки в стартовом экране + офлайн-кэш
   if (typeof bootPWA === "function") bootPWA();
+  // 9.2: Яндекс Игры — реклама, покупки, облачные сохранения (если мы на платформе)
+  ygInit().then(ok => {
+    if (!ok) return;
+    ygRestorePurchases();
+    syncPayUI();
+  });
 }
 
 // отладочный хук
@@ -6960,6 +7135,23 @@ window.__title = () => ({ stars: TITLE.stars, tries: TITLE.tries, power: +TITLE.
 window.__titleHold = (on) => { TITLE.run = !!on; if (on){ TITLE.power = 0; TITLE.dir = 1; } return TITLE.power; };
 window.__titleSetPower = (v) => { TITLE.power = clamp(v, 0, 1); return TITLE.power; };
 window.__titleRelease = () => titleRelease();
+/* обновить интерфейс оплаты под платформу */
+function syncPayUI(){
+  syncPassBtn();
+  const b = $("payBuy");
+  if (b && ygOn()){ b.disabled = false; b.textContent = "Оплатить через Яндекс"; }
+  if (typeof renderPaySheet === "function" && $("sheetPay") && $("sheetPay").classList.contains("on")) renderPaySheet();
+}
+/* 9.2: наружу для проверок платформы (в тестах SDK подменяется) */
+window.__yg = () => ({ ready: YG.ready, payments: !!YG.payments, player: !!YG.player,
+  lang: YG.lang, device: YG.device, products: Object.keys(YG_PRODUCTS), noAds: !!save.noAds,
+  cloud: !!YG.player });
+/* инициализировать платформу принудительно (тесты и отладка) */
+window.__ygInit = () => ygInit().then(ok => { syncPayUI(); return window.__yg(); });
+window.__ygAd = (kind) => ygAd(kind);
+window.__ygBuy = (id) => ygBuy(id);
+window.__ygReset = () => { YG.ready = false; YG.payments = null; YG.player = null; YG.busy = false; syncPayUI(); return window.__yg(); };
+
 /* оплата: наружу для проверок (эмуляция сервера — только в тестах) */
 window.__pay = () => ({ ready: payReady(), api: PAY.api, code: playerCode(), pass: save.pass || null,
   ok: passOn(), left: passDaysLeft(), access: clubAccess(), plans: CLUB_PASS.plans.map(p => p.id) });
