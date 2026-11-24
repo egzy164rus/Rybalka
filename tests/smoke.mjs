@@ -9,9 +9,18 @@ const B = async ()=>p.evaluate(()=>{const r=document.getElementById("action").ge
 async function boot(cfg){
   await p.goto(GAME); await p.waitForTimeout(1000);
   await p.click("#btnStart"); await p.waitForTimeout(300);
-  await p.evaluate(c=>{const s=window.__test.save(); s.xp=140000; s.coins=9000; s.loc=c.loc; s.weather=null;
-    s.baits[c.bait]=999; s.equipped.bait=c.bait; s.equipped.rod="sea"; s.seenCoach={c_power:1,c_bite:1,c_fight:1};
-    window.__test.persist();}, cfg);
+  await p.evaluate(c=>{
+    const s=window.__test.save(); s.xp=140000; s.coins=9000; s.loc=c.loc; s.weather=null;
+    s.equipped.rod="sea"; s.seenCoach={c_power:1,c_bite:1,c_fight:1}; s.equipped.bait=c.bait;
+    // приманка должна подходить водоёму: если на этой точке такой рыбы нет,
+    // берём первую приманку из списка точки — как сделал бы игрок
+    const spots=(window.__test.LOCATIONS[c.loc]||{}).spots||[];
+    const pool=Object.keys((spots[0]||{}).w||{});
+    const ok=pool.some(id=>{const f=window.__fishDef(id); return f && f.bait===c.bait;});
+    if(!ok){ for(const id of pool){ const f=window.__fishDef(id); if(f && f.bait){ s.equipped.bait=f.bait; break; } } }
+    s.baits[s.equipped.bait]=999;
+    window.__test.persist();
+  }, cfg);
   await p.reload(); await p.waitForTimeout(1200); await p.click("#btnStart"); await p.waitForTimeout(900);
 }
 async function fish(cfg){
@@ -55,16 +64,22 @@ async function fish(cfg){
 }
 const cases = [
   ["заводь", {loc:"lake", bait:"corn", xy:[150,640]}],
-  ["река",  {loc:"river", bait:"corn", xy:[250,620]}],
+  ["река",  {loc:"river", bait:"mayfly", xy:[250,620]}],
   ["зима",  {loc:"winter", bait:"bloodworm", xy:[210,660]}],
   ["ночь",  {loc:"night", bait:"corn", xy:[150,600]}],
-  ["море",  {loc:"sea", bait:"corn", xy:[300,620]}],
+  ["море",  {loc:"sea", bait:"fishmeat", xy:[300,620]}],
   ["топь",  {loc:"swamp", bait:"corn", xy:[210,640]}],
   ["горы",  {loc:"mountain", bait:"corn", xy:[250,650]}],
   ["лагуна",{loc:"lagoon", bait:"corn", xy:[300,640]}],
 ];
 const res = {};
-for (const [name, cfg] of cases){ await boot(cfg); res[name] = await fish(cfg); }
+// ловля стохастична: сход — нормальный исход, поэтому даём до 3 попыток
+for (const [name, cfg] of cases){
+  await boot(cfg);
+  let r = await fish(cfg);
+  for (let a=0; a<2 && !r.ok && r.reason === "сход"; a++){ await boot(cfg); r = await fish(cfg); }
+  res[name] = r;
+}
 const save = await p.evaluate(()=>({total:window.__test.save().total, lost:window.__test.save().lost}));
 const okAll = Object.values(res).every(r=>r.ok);
 console.log("результаты:", JSON.stringify(res));

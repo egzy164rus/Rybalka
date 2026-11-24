@@ -1396,6 +1396,14 @@ function startWaiting(){
 
 function beginBite(){
   G.fish = pickFish(G.spot);
+  // приманку на этом месте никто не берёт: не «сход», а просто пустая вода —
+  // возвращаем снасть и прямо говорим, что приманка не та
+  if (G.fish && G.fish.noBite){
+    G.fish = null;
+    toast("Тишина", "На «"+((BAITS[save.equipped.bait]||{}).name||"эту приманку")+"» здесь не берут — нужна другая наживка.", 2100);
+    setState("aim"); updateChips();
+    return;
+  }
   G.interest = 1; G.falseBite = 0;
   setState("bite");
   G.biteWindow = (900 + rnd(-90, 160) - (G.fish.norm||0)*120) * hookDef().windowMul;
@@ -1445,7 +1453,9 @@ function fail(kind){
     toast("Не удержал!", "Рыба оказалась сильнее снасти и ушла. Купи удочку мощнее.", 2200);
   } else if (kind === "lost"){
     save.lost++; sfx.lost(); buzz(24);
-    toast("Сход…", "Леска ослабла, и рыба сошла с крючка.", 1900);
+    // «пусто» — не сход: приманку тут просто никто не берёт, и это не потеря рыбы
+    toast(f && f.noBite ? "Тишина" : "Сход…",
+      f && f.noBite ? "На эту приманку здесь никто не берёт. Смени наживку." : "Леска ослабла, и рыба сошла с крючка.", 1900);
   } else if (kind === "miss"){
     save.lost++; sfx.lost();
     toast("Проспал поклёвку", "Рыба выплюнула приманку и ушла.", 1700);
@@ -1522,7 +1532,12 @@ function showCatch(f){
   if (f.junk){
     $("catchRar").textContent = "мусор";
     $("catchRar").style.cssText = "background:#e3ddd3;color:#6b6156";
-    art.innerHTML = '<div style="width:120px;height:120px;margin:0 auto">'+JUNK_ART[f.art]+'</div>';
+    // «пусто» — не мусор из коллекции, а просто пустой заброс: без картинки и без монет
+    if (f.noBite){
+      art.innerHTML = '<div class="emptyArt">'+ICONS.clock+'</div>';
+    } else {
+      art.innerHTML = '<div style="width:120px;height:120px;margin:0 auto">'+JUNK_ART[f.art]+'</div>';
+    }
     $("catchName").textContent = f.name;
     $("weightRow").style.display = "none";
     $("catchNote").textContent = f.note;
@@ -2700,50 +2715,72 @@ function initPads(){
       flower: Math.random() < 0.22 });
   }
 }
-/* кувшинки и ряска: стоят почти на месте, чуть покачиваются */
-function drawPads(g){
-  if (save.loc !== "swamp") return;
-  if (!PADS.length) initPads();
+/* кувшинки и ряска: стоят почти на месте, чуть покачиваются.
+   Листья предрисуются в отдельный слой (тень, лист, прожилки) и кэшируются:
+   на топи это 13 крупных полупрозрачных фигур в каждом кадре — самый дорогой слой. */
+const PAD_LAYER = { key:"", cv:null };
+function padLayerKey(){
+  // округляем линию воды крупными шагами: волны двигают её на пару пикселей каждый кадр,
+  // и без «квантования» слой перестраивался бы на каждом кадре
+  return save.loc + "|" + W + "x" + H + "|" + Math.round(geo().surfaceY/48) + "|" + PADS.length;
+}
+function buildPadLayer(g){
+  const cv = document.createElement("canvas");
+  cv.width = Math.max(1, Math.round(W)); cv.height = Math.max(1, Math.round(H));
+  const c = cv.getContext("2d");
   const s = clamp(Math.min(W,H)/620, 0.7, 1.5);
   for (const p of PADS){
     const y = g.surfaceY + p.d * (H - g.surfaceY);
-    const x = p.x * W + Math.sin(G.clock*0.32 + p.ph)*6*s;
+    const x = p.x * W;
     const rx = p.r * W * (0.7 + p.d), ry = rx * 0.40;
-    ctx.save();
-    ctx.translate(x, y); ctx.rotate(p.rot + Math.sin(G.clock*0.5 + p.ph)*0.06);
+    c.save();
+    c.translate(x, y); c.rotate(p.rot);
     // тень под листом
-    ctx.beginPath(); ctx.ellipse(0, ry*0.35, rx*1.02, ry*0.7, 0, 0, Math.PI*2);
-    ctx.fillStyle = "rgba(30,40,10,.35)"; ctx.fill();
+    c.beginPath(); c.ellipse(0, ry*0.35, rx*1.02, ry*0.7, 0, 0, Math.PI*2);
+    c.fillStyle = "rgba(30,40,10,.35)"; c.fill();
     // сам лист с «вырезом»
-    ctx.beginPath();
-    ctx.ellipse(0, 0, rx, ry, 0, 0.34, Math.PI*2 - 0.34);
-    ctx.lineTo(0, 0); ctx.closePath();
-    const lg = ctx.createLinearGradient(-rx, -ry, rx, ry);
+    c.beginPath();
+    c.ellipse(0, 0, rx, ry, 0, 0.34, Math.PI*2 - 0.34);
+    c.lineTo(0, 0); c.closePath();
+    const lg = c.createLinearGradient(-rx, -ry, rx, ry);
     lg.addColorStop(0, "rgba(96,124,44,.92)");
     lg.addColorStop(0.55, "rgba(72,104,34,.9)");
     lg.addColorStop(1, "rgba(46,74,22,.92)");
-    ctx.fillStyle = lg; ctx.fill();
-    ctx.strokeStyle = "rgba(190,220,140,.30)"; ctx.lineWidth = 0.8*s; ctx.stroke();
+    c.fillStyle = lg; c.fill();
+    c.strokeStyle = "rgba(190,220,140,.30)"; c.lineWidth = 0.8*s; c.stroke();
     // прожилки
-    ctx.beginPath();
-    ctx.moveTo(0,0); ctx.lineTo(rx*0.92, 0);
-    ctx.moveTo(0,0); ctx.lineTo(-rx*0.7, ry*0.5);
-    ctx.moveTo(0,0); ctx.lineTo(-rx*0.7, -ry*0.5);
-    ctx.strokeStyle = "rgba(150,190,110,.22)"; ctx.lineWidth = 0.7*s; ctx.stroke();
+    c.beginPath();
+    c.moveTo(0,0); c.lineTo(rx*0.92, 0);
+    c.moveTo(0,0); c.lineTo(-rx*0.7, ry*0.5);
+    c.moveTo(0,0); c.lineTo(-rx*0.7, -ry*0.5);
+    c.strokeStyle = "rgba(150,190,110,.22)"; c.lineWidth = 0.7*s; c.stroke();
     if (p.flower){
       const fr = 4.4*s;
       for (let i=0;i<6;i++){
-        const a = i/6*Math.PI*2 + G.clock*0.1;
-        ctx.beginPath();
-        ctx.ellipse(Math.cos(a)*fr*0.8, Math.sin(a)*fr*0.5, fr*0.8, fr*0.42, a, 0, Math.PI*2);
-        ctx.fillStyle = i%2 ? "rgba(255,232,244,.92)" : "rgba(255,198,226,.92)";
-        ctx.fill();
+        const a = i/6*Math.PI*2;
+        c.beginPath();
+        c.ellipse(Math.cos(a)*fr*0.8, Math.sin(a)*fr*0.5, fr*0.8, fr*0.42, a, 0, Math.PI*2);
+        c.fillStyle = i%2 ? "rgba(255,232,244,.92)" : "rgba(255,198,226,.92)";
+        c.fill();
       }
-      ctx.beginPath(); ctx.arc(0,0, fr*0.42, 0, Math.PI*2);
-      ctx.fillStyle = "#ffd166"; ctx.fill();
+      c.beginPath(); c.arc(0,0, fr*0.42, 0, Math.PI*2);
+      c.fillStyle = "#ffd166"; c.fill();
     }
-    ctx.restore();
+    c.restore();
   }
+  PAD_LAYER.cv = cv; PAD_LAYER.key = padLayerKey();
+}
+function drawPads(g){
+  if (save.loc !== "swamp") return;
+  if (!PADS.length) initPads();
+  const key = padLayerKey();
+  if (!PAD_LAYER.cv || PAD_LAYER.key !== key) buildPadLayer(g);
+  const s = clamp(Math.min(W,H)/620, 0.7, 1.5);
+  ctx.save();
+  // лёгкое общее покачивание всего слоя — листья «дышат» вместе с водой
+  ctx.translate(Math.sin(G.clock*0.32)*2.2*s, Math.sin(G.clock*0.26)*1.4*s);
+  ctx.drawImage(PAD_LAYER.cv, 0, 0, W, H);
+  ctx.restore();
 }
 /* коряги: бугры и ветки у поверхности, к которым цепляется снасть */
 const SNAGS = [];
