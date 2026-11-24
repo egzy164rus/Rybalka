@@ -10,16 +10,16 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="Тихая заводь">
 <meta name="description" content="Тихая заводь — рыбалка: 100 видов рыбы, 5 водоёмов, премиум-снасти. Работает офлайн.">
-<link rel="manifest" href="manifest.webmanifest?v=714">
-<link rel="icon" href="favicon-32.png?v=714" sizes="32x32" type="image/png">
+<link rel="manifest" href="manifest.webmanifest?v=715">
+<link rel="icon" href="favicon-32.png?v=715" sizes="32x32" type="image/png">
 <!-- iOS: иконка «На экран Домой». Safari берёт последний подходящий размер,
      поэтому перечисляем все типовые; ?v= — чтобы не подхватилась старая копия из кэша -->
-<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=714">
-<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=714">
-<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=714">
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=714">
-<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=714">
-<link rel="apple-touch-icon" href="icon-180.png?v=714">
+<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=715">
+<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=715">
+<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=715">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=715">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=715">
+<link rel="apple-touch-icon" href="icon-180.png?v=715">
 <title>Тихая заводь — рыбалка</title>
 <style>
 :root{
@@ -59,6 +59,19 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
   position:absolute;top:0;left:0;right:0;z-index:12;
   padding:calc(env(safe-area-inset-top,0px) + 9px) 11px 9px;
   display:flex;align-items:center;gap:6px;pointer-events:none;
+  flex-wrap:wrap;row-gap:6px;
+}
+/* на узких экранах шапка переносится строкой ниже, а не обрезает название водоёма */
+@media (max-width:470px){
+  #topbar{gap:5px}
+  #topbar .chip{padding:5px 9px 5px 7px;font-size:11.5px}
+  #topbar .chip svg{width:14px;height:14px}
+  #topbar .chip.loc span{max-width:78px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* на узком экране погода и наживка дня показывают значок и цифру — название остаётся в подсказке */
+  #topbar .chip.weather span,#topbar .chip.weather i{display:none}
+  #topbar .chip.weather{padding:5px 7px}
+  #topbar .daychip span{display:none}
+  #topbar .chip.wallet{padding:5px 9px}
 }
 .chip{
   pointer-events:auto;display:flex;align-items:center;gap:6px;
@@ -158,6 +171,25 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 @keyframes pulse{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.03)}}
 
 /* ============ gear bar ============ */
+/* серия точных подсечек */
+#perfectZone{
+  position:absolute;top:-7px;height:4px;left:63%;width:12%;border-radius:99px;
+  background:linear-gradient(90deg,rgba(167,240,189,.35),#a7f0bd,rgba(167,240,189,.35));
+  box-shadow:0 0 10px rgba(167,240,189,.75);
+  opacity:0;transition:opacity .18s;
+}
+#tensionWrap.perfect .meter{box-shadow:0 0 0 1px rgba(167,240,189,.55),0 0 18px rgba(167,240,189,.35)}
+#perfectZone.on{opacity:1;animation:perfectGlow 1.1s ease-in-out infinite}
+@keyframes perfectGlow{0%,100%{box-shadow:0 0 0 rgba(167,240,189,0)}50%{box-shadow:0 0 14px rgba(167,240,189,.55)}}
+.streakRow{
+  display:none;align-items:center;gap:6px;margin:5px 2px 0;
+  font-size:10.5px;font-weight:800;color:rgba(167,240,189,.92);
+}
+.streakRow.on{display:flex}
+.streakRow .st-ico{width:12px;height:12px;display:inline-block;color:#a7f0bd}
+.streakRow b{font-variant-numeric:tabular-nums;font-size:12px;color:#d6ffe4}
+.streakRow .st-lbl{opacity:.62;font-weight:700}
+.streakRow.hot b{color:#fff2b8;text-shadow:0 0 10px rgba(255,220,120,.55)}
 #gearbar{
   position:absolute;z-index:11;left:50%;transform:translateX(-50%);
   bottom:calc(env(safe-area-inset-bottom,0px) + 142px);
@@ -459,6 +491,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 }
 .catchMeta span svg{width:12px;height:12px}
 .catchMeta span.ok{background:rgba(74,180,120,.16);color:#2f6b45}
+.catchMeta span.gold{background:rgba(255,196,90,.2);color:#7a5410}
 .catchMeta span.warn{background:rgba(220,110,60,.18);color:#8f3d10}
 /* клубный случай в карточке улова */
 .clubLuck{
@@ -521,6 +554,12 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
   border-color:rgba(255,193,69,.6);box-shadow:0 0 0 1px rgba(255,193,69,.25) inset}
 .bs.on b{color:#ffe6b0}
 .bs{position:relative}
+.bs.day{border-color:rgba(255,203,105,.85);box-shadow:0 0 0 1px rgba(255,203,105,.45),0 6px 18px rgba(180,120,20,.18)}
+.bs-day{
+  position:absolute;top:-7px;left:8px;font-style:normal;font-size:8px;font-weight:900;letter-spacing:.5px;
+  text-transform:uppercase;color:#2a2205;background:linear-gradient(180deg,#ffe08a,#f2b43a);
+  border-radius:999px;padding:1px 6px;box-shadow:0 3px 8px rgba(160,100,0,.28);
+}
 .bs-buy{
   position:absolute;top:5px;right:5px;font-style:normal;font-size:8.5px;font-weight:900;
   letter-spacing:.2px;color:#2a2205;background:linear-gradient(180deg,#ffd979,#f7ae2e);
@@ -726,6 +765,24 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 }
 .cg-btn:active{transform:scale(.98)}
 
+.tag.baitday{background:rgba(255,203,105,.16);color:#ffdf9e;border:1px solid rgba(255,203,105,.35)}
+.tag.baitday.on{background:rgba(255,203,105,.3);border-color:rgba(255,203,105,.8)}
+.tag.baitday svg{width:11px;height:11px;margin-right:2px;vertical-align:-1px}
+.tag.locdaytag{background:rgba(120,225,160,.18);color:#d3ffe2;border:1px solid rgba(167,240,189,.45)}
+.tag.locdaytag svg{width:10px;height:10px;margin-right:2px;vertical-align:-1px}
+.locDay{margin-top:6px;font-size:10.5px;font-weight:750;color:rgba(243,236,221,.55)}
+/* чип наживки дня */
+.daychip{
+  display:flex;align-items:center;gap:5px;cursor:pointer;border:1px solid rgba(255,214,122,.45);
+  background:linear-gradient(135deg,rgba(255,203,105,.26),rgba(255,170,60,.12));
+  color:#ffe9b8;font-size:10.5px;font-weight:850;letter-spacing:.2px;padding:6px 9px;
+}
+.daychip svg{width:13px;height:13px}
+.daychip.hot{border-color:rgba(255,214,122,.9);box-shadow:0 0 12px rgba(255,196,90,.35)}
+.daychip.locday{
+  border-color:rgba(167,240,189,.6);
+  background:linear-gradient(135deg,rgba(120,225,160,.26),rgba(60,180,120,.12));color:#dcffe8;
+}
 /* чип клубного набора в шапке */
 .clubchip{
   position:relative;display:grid;place-items:center;width:30px;height:30px;padding:0;cursor:pointer;
@@ -800,6 +857,7 @@ button.buy.prem:disabled{opacity:.5}
       <span id="locName">Тихая заводь</span>
     </div>
     <div class="chip weather" id="weatherChip"></div>
+    <button class="chip daychip" id="dayChip" aria-label="Наживка дня"></button>
     <div class="chip wallet" id="chipWallet" title="Монеты и жемчуг">
       <span style="width:15px;height:15px;color:#f7c948" id="coinIco"></span><b id="coins">0</b>
       <span class="wsep"></span>
@@ -827,9 +885,15 @@ button.buy.prem:disabled{opacity:.5}
     <div id="progWrap"><div id="progFill"></div></div>
     <div class="meter">
       <div class="sweet" id="tensionZone"></div>
+      <div class="perfect" id="perfectZone"></div>
       <div class="needle" id="tensionNeedle"></div>
     </div>
     <div class="m-label"><span>слабо</span><span>натяжение</span><span>обрыв</span></div>
+    <div class="streakRow" id="streakRow">
+      <span class="st-ico" id="streakIco"></span>
+      <b id="streakVal">×1.00</b>
+      <span class="st-lbl">серия точных подсечек</span>
+    </div>
   </div>
 
   <div id="gearbar"></div>

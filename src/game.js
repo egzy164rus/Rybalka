@@ -42,6 +42,10 @@ function paletteFor(id){
   return { hue: hue - 20, sat, light: 1 };
 }
 
+/* отладочный журнал событий (не пишет ничего в сохранение) */
+const DEBUG = [];
+function debugLog(name, data){ DEBUG.push({ t: Date.now(), name, data }); if (DEBUG.length > 200) DEBUG.shift(); }
+
 /* ---------------- сохранение ---------------- */
 const KEY = "rybalka_v2", OLD = "rybalka_v1";
 const DEF = {
@@ -54,7 +58,7 @@ const DEF = {
   quests:{}, daily:null, streak:0, noBreak:0, day:null,
   pearl:0, pearlTotal:0, locsCaught:{}, perfects:0, accs:0, premLog:{},
   clubDay:null, clubLuck:null, clubVisit:null, clubGoalDay:null, clubGoal:0, clubGoalDone:false,
-  baits:{}
+  streakBest:0, dayCasts:0, doubleDay:null, doublesToday:0, baits:{}
 };
 let save;
 try {
@@ -300,6 +304,39 @@ const todayKey = () => {
   const d = new Date();
   return d.getFullYear() + "-" + (d.getMonth()+1) + "-" + d.getDate();
 };
+/* ---------------- 7.5: наживка дня и лучший день водоёма ---------------- */
+/* детерминированный «случайный» индекс по строке */
+function hash32(str){
+  let h = 2166136261;
+  for (let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return Math.abs(h);
+}
+/* приманки, которые вообще работают в этом водоёме */
+function locBaitList(loc){
+  const L = LOCATIONS[loc] || LOCATIONS.lake;
+  const out = [];
+  for (const sp of L.spots) for (const k in sp.w){
+    const F = FISH[k];
+    if (F && BAITS[F.bait] && !out.includes(F.bait)) out.push(F.bait);
+  }
+  out.sort();
+  return out;
+}
+/* наживка дня: одна на водоём, меняется в полночь */
+function baitOfDay(loc){
+  const list = locBaitList(loc || save.loc);
+  if (!list.length) return "worm";
+  return list[hash32("bait-" + todayKey() + "-" + (loc || save.loc)) % list.length];
+}
+const baitDayOn = (id) => (id || save.equipped.bait) === baitOfDay();
+/* лучший день водоёма */
+const locDayOn = (loc) => LOC_DAY[loc || save.loc] === new Date().getDay();
+const locDayName = (loc) => ["воскресенье","понедельник","вторник","среда","четверг","пятница","суббота"][LOC_DAY[loc || save.loc]];
+/* дни до лучшего дня водоёма (0 — сегодня) */
+function daysToLocDay(loc){
+  const now = new Date().getDay(), want = LOC_DAY[loc || save.loc];
+  return (want - now + 7) % 7;
+}
 function questState(id){
   if (!save.quests[id]) save.quests[id] = {prog:0, done:false};
   return save.quests[id];
@@ -382,6 +419,10 @@ function questOnCatch(f){
     if (g.type === "speciesCount" && g.list.includes(f.type)) add = true;
     if (g.type === "weightLoc" && save.loc === g.loc && f.weight >= g.n) add = true;
     if (g.type === "rarityLoc" && save.loc === g.loc && g.list.includes(f.rar)) add = true;
+    if (g.type === "baitDay" && baitDayOn()) add = true;
+    if (g.type === "perfect" && (G.perfectAcc || 0) >= 0.6) add = true;
+    if (g.type === "streak" && (G.bestStreak || G.perfectStreak || 0) >= (g.n || 1.5)) add = true;
+    if (g.type === "doubleDay" && G.doublesToday > 0) add = true;
     if (add) st.prog++;
   }
   if (save.quests.q_kinds) save.quests.q_kinds.prog = Object.keys(save.caught).length;
@@ -768,7 +809,8 @@ function pickFish(spot){
   let r = Math.random()*total, type = Object.keys(w)[0];
   for (const k in w){ r -= w[k]; if (r <= 0){ type = k; break; } }
   const F = FISH[type];
-  const u = Math.pow(Math.random(), 1.55 + perk("big")*3);   // клуб: чаще крупные особи
+  const bigDay = (baitDayOn() ? 0.10 : 0) + (locDayOn() ? 0.05 : 0);
+  const u = Math.pow(Math.random(), Math.max(0.6, 1.55 + perk("big")*3 - bigDay*2.2));   // наживка дня и лучший день — крупнее рыба
   const weight = Math.round((F.wMin + u*(F.wMax-F.wMin)) * L.sizeMul * weatherNow().size * (1 + perk("all")));
   const norm = clamp((weight - F.wMin*L.sizeMul) / (F.wMax*L.sizeMul - F.wMin*L.sizeMul), 0, 1);
   return {
@@ -961,7 +1003,9 @@ function biteWait(){
   const calmK = G.waterClear ? (save.loc === "winter" ? 1.08 : 1.15) : 1;
   // 4) точность заброса
   const accK = 1.10 - 0.25 * clamp(G.acc || 0, 0, 1);
-  const mean = 4.4 * richK * wxK * calmK * accK * (1 - perk("bite"));
+  const dayK = baitDayOn() ? 1 / BAIT_DAY.mul : 1;
+  const locDayK = locDayOn() ? 1 / LOC_DAY_K.klyov : 1;
+  const mean = 4.4 * richK * wxK * calmK * accK * (1 - perk("bite")) * dayK * locDayK;
   // сумма двух равномерных: чаще 4-8 с, реже крайности
   const g = (Math.random() + Math.random()) / 2;
   let t = mean * (0.42 + g * 1.32);
@@ -1015,6 +1059,7 @@ function hook(){
     : fightParams(G.fish);
   G.tension = clamp(GREEN_LO + 0.07, 0, lineHI()-0.02);
   G.progress = 0; G.slackT = 0; G.perfectT = 0; G.perfectAcc = 0; G.perfectShown = false;
+  G.perfectStreak = 0; G.perfectStreakT = 0; G.streakToast = false;
   G.pull = {active:false,warn:0,timer:0.8+dur0(),dur:0,activeT:0,pending:false};
   G.hold = false; G.lastHint = ""; G.weakShown = false;
   coachTip("c_fight");
@@ -1077,6 +1122,15 @@ function succeed(){
   }
   burst(G.bobX, wY(), 26, 300); ring(G.bobX);
   clubLuckRoll(G.spot);
+  // наживка дня: иногда рыба берёт вторую приманку подряд — «двойной заход»
+  if (!f.junk && baitDayOn() && Math.random() < BAIT_DAY.bonus){
+    G.dayDouble = true;
+    if (save.doubleDay !== todayKey()){ save.doubleDay = todayKey(); save.doublesToday = 0; }
+    save.doublesToday = (save.doublesToday || 0) + 1;
+    debugLog("dayDouble", { n: DEBUG.filter(x=>x.name==="dayDouble").length + 1 });
+  }
+  debugLog("succeed", { double: !!G.dayDouble, baitDayOn: baitDayOn(),
+    bait: save.equipped.bait, baitOfDay: baitOfDay(), loc: save.loc });
   G.jumpUntil = performance.now() + 1150;   // пока летит рыба, карточку не показываем
   setTimeout(()=>showCatch(f), 1150);
 }
@@ -1142,9 +1196,17 @@ function showCatch(f){
     const isRec = !prev || f.weight > (prev.best||0);
     $("catchRecord").innerHTML = isRec ? '<span class="rec">РЕКОРД</span>' : "";
 
-    const perfectBonus = 1 + Math.min(0.25, (G.perfectAcc || 0) * 0.09);
-    const coins = Math.round(f.weight/1000 * f.val * (1 + G.acc*0.35) * perfectBonus * (1 + perk("coin")));
-    const xp = Math.round((f.xp + f.weight/1000*4) * (1 + perk("xp")));
+    const perfectBonus = 1 + Math.min(0.25, (G.perfectAcc || 0) * 0.09) + Math.min(0.18, (G.bestStreak || 0) * 0.02);
+  if ((G.perfectStreak || 0) > (save.streakBest || 0)){ save.streakBest = Math.round(G.perfectStreak*10)/10; }
+  if ((G.perfectStreak || 0) > (G.bestStreak || 0)) G.bestStreak = G.perfectStreak;
+  if ((G.perfectStreak || 0) >= 2.5 && !G.streakToast){
+    G.streakToast = true;
+    toast("Точная работа", "Серия точных подсечек ×" + (1 + Math.min(0.18, G.perfectStreak*0.02)).toFixed(2) + " к монетам.", 2400);
+  }
+    const dayCoinK = (baitDayOn() ? 1.10 : 1) * (locDayOn() ? LOC_DAY_K.coins : 1);
+    const coins = Math.round(f.weight/1000 * f.val * (1 + G.acc*0.35) * perfectBonus * (1 + perk("coin")) * dayCoinK);
+    const dayXpK = 1 + (baitDayOn() ? BAIT_DAY.xp : 0);
+    const xp = Math.round((f.xp + f.weight/1000*4) * (1 + perk("xp")) * dayXpK);
     $("catchCoins").textContent = "+"+coins;
     $("catchXp").textContent = "+"+xp;
     const pearlCell = $("pearlCell");
@@ -1193,6 +1255,9 @@ function showCatch(f){
       const tight = F.reqPower > rod.power * 0.94;
       meta.innerHTML =
         ((G.perfectAcc || 0) > 0.9 ? '<span class="ok">идеальное вываживание</span>' : '') +
+        ((G.bestStreak || 0) >= 1.5 ? '<span class="ok">серия ×' + (1 + Math.min(0.18, G.bestStreak*0.02)).toFixed(2) + '</span>' : '') +
+        (baitDayOn() ? '<span class="gold">наживка дня +' + Math.round(BAIT_DAY.xp*100) + '% опыта</span>' : '') +
+        (locDayOn() ? '<span class="gold">лучший день водоёма</span>' : '') +
         '<span>'+(WEATHER_ICONS[wt.icon]||"")+wt.name+'</span>' +
         '<span>'+(G.spot ? G.spot.name : "—")+'</span>' +
         '<span>'+BAITS[F.bait].name+'</span>' +
@@ -1218,7 +1283,11 @@ function unlockedText(lvl){
 
 /* ---------------- обновление ---------------- */
 function update(dt){
-  G.clock += dt; G.t += dt;
+  G.clock += dt;
+  if (G.perfectFlashT > 0){
+    G.perfectFlashT -= dt;
+    G.perfectFlash = clamp(G.perfectFlashT/0.42, 0, 1);
+  } else G.perfectFlash = 0; G.t += dt;
   if (!START.on) updateSplashes(dt);
   if (G.shake > 0) G.shake = Math.max(0, G.shake - dt*40);
   if (G.flash > 0) G.flash = Math.max(0, G.flash - dt*1.6);
@@ -1343,6 +1412,20 @@ function update(dt){
   // шкалы
   if (G.state === "fight"){
     $("tensionNeedle").style.left = (clamp(G.tension,0,1.12)*100)+"%";
+    const pz = $("perfectZone");
+    if (pz) pz.classList.toggle("on", G.state === "fight");
+    const tw = $("tensionWrap");
+    if (tw) tw.classList.toggle("perfect", G.state === "fight" && G.perfectT > 0);
+    const sr = $("streakRow");
+    if (sr){
+      const st = G.perfectStreak || 0;
+      sr.classList.toggle("on", G.state === "fight" && st > 0.15);
+      sr.classList.toggle("hot", st >= 2.5);
+      const sv = $("streakVal");
+      if (sv) sv.textContent = "×" + (1 + Math.min(0.18, st*0.02)).toFixed(2);
+      const si = $("streakIco");
+      if (si && !si.innerHTML) si.innerHTML = ICONS.bolt;
+    }
     $("progFill").style.width = (clamp(G.progress,0,1)*100)+"%";
     const p = G.tension > 0.93 ? "danger" : "";
     $("tensionNeedle").style.boxShadow = p
@@ -1403,9 +1486,10 @@ function updateFight(dt, g){
   const inPerfect = G.tension >= 0.63 && G.tension <= 0.75;
   if (inPerfect && G.hold){
     G.perfectT = 0.25;
-    G.progress += f.p.progress*netDef().progress*dt*1.35;
+    G.progress += f.p.progress*netDef().progress*dt*1.35*(1 + Math.min(0.25, G.perfectStreak*0.06));
     G.perfectAcc = (G.perfectAcc || 0) + dt;
     if (!G.perfectShown){ G.perfectShown = true; floatText("ИДЕАЛЬНО", G.bobX, wY()-60, "#a7f0bd"); }
+    if (!G.perfectFlashT || G.perfectFlashT <= 0) G.perfectFlashT = 0.42;
     G.perfectOnce = true;
   }
   else if (inGreen){ G.progress += f.p.progress*netDef().progress*dt; }
@@ -1429,6 +1513,10 @@ function updateFight(dt, g){
     else hint("Держи в зелёной зоне · отпускай у красного", true);
   }
 
+  /* серия идеальных подсечек: держишь точно — растёт, уходишь из зоны — тает */
+  if (inPerfect && G.hold) G.perfectStreak = Math.min(9, G.perfectStreak + dt*1.6);
+  else if (G.perfectStreak > 0) G.perfectStreak = Math.max(0, G.perfectStreak - dt*2.4);
+  G.perfectStreak = Math.round(G.perfectStreak*10)/10;
   if (G.tension >= 1.0){ fail("break"); return; }
   if (G.tension <= 0.06){
     G.slackT += dt;
@@ -1865,6 +1953,111 @@ function drawAmbient(g){
     ctx.beginPath();
     ctx.ellipse(x, y, 16*(0.6+ph), 2.2, 0, 0, Math.PI*2);
     ctx.fillStyle = night ? "#cfe4ff" : "#ffffff";
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/* ---------------- 7.5: новые слои визуала ---------------- */
+/* 1) дорожка солнечного света по воде — «столб» бликов от солнца/луны */
+function drawSunPath(g){
+  if (save.loc === "winter") return;
+  const ic = weatherNow().icon;
+  if (!["sun","sunny","frost","moon"].includes(ic)) return;
+  const night = ic === "moon";
+  const sx = W*0.62, sy = g.surfaceY;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  const cols = night ? [198, 224, 255] : [255, 226, 170];
+  for (let i=0;i<16;i++){
+    const ph = (G.clock*0.22 + i*0.13) % 1;
+    const y = sy + ph*H*0.30;
+    const spread = 0.06 + ph*0.20;
+    const x = sx + Math.sin(G.clock*0.7 + i*1.7)*W*spread*0.28 + (i%2 ? 1 : -1)*W*0.012;
+    const w = W*(0.05 + ph*0.10) * (0.6 + 0.4*Math.sin(i + G.clock*1.6));
+    const a = (1-ph) * (night ? 0.10 : 0.13);
+    ctx.beginPath();
+    ctx.ellipse(x, y, w, 1.6 + ph*2.2, 0, 0, Math.PI*2);
+    ctx.fillStyle = "rgba("+cols[0]+","+cols[1]+","+cols[2]+","+a+")";
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/* 2) «живые» листья и пух над водой — усиливает глубину кадра */
+const LITTER = [];
+function initLitter(){
+  LITTER.length = 0;
+  for (let i=0;i<9;i++) LITTER.push({ x:Math.random(), y:Math.random(),
+    sp:0.04 + Math.random()*0.06, r:1.6 + Math.random()*2.4,
+    ph:Math.random()*6.28, rot:(Math.random()-0.5)*0.8, kind:i%3 });
+}
+function drawLitter(g){
+  if (!LITTER.length) initLitter();
+  if (save.loc === "winter") return;
+  const night = save.loc === "night";
+  ctx.save();
+  for (const p of LITTER){
+    const yy = ((p.y + G.clock*p.sp) % 1);
+    const x = (p.x + Math.sin(G.clock*0.5 + p.ph)*0.03) * W;
+    const y = yy*(g.surfaceY*0.92) + H*0.03;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(p.rot + Math.sin(G.clock*0.9 + p.ph)*0.5);
+    ctx.globalAlpha = (night ? 0.20 : 0.30) * (0.4 + 0.6*Math.sin(G.clock*1.2 + p.ph));
+    if (p.kind === 0){
+      ctx.beginPath(); ctx.ellipse(0, 0, p.r*1.9, p.r*0.8, 0.6, 0, Math.PI*2);
+      ctx.fillStyle = night ? "#8fa9c9" : "#cfe0a8"; ctx.fill();
+    } else if (p.kind === 1){
+      ctx.beginPath(); ctx.arc(0, 0, p.r*0.75, 0, Math.PI*2);
+      ctx.fillStyle = night ? "#cddffa" : "#fff3d6"; ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(0, 0); ctx.lineTo(p.r*2.2, -p.r*0.5); ctx.lineTo(p.r*1.2, p.r*0.7);
+      ctx.closePath(); ctx.fillStyle = night ? "#9db6d6" : "#e8dcc0"; ctx.fill();
+    }
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+/* 3) лёгкие «каустики» — плавающие пятна света под водой */
+function drawCaustics(g){
+  const night = save.loc === "night";
+  const k = weatherNow().sun === undefined ? 0.5 : 1;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (let i=0;i<5;i++){
+    const ph = (G.clock*0.13 + i*0.21) % 1;
+    const x = (0.12 + i*0.19 + Math.sin(G.clock*0.3 + i)*0.04) * W;
+    const y = g.surfaceY + H*0.05 + ph*H*0.22;
+    const rx = W*0.12*(0.7 + 0.3*Math.sin(G.clock*0.8 + i));
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx, rx*0.16, Math.sin(G.clock*0.2+i)*0.35, 0, Math.PI*2);
+    ctx.fillStyle = night ? "rgba(150,190,255,0.030)" : "rgba(230,255,245,0.035)";
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/* 4) вспышка идеальной подсечки — зелёное кольцо и искры у поплавка */
+function drawPerfectFlash(g){
+  if (!(G.perfectFlash > 0)) return;
+  const k = G.perfectFlash;    // 1 → 0
+  const x = G.bobX, y = wY();
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.beginPath();
+  ctx.ellipse(x, y, 18 + (1-k)*54, 6 + (1-k)*18, 0, 0, Math.PI*2);
+  ctx.strokeStyle = "rgba(167,240,189,"+(0.85*k)+")";
+  ctx.lineWidth = 3*k + 0.6;
+  ctx.stroke();
+  for (let i=0;i<8;i++){
+    const a = i*0.785 + (1-k)*1.2;
+    const r = 8 + (1-k)*46;
+    ctx.beginPath();
+    ctx.arc(x + Math.cos(a)*r, y + Math.sin(a)*r*0.32, 2.2*k + 0.4, 0, Math.PI*2);
+    ctx.fillStyle = "rgba(200,255,215,"+(0.9*k)+")";
     ctx.fill();
   }
   ctx.restore();
@@ -3082,8 +3275,11 @@ function draw(){
   drawScene(g);
   drawUnderwater(g);
   drawWaterLive(g);
+  drawCaustics(g);
+  drawSunPath(g);
   drawWaterLife(g);
   drawAmbient(g);
+  drawLitter(g);
   drawWX(g);
   drawSpots(g);
   drawZoneInfo(g);
@@ -3099,6 +3295,7 @@ function draw(){
   drawPullFlash(g);
   drawBobberTrail(g);
   drawFightSwirl(g);
+  drawPerfectFlash(g);
   drawBobber(g);
   drawPatience(g);
   drawFishTail(g);
@@ -3154,6 +3351,47 @@ function announceWeather(prev){
   tone(520,0.12,"sine",0.05,700);
 }
 
+/* чип «наживка дня» / «лучший день водоёма»: подсказка, где сейчас клёв лучше */
+function syncDayChip(){
+  const el = $("dayChip");
+  if (!el) return;
+  const onBait = baitDayOn();
+  const onLoc = locDayOn();
+  if (!onBait && !onLoc){
+    el.style.display = "none";
+    el.onclick = null;
+    return;
+  }
+  el.style.display = "";
+  const b = BAITS[baitOfDay()];
+  if (onBait && b){
+    el.className = "chip daychip hot";
+    el.innerHTML = ICONS.bait + "<span>" + b.name + "</span><i>+" + Math.round((BAIT_DAY.mul-1)*100) + "%</i>";
+    el.title = "Наживка дня: " + b.name + " — клёв +" + Math.round((BAIT_DAY.mul-1)*100) +
+      "%, опыт +" + Math.round(BAIT_DAY.xp*100) + "%" + (onLoc ? " · и лучший день водоёма!" : "") +
+      ". Нажми, чтобы надеть.";
+  } else {
+    el.className = "chip daychip locday";
+    el.innerHTML = ICONS.star + "<span>лучший день</span><i>+" + Math.round((LOC_DAY_K.klyov-1)*100) + "%</i>";
+    el.title = "Сегодня лучший день на этом водоёме: клёв +" + Math.round((LOC_DAY_K.klyov-1)*100) +
+      "%, рыба крупнее, монет +" + Math.round((LOC_DAY_K.coins-1)*100) + "%";
+  }
+  el.onclick = () => {
+    if (!onBait) return;
+    const id = baitOfDay();
+    if (baitsLeft(id) <= 0){
+      const cost = (BAITS[id].price || 0) * 10;
+      if ((save.coins||0) < cost){ toast("Не хватает монет", "«"+BAITS[id].name+"» ×10 стоит "+cost+" монет.", 2000); return; }
+      save.coins -= cost; save.baits[id] = (save.baits[id]||0) + 10;
+      if (!save.owned.bait.includes(id)) save.owned.bait.push(id);
+      sfx.buy();
+    } else sfx.tap();
+    save.equipped.bait = id;
+    persist(); updateChips(); renderGearBar();
+    toast("Наживка дня надета", BAITS[id].name + " — сегодня на неё берёт охотнее.", 2200);
+  };
+}
+
 function syncWeatherChip(){
   const el = $("weatherChip");
   if (!el) return;
@@ -3195,11 +3433,13 @@ function renderBaitShelf(){
         const clubHits = clubSpotNow
           ? Object.keys(clubSpotNow.w).filter(k => FISH[k] && FISH[k].bait === id && FISH[k].reqPower <= rodDef().power).length : 0;
         const price = b.price || 0;
+        const isDay = baitOfDay() === id;
         // пустую приманку можно докупить прямо здесь: монетами или (премиум) жемчугом
         const buyTag = own ? '' : (b.pearl
           ? '<i class="bs-buy">жемчуг</i>'
           : price ? '<i class="bs-buy">×10 · ' + price*10 + '</i>' : '');
-        return '<button class="bs'+(eq?" on":"")+(own?"":" empty")+(here?"":" far")+'" data-bait="'+id+'">'
+        return '<button class="bs'+(eq?" on":"")+(own?"":" empty")+(here?"":" far")+(isDay?" day":"")+'" data-bait="'+id+'">'
+          + (isDay ? '<i class="bs-day">дня</i>' : '')
           + buyTag
           + '<b>'+b.name+'</b>'
           + '<small>'+own+' шт · '+(here ? (fishHere ? fishHere+" видов тут" : "нужна снасть сильнее") : "не в этом водоёме")
@@ -3294,6 +3534,7 @@ function updateChips(){
   const chipLoc = $("chipLoc");
   if (chipLoc) chipLoc.title = locDef().name + " — " + locDef().sub;
   syncWeatherChip();
+  syncDayChip();
   syncClubChip();
   $("btnSound").innerHTML = save.mute ? ICONS.mute : ICONS.sound;
   renderGearBar();
@@ -3368,6 +3609,17 @@ function renderBase(){
           '<span class="tag green">'+L.sizeMul.toFixed(2)+'×</span>' +
         '</div>' +
       '</div>';
+    /* наживка дня и лучший день именно для этого водоёма */
+    const bd = BAITS[baitOfDay(key)];
+    const isBd = save.equipped.bait === baitOfDay(key);
+    const locToday = LOC_DAY[key] === new Date().getDay();
+    const left = daysToLocDay(key);
+    card.querySelector(".tags").insertAdjacentHTML("beforeend",
+      '<span class="tag baitday'+(isBd ? " on" : "")+'">'+ICONS.bait+' '+bd.name+(isBd ? " · надето" : "")+'</span>');
+    if (locToday){
+      card.querySelector(".tags").insertAdjacentHTML("beforeend",
+        '<span class="tag locdaytag">'+ICONS.star+' лучший день +'+Math.round((LOC_DAY_K.klyov-1)*100)+'%</span>');
+    }
     // кто водится в этом водоёме
     const set = new Set();
     for (const sp of L.spots) for (const k in sp.w) set.add(k);
@@ -3389,7 +3641,10 @@ function renderBase(){
       '<div class="locFish">' + top.map(k => '<img src="'+IMG.fish[artOf(k)]+'" style="filter:hue-rotate('+paletteFor(k).hue+'deg)" alt="'+FISH[k].name+'" title="'+FISH[k].name+'">').join("") +
       (more > 0 ? '<span>+' + fishCount(more) + '</span>' : '') + '</div>' +
       '<div class="locHint '+(powered.length?"ok":"warn")+'">'+hintTxt+'</div>' +
-      '<div class="locBaits">Приманки: ' + [...baitSet].join(" · ") + '</div>');
+      '<div class="locBaits">Приманки: ' + [...baitSet].join(" · ") + '</div>' +
+      '<div class="locDay">' + (locToday
+        ? 'Сегодня лучший день: клёв +' + Math.round((LOC_DAY_K.klyov-1)*100) + '%, рыба крупнее, монет +' + Math.round((LOC_DAY_K.coins-1)*100) + '%'
+        : 'Лучший день — ' + locDayName(key) + (left === 1 ? " (завтра)" : " (через " + left + " дн.)")) + '</div>');
 
     if (L.seaReq && !rodDef().sea){
       card.querySelector(".inner").insertAdjacentHTML("beforeend",
@@ -3602,6 +3857,8 @@ function renderClubCard(){
       perkRow("big","крупная рыба", perk("big")) +
       perkRow("all","размер рыбы", perk("all"))
     : '<span class="club-perk off">перки откроются после первой покупки</span>';
+  /* новый день — счётчики дня заново */
+  if (save.doubleDay !== todayKey()){ save.doubleDay = todayKey(); save.doublesToday = 0; }
   /* клубная цель дня: новый день — счёт заново */
   if (save.clubGoalDay !== todayKey()){ save.clubGoal = 0; save.clubGoalDone = false; }
   const gReady = premOwned() && (save.clubGoalDay === todayKey() ? (save.clubGoal||0) >= CLUB_GOAL.count : false);
@@ -4000,6 +4257,16 @@ function nextCatch(){
   // сцена «перезаряжается»: нельзя молниеносно кидать следующий заброс
   G.readyAtMs = performance.now() + 1800;
   setTimeout(()=>{ if (G.state === "aim" || G.state === "idle") hint(""); }, 1500);
+  if (G.dayDouble){
+    G.dayDouble = false;
+    G.readyAtMs = 0;
+    setTimeout(()=>{
+      if (G.state !== "aim" && G.state !== "idle") return;
+      floatText("ДВОЙНОЙ ЗАХОД", W*0.5, wY()-70, "#ffe9a3");
+      toast("Наживка дня", "Рыба берёт снова — заброс уже в воде.", 2200);
+      startWaiting();
+    }, 420);
+  }
 }
 $("btnNext").addEventListener("click", nextCatch);
 
@@ -4307,6 +4574,12 @@ function boot(){
 window.__forceCatch = (id) => {
   const F = FISH[id];
   if (!F) return null;
+  // тестовый хук: сбрасываем сцену, если уже висит карточка улова
+  if (G.state === "result"){
+    G.cardOpen = false;
+    const cc = $("catchCard"); if (cc) cc.classList.remove("on");
+    setState("aim");
+  }
   save.equipped.bait = F.bait;
   const f = { junk:false, type:id, name:F.name, rar:F.rar, note:F.note, weight:Math.round(F.wMin*3),
     norm:0.5, aggr:F.aggr, stam:F.stam, val:F.val, xp:F.xp, art:artOf(id), palette:paletteFor(id),
@@ -4330,6 +4603,8 @@ window.__dbg = () => ({
   interest: +(G.interest||0).toFixed(2), readyIn: Math.max(0, +(((G.readyAtMs||0) - performance.now())/1000).toFixed(2)),
   state:G.state, tension:+G.tension.toFixed(3), progress:+G.progress.toFixed(3),
   hold:G.hold, pull:G.pull.active, power:+G.power.toFixed(2), acc:+G.acc.toFixed(2),
+  streak:+(G.perfectStreak||0).toFixed(2), bestStreak:+(save.streakBest||0).toFixed(2),
+  perfect:+(G.perfectT||0).toFixed(2),
   fish:G.fish ? (G.fish.junk ? "junk" : G.fish.type) : null,
   spot:G.spot && G.spot.id, coins:save.coins, lvl:levelInfo().lvl,
   leap: G.leap ? {t:+G.leap.t.toFixed(2), x:Math.round(G.leap.x), y:Math.round(G.leap.y)} : null,
@@ -4351,6 +4626,11 @@ window.__pwa = () => ({ standalone: pwaIsStandalone(), platform: pwaPlatform(),
 window.__selectSpot = i => selectSpot(locSpots()[i]);
 window.__spotById = (id) => locSpots().find(s => s.id === id) || null;
 window.__fishDef = (id) => FISH[id];
+window.__setDouble = () => { G.dayDouble = true; };
+window.__debugLog = () => DEBUG.slice();
+window.__biteWait = () => biteWait();
+window.__day = () => ({ bait: baitOfDay(), onBait: baitDayOn(), locDay: locDayOn(),
+  locDayName: locDayName(), days: daysToLocDay(), locDayK: LOC_DAY_K });
 window.__ui = { openStart, closeStart, renderQuests, renderBaitShelf, claimQuest, dailyNow, questClaimable, openSheet, closeAllSheets };
 
 /* ---------------- PWA: установка на экран и офлайн-режим ---------------- */
