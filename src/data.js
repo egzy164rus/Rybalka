@@ -47,7 +47,7 @@ const BAITS = {
   blood:    {name:"Минога",         tier:4, price:52,  desc:"Угорь, налим и минога не устоят.",                    emoji:"eel"}
 };
 
-/* ---------------- РЫБА: 100 видов ----------------
+/* ---------------- РЫБА: 105 видов ----------------
    rar, wMin/wMax (граммы), val (монет/кг), aggr (рывки), stam (сопротивление),
    xp, power (требуемая прочность снасти), bait (единственная приманка),
    sea — только с морской снастью, lvl — минимальный уровень для поклёвки
@@ -159,12 +159,18 @@ marlin:   {name:"Марлин голубой",     rar:"mythic",    wMin:20000,w
 swordfish:{name:"Рыба-меч",           rar:"mythic",    wMin:15000,wMax:150000, val:286, aggr:0.88, stam:1.18, xp:220, reqPower:350, bait:"squid",   sea:1, note:"Меч длиной в треть тела. Режет воду как нож."},
 dorado:   {name:"Дорадо (корифена)",  rar:"epic",      wMin:2000, wMax:20000,  val:154, aggr:0.82, stam:0.92, xp:96,  reqPower:200, bait:"octopus",sea:1, note:"Золото-зелёная, выпрыгивает и светится на солнце."},
 barracuda:{name:"Барракуда большая",  rar:"epic",      wMin:3000, wMax:25000,  val:158, aggr:0.84, stam:0.96, xp:100, reqPower:220, bait:"fishmeat",sea:1, note:"Серебряная стрела с зубами. Быстрая и злая."},
+/* ---------- 8.0: обитатели топи и лагуны ---------- */
+tench_b:  {name:"Линь болотный",     rar:"rare",      wMin:600,  wMax:4200,   val:104, aggr:0.34, stam:0.86, xp:32,  reqPower:120, bait:"worm",    note:"Тёмный, толстый линь из вязкой воды. Упирается до конца."},
+bowfin:   {name:"Амия (ильная рыба)",rar:"epic",     wMin:1500, wMax:9000,   val:158, aggr:0.72, stam:0.96, xp:78,  reqPower:170, bait:"frog",    note:"Живое ископаемое топи: хватает лягушку и уходит в коряги."},
+bowfin_b: {name:"Амия-гигант",       rar:"legendary",wMin:3000, wMax:15000,  val:196, aggr:0.76, stam:1.04, xp:104, reqPower:210, bait:"livebait",note:"Старая хищница трясины. Держит глубину мёртвой хваткой."},
+lago_bar: {name:"Лагуновый горбыль", rar:"uncommon", wMin:400,  wMax:3000,   val:92,  aggr:0.60, stam:0.70, xp:26,  reqPower:96,  bait:"shrimp",  sea:1, note:"Тёплая бирюза: стайный горбыль у самого рифа."},
+lag_kefal:{name:"Лагуновый кефаль",  rar:"rare",      wMin:900,  wMax:5500,   val:130, aggr:0.62, stam:0.84, xp:52,  reqPower:138, bait:"algae",   sea:1, note:"Прыгает через риф на закате, сильный и осторожный."},
 mako:     {name:"Акула мако",         rar:"mythic",    wMin:20000,wMax:200000, val:310, aggr:0.95, stam:1.25, xp:260, reqPower:390, bait:"octopus", sea:1, note:"Самая быстрая акула. Вываживание — испытание."}
 };
 
 
 /* какой спрайт использовать для каждой рыбы */
-const FISH_SPRITE = {"karas_g": "karas_zolotoy", "karas_s": "karas", "karp": "karp", "karp_z": "karp", "karp_g": "karp", "lesh": "lesh", "gustera": "lesh", "plotva": "plotva", "krasnop": "plotva", "lin": "lin", "yaz": "yaz", "golavl": "golavl", "elec": "plotva", "peskar": "plotva", "ukleyka": "plotva", "podust": "golavl", "amur_w": "karp", "amur_b": "karp", "tolst_b": "karp", "tolst_p": "karp", "chehon": "zhereh", "sinets": "lesh", "beloglaz": "lesh", "vobla": "plotva", "taran": "plotva", "rybets": "golavl", "usach": "golavl", "shemaya": "zhereh", "verhovka": "plotva", "gorchak": "plotva", "vyun": "ugor", "shipovka": "plotva", "golets_whale": "ugor", "rotan": "ersh", "sig": "salmon", "pelyad": "salmon", "chir": "salmon", "muksun": "salmon", "omul": "salmon", "ryapushka": "salmon", "tugun": "salmon", "shchuka": "shchuka", "okun": "okun", "sudak": "sudak", "bersh": "sudak", "ersh": "ersh", "ershor": "ersh", "som": "som", "som_amur": "som", "nalim": "nalim", "zhereh": "zhereh", "forel_r": "forel", "forel_rd": "forel", "forel_l": "forel", "harius_e": "harius", "harius_s": "harius", "taimen": "taimen", "lenok": "taimen", "golec_ar": "salmon", "paliya": "salmon", "nelma": "salmon", "zmeegolov": "ugor", "bass": "pike_perch", "peacock": "pike_perch", "oster_r": "sterlyad", "oster_s": "sterlyad", "sterlyad": "sterlyad", "sevryuga": "sterlyad", "beluga": "beluga", "ship": "beluga", "kaluga": "beluga", "losos": "salmon", "gorbusha": "salmon", "keta": "salmon", "nerka": "salmon", "kizhuch": "salmon", "chavycha": "salmon", "ugor": "ugor", "minoga": "ugor", "cod": "cod", "haddock": "cod", "saida": "cod", "pollock": "cod", "navaga": "cod", "kambala": "flounder", "paltus": "flounder", "skumbria": "mackerel", "stavrida": "mackerel", "seld": "mackerel", "kefal": "mackerel", "barabulka": "mackerel", "sea_perch": "pike_perch", "zubatka": "cod", "angler": "anglerfish", "tuna": "tuna", "marlin": "tuna", "swordfish": "tuna", "dorado": "tuna", "barracuda": "tuna", "mako": "shark"};
+const FISH_SPRITE = {"karas_g": "karas_zolotoy", "karas_s": "karas", "karp": "karp", "karp_z": "karp", "karp_g": "karp", "lesh": "lesh", "gustera": "lesh", "plotva": "plotva", "krasnop": "plotva", "lin": "lin", "yaz": "yaz", "golavl": "golavl", "elec": "plotva", "peskar": "plotva", "ukleyka": "plotva", "podust": "golavl", "amur_w": "karp", "amur_b": "karp", "tolst_b": "karp", "tolst_p": "karp", "chehon": "zhereh", "sinets": "lesh", "beloglaz": "lesh", "vobla": "plotva", "taran": "plotva", "rybets": "golavl", "usach": "golavl", "shemaya": "zhereh", "verhovka": "plotva", "gorchak": "plotva", "vyun": "ugor", "shipovka": "plotva", "golets_whale": "ugor", "rotan": "ersh", "sig": "salmon", "pelyad": "salmon", "chir": "salmon", "muksun": "salmon", "omul": "salmon", "ryapushka": "salmon", "tugun": "salmon", "shchuka": "shchuka", "okun": "okun", "sudak": "sudak", "bersh": "sudak", "ersh": "ersh", "ershor": "ersh", "som": "som", "som_amur": "som", "nalim": "nalim", "zhereh": "zhereh", "forel_r": "forel", "forel_rd": "forel", "forel_l": "forel", "harius_e": "harius", "harius_s": "harius", "taimen": "taimen", "lenok": "taimen", "golec_ar": "salmon", "paliya": "salmon", "nelma": "salmon", "zmeegolov": "ugor", "bass": "pike_perch", "peacock": "pike_perch", "oster_r": "sterlyad", "oster_s": "sterlyad", "sterlyad": "sterlyad", "sevryuga": "sterlyad", "beluga": "beluga", "ship": "beluga", "kaluga": "beluga", "losos": "salmon", "gorbusha": "salmon", "keta": "salmon", "nerka": "salmon", "kizhuch": "salmon", "chavycha": "salmon", "ugor": "ugor", "minoga": "ugor", "cod": "cod", "haddock": "cod", "saida": "cod", "pollock": "cod", "navaga": "cod", "kambala": "flounder", "paltus": "flounder", "skumbria": "mackerel", "stavrida": "mackerel", "seld": "mackerel", "kefal": "mackerel", "barabulka": "mackerel", "sea_perch": "pike_perch", "zubatka": "cod", "angler": "anglerfish", "tuna": "tuna", "marlin": "tuna", "swordfish": "tuna", "dorado": "tuna", "barracuda": "tuna", "mako": "shark", "tench_b": "lin", "bowfin": "som", "bowfin_b": "som", "lago_bar": "mackerel", "lag_kefal": "mackerel"};
 
 const JUNK = [
   {name:"Старый сапог",  art:"boot",  note:"Кто-то тут уже рыбачил. Неудачно."},
@@ -239,7 +245,48 @@ const LOCATIONS = {
       {id:"deepsea", name:"Глубина", x:0.80, y:0.625, sweet:[0.72,0.96], depth:"глубоко",
        w:{paltus:5, tuna:4, marlin:2, swordfish:2, mako:2, dorado:3, barracuda:4, angler:3, zubatka:3, chavycha:1}}
     ]
-  }
+  },
+
+  /* ---- 8.0: три новых водоёма со своими правилами ---- */
+  swamp: {
+    name:"Тенистая топь", short:"Топь", sub:"Камыши, коряги и стоячая вода", bg:"bgSwamp",
+    unlock:6, biteMul:1.12, pullMul:1.30, sizeMul:1.30, snagChance:0.17, water:"brown",
+    desc:"Вязкая вода и коряги: рыба крупная, но сильная и упрямая — держи снасть крепче.",
+    spots:[
+      {id:"lilies", name:"Кувшинки", x:0.24, y:0.600, sweet:[0.24,0.46], depth:"мелко",
+       w:{lin:8, rotan:7, karas_g:6, karas_s:5, vyun:5, gorchak:4, verhovka:3, tench_b:5, bowfin:3, krasnop:3}},
+      {id:"drift", name:"Коряжник", x:0.53, y:0.660, sweet:[0.46,0.70], depth:"средне",
+       w:{som_amur:6, bowfin:5, zmeegolov:5, nalim:4, lin:4, ugor:3, tench_b:4, minoga:3, som:2}},
+      {id:"quagmire", name:"Трясина", x:0.79, y:0.720, sweet:[0.72,0.96], depth:"глубоко",
+       w:{som:7, zmeegolov:4, bowfin:4, ugor:4, nalim:4, beluga:1, bowfin_b:2, som_amur:3}}
+    ]
+  },
+  mountain: {
+    name:"Горное озеро", short:"Горы", sub:"Холодная вода под снежными пиками", bg:"bgMountainLake",
+    unlock:9, biteMul:0.92, pullMul:1.16, sizeMul:1.05, clear:1, water:"clear",
+    desc:"Прозрачная вода: рыба видит снасть и клюёт реже, зато берёт только честно поданную приманку.",
+    spots:[
+      {id:"inflow", name:"Впадина реки", x:0.23, y:0.560, sweet:[0.24,0.46], depth:"мелко",
+       w:{forel_r:7, forel_rd:6, harius_e:6, elec:4, peskar:4, golec_ar:3, forel_l:3}},
+      {id:"stones", name:"Каменистая коса", x:0.51, y:0.615, sweet:[0.46,0.70], depth:"средне",
+       w:{paliya:6, lenok:5, harius_s:5, forel_l:5, golavl:4, taimen:3, golec_ar:4, nelma:2}},
+      {id:"depth", name:"Глубина у скалы", x:0.78, y:0.665, sweet:[0.72,0.96], depth:"глубоко",
+       w:{taimen:6, paliya:5, nelma:4, forel_l:4, lenok:5, harius_s:4, chavycha:2, golets_whale:3}}
+    ]
+  },
+  lagoon: {
+    name:"Коралловая лагуна", short:"Лагуна", sub:"Тёплая бирюза и рифы", bg:"bgLagoon",
+    unlock:14, biteMul:1.06, pullMul:1.22, sizeMul:1.10, seaReq:1, heat:1, water:"turquoise",
+    desc:"Прогретая вода у рифа. Нужна морская снасть — здесь берут быстрые и зубастые.",
+    spots:[
+      {id:"shoal", name:"Песчаная отмель", x:0.25, y:0.585, sweet:[0.24,0.46], depth:"мелко",
+       w:{barabulka:7, stavrida:6, kefal:5, skumbria:5, lag_kefal:4, lago_bar:3, seld:3}},
+      {id:"reef", name:"Риф", x:0.52, y:0.630, sweet:[0.46,0.70], depth:"средне",
+       w:{lago_bar:6, sea_perch:5, dorado:4, barracuda:4, zubatka:3, kizhuch:2, kefal:3}},
+      {id:"wall", name:"Стенка рифа", x:0.79, y:0.675, sweet:[0.72,0.96], depth:"глубоко",
+       w:{dorado:5, barracuda:5, tuna:4, marlin:2, swordfish:2, mako:2, angler:3, chavycha:2}}
+    ]
+  },
 };
 
 /* ---------------- СНАРЯЖЕНИЕ ---------------- */
@@ -354,7 +401,13 @@ const CLUB_SPOTS = {
   winter: {id:"prem_winter", sweet:[0.50,0.72], name:"Клубная лунка", x:0.30, y:0.700, depth:"глубоко",
            w:{beluga:4, muksun:8, omul:8, chir:7, oster_s:6, som:6, lenok:6}},
   sea:    {id:"prem_sea", sweet:[0.45,0.68],    name:"Клубный плёс",  x:0.46, y:0.660, depth:"глубоко",
-           w:{mako:4, marlin:5, swordfish:5, tuna:7, chavycha:6, paltus:7, barracuda:6, angler:5}}
+           w:{mako:4, marlin:5, swordfish:5, tuna:7, chavycha:6, paltus:7, barracuda:6, angler:5}},
+  swamp:  {id:"prem_swamp", sweet:[0.30,0.52],  name:"Клубный омут", x:0.30, y:0.790, depth:"глубоко",
+           w:{bowfin_b:6, som:8, zmeegolov:5, ugor:6, beluga:2, som_amur:5, tench_b:6}},
+  mountain:{id:"prem_mountain", sweet:[0.62,0.84], name:"Клубный плёс", x:0.63, y:0.760, depth:"глубоко",
+           w:{taimen:8, chavycha:4, nelma:6, paliya:6, forel_l:6, lenok:6}},
+  lagoon: {id:"prem_lagoon", sweet:[0.52,0.74], name:"Клубный риф",  x:0.55, y:0.720, depth:"глубоко",
+           w:{marlin:5, swordfish:5, mako:4, tuna:7, dorado:6, barracuda:6, chavycha:4}}
 };
 /* ежедневный клубный набор: раз в сутки, только участникам клуба.
    Чем выше ранг, тем щедрее набор — это ещё одно преимущество уровня. */
@@ -371,9 +424,82 @@ const LOC_DAY = {
   river:  3,   // среда
   night:  5,   // пятница
   winter: 6,   // суббота
-  sea:    0    // воскресенье
+  sea:    0,   // воскресенье
+  swamp:  2,   // вторник
+  mountain:4,  // четверг
+  lagoon: 6    // суббота
 };
 const LOC_DAY_K = { klyov: 1.14, size: 1.08, coins: 1.10, pearlBonus: 0.06 };
+
+/* ---------------- 8.0: МЕХАНИКА ВОДОЁМОВ ----------------
+   У каждого водоёма свой характер. water — тип воды (влияет на свет, рябь и «прозрачность»),
+   stream — течение×: тянет поплавок и добавляет поклёвке скорости (но и сходов),
+   snag — шанс зацепа за коряги при забросе (бросок в «глухое» место),
+   window — лучшее время суток (утро/день/вечер/ночь): поклёвки чаще и рыба крупнее,
+   hand — прикормка: сыпнуть её в точку, чтобы ускорить поклёвку (стоит монет),
+   weather — какие погоды здесь особенно хороши.
+   Ни одно из этих правил не отменяет двух главных: своя приманка и достаточная сила удочки. */
+const LOC_MECH = {
+  lake:     {water:"calm",      stream:0.25, snag:0.00, hand:{coins:12, gain:0.30, bites:2}, window:"dawn",
+             weather:["sunny","overcast"], tip:"Мягкая вода: поплавок стоит ровно, клёв ранним утром."},
+  river:    {water:"river",     stream:0.85, snag:0.06, hand:{coins:18, gain:0.26, bites:2}, window:"day",
+             weather:["overcast","rain"], tip:"Течение тянет снасть — держи запас лески и кидай выше по течению."},
+  night:    {water:"dark",      stream:0.20, snag:0.00, hand:{coins:20, gain:0.28, bites:2}, window:"night",
+             weather:["moon","mist"], tip:"Ночью берут трофеи: сом, налим, осетровые. Днём тут глухо."},
+  winter:   {water:"ice",       stream:0.00, snag:0.00, hand:{coins:16, gain:0.24, bites:2}, window:"day",
+             weather:["frost","snow"], tip:"Лёд: сначала лунка, потом мормышка. Мороз — лучший друг."},
+  sea:      {water:"salt",      stream:0.45, snag:0.00, hand:{coins:24, gain:0.24, bites:2}, window:"dawn",
+             weather:["sunny","overcast"], tip:"Солёная вода: рыба сильная, тяни ровно и не перетягивай."},
+  swamp:    {water:"brown",     stream:0.10, snag:0.17, hand:{coins:22, gain:0.34, bites:3}, window:"dusk",
+             weather:["mist","overcast"], tip:"Забросил в коряжник — зацеп. Прикормка поднимает крупняк с трясины."},
+  mountain: {water:"clear",     stream:0.70, snag:0.08, hand:{coins:26, gain:0.20, bites:1}, window:"dawn",
+             weather:["sunny","frost"], tip:"Прозрачная вода: рыба видит леску. Точный заброс и утро — твоё всё."},
+  lagoon:   {water:"turquoise", stream:0.30, snag:0.05, hand:{coins:28, gain:0.26, bites:2}, window:"day",
+             weather:["sunny","thunder"], tip:"Тёплая бирюза: после грозы риф оживает — поклёвки идут одна за другой."}
+};
+
+/* время суток: локальное время игрока, 4 отрезка по 6 часов */
+const DAYTIME = {
+  dawn:  {name:"рассвет",  from:4,  to:10, icon:"sunrise"},
+  day:   {name:"день",     from:10, to:17, icon:"sun"},
+  dusk:  {name:"вечер",    from:17, to:22, icon:"sunset"},
+  night: {name:"ночь",     from:22, to:4,  icon:"moon"}
+};
+const WINDOW_K = {klyov:1.22, size:1.08, coins:1.06, pearl:0.04};   // «окно» водоёма
+const OFF_WINDOW_K = 0.86;                                          // не то время — рыба вялая
+const HAND = {                                                        // прикормка точки
+  dur:90,          // секунд действует
+  klyov:1.35,      // множитель клёва
+  size:1.06,       // рыба чуть крупнее
+  xp:0.05
+};
+const SNAG = {
+  loseBait:0.45,   // шанс потерять приманку при зацепе
+  breakLine:0.16,  // шанс обрыва снасти при выдирании
+  freeAfter:2.6    // через сколько секунд зацеп отпускает сам
+};
+
+/* ---------------- 8.0: ДУЭЛИ «СТЕНКА НА СТЕНКУ» ----------------
+   Три «дуэльных» водоёма. Приз — жемчуг (дефицитный: не больше 3 в день).
+   Ставка — 12 забросов. Соперники растут вместе с твоим уровнем. */
+const DUEL = {
+  locs: { swamp:"d_tench", mountain:"d_trout", lagoon:"d_barracuda" },
+  casts: 12,
+  pearlWin: 1,
+  pearlDraw: 0,
+  pearlPerDay: 3,
+  coinBonus: 0.25,
+  rivals: {
+    d_tench:    {name:"Фёдор Коряга",    lvl:6,  perCast:620,   flavor:"Ловит линей в коряжнике с детства.",
+                 fish:["lin","tench_b","karas_g","rotan","bowfin"]},
+    d_trout:    {name:"Вера Снежная",    lvl:9,  perCast:900,   flavor:"Ходит по каменистой косе с мушкой.",
+                 fish:["forel_r","forel_rd","harius_e","harius_s","paliya"]},
+    d_barracuda: {name:"Капитан Риф",    lvl:14, perCast:1500,   flavor:"Знает каждую щель в стенке рифа.",
+                 fish:["barracuda","lago_bar","dorado","sea_perch","kefal"]}
+  }
+};
+
+
 
 /* клубная цель дня: одна на сутки, только в клубном плёсе (для участников клуба) */
 const CLUB_GOAL = { coins:420, xp:220, pearl:2, count:3 };
@@ -432,7 +558,15 @@ const ICONS = {
   mute: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h3l4-4v14l-4-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>',
   warn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3l9-16z"/><path d="M12 9v5M12 17h.01"/></svg>',
   pearl: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="13" r="7" fill="#e7dcff"/><circle cx="12" cy="13" r="7" stroke="#9d86d8" stroke-width="1.4"/><ellipse cx="9.6" cy="10.4" rx="2.4" ry="1.7" fill="#fff" opacity=".85"/></svg>',
-  power: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h4l2-6 4 12 2-6h4"/></svg>'
+  power: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h4l2-6 4 12 2-6h4"/></svg>',
+  /* ---- 8.0: значки механики водоёмов ---- */
+  clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.4"/><path d="M12 7.4V12l3.2 2"/></svg>',
+  wave: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9c2.2-2.2 4.4-2.2 6.6 0S14 11.2 16.2 9 20.4 6.8 21 7.4"/><path d="M3 15c2.2-2.2 4.4-2.2 6.6 0s4.4 2.2 6.6 0 3.6-2.2 4.8-1.6"/></svg>',
+  knot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17c-2.4 0-4-1.7-4-3.8 0-1.6 1-3 2.6-3.6C6.2 7.4 8.1 6 10.4 6c2 0 3.6.9 4.6 2.4"/><path d="M15 8.4c2.2 0 4 1.6 4 3.7 0 2.1-1.8 3.7-4 3.7-.9 0-1.7-.2-2.4-.6"/><path d="M9.4 11.2c-1 0-1.8.8-1.8 1.8s.8 1.8 1.8 1.8c1.4 0 2.4-1 3.4-2.4 1-1.4 2-2.4 3.4-2.4"/></svg>',
+  feed: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.4 8.2A2.6 2.6 0 0 1 15 18.4H9a2.6 2.6 0 0 1-2.6-2.2L5 8z"/><path d="M8 5.4l1 2.6M12 4.4l0 3.2M16 5.4l-1 2.6"/><path d="M7 21h10"/></svg>',
+  swords: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l9 9M4 4v3.4M4 4h3.4M20 4l-9 9M20 4v3.4M20 4h-3.4"/><path d="M7.6 15.4l2.8 2.8M16.4 15.4l-2.8 2.8"/><path d="M5 21l3-3M19 21l-3-3"/></svg>',
+  sunrise: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v3M5.6 7.6L7.4 9.4M2.6 14h3M18.4 7.6l-1.8 1.8M18.4 14h3"/><path d="M7 17a5 5 0 0 1 10 0"/><path d="M3 20h18"/></svg>',
+  sunset: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v3M5.6 7.6L7.4 9.4M2.6 14h3M18.4 7.6l-1.8 1.8M18.4 14h3"/><path d="M7 17a5 5 0 0 1 10 0"/><path d="M3 20h18"/><path d="M10 12l2 2 2-2"/></svg>'
 };
 
 
@@ -440,8 +574,8 @@ const ICONS = {
 const FISH_CAT = {
   peace:  "karas_g karas_s karp karp_z karp_g lesh gustera plotva krasnop lin yaz golavl elec peskar ukleyka podust amur_w amur_b tolst_b tolst_p chehon sinets beloglaz vobla taran rybets usach shemaya verhovka gorchak vyun shipovka golets_whale rotan sig pelyad chir muksun omul ryapushka tugun".split(" "),
   pred:   "shchuka okun sudak bersh ersh ershor som som_amur nalim zhereh forel_r forel_rd forel_l harius_e harius_s taimen lenok golec_ar paliya nelma zmeegolov bass peacock".split(" "),
-  passage:"oster_r oster_s sterlyad sevryuga beluga ship kaluga losos gorbusha keta nerka kizhuch chavycha ugor minoga".split(" "),
-  sea:    "cod haddock saida pollock navaga kambala paltus skumbria stavrida seld kefal barabulka sea_perch zubatka angler tuna marlin swordfish dorado barracuda mako".split(" ")
+  passage:"oster_r oster_s sterlyad sevryuga beluga ship kaluga losos gorbusha keta nerka kizhuch chavycha ugor minoga tench_b bowfin bowfin_b".split(" "),
+  sea:    "cod haddock saida pollock navaga kambala paltus skumbria stavrida seld kefal barabulka sea_perch zubatka angler tuna marlin swordfish dorado barracuda mako lago_bar lag_kefal".split(" ")
 };
 const CAT_LABEL = {peace:"Мирные", pred:"Хищные", passage:"Проходные", sea:"Морские"};
 const FISH_CAT_OF = {};
@@ -595,13 +729,38 @@ const QUESTS = [
   {id:"q_mythic", chapter:"Финал", title:"Мифы", sub:"Поймай любую мифическую рыбу",
    goal:{type:"rarity", list:["mythic"], n:1}, reward:{coins:6000, xp:2400},
    tip:"Белуга, калуга, чавыча, марлин, меч-рыба или мако."},
-  {id:"q_all",    chapter:"Финал", title:"Полный дневник", sub:"Поймай все 100 видов",
-   goal:{type:"speciesAny", n:100, list:null}, reward:{coins:20000, xp:8000, rod:"moonrod", pearl:5},
+  {id:"q_all",    chapter:"Финал", title:"Полный дневник", sub:"Поймай все 105 видов",
+   goal:{type:"speciesAny", n:Object.keys(FISH).length, list:null}, reward:{coins:20000, xp:8000, rod:"moonrod", pearl:5},
    tip:"Это долгий путь. Вперёд, рыбак!"},
   {id:"q_final",  chapter:"Финал", title:"Мастер", sub:"Выполни 30 квестов",
    goal:{type:"questsDone", n:30}, reward:{coins:15000, xp:6000, pearl:6},
    tip:"Последний рубеж: почти вся книга заданий."}
 ];
+
+/* --- 8.0: задания новых водоёмов и механик (добавляются к сюжетной книге) --- */
+QUESTS.push(
+  {id:"q_snag",    chapter:"Ловкость", title:"Из коряг",       sub:"Выберись из зацепа целой снастью 3 раза",
+   goal:{type:"unsnag", n:3},  reward:{coins:320, xp:170, bait:"worm", baitN:20},
+   tip:"В Тенистой топи поплавок часто садится в коряжник. Дёрни 3–4 раза — приманку почти не потеряешь."},
+  {id:"q_hand",    chapter:"Ловкость", title:"Прикормка",      sub:"Высыпь прикормку в 3 разных водоёмах",
+   goal:{type:"hand", locs:3}, reward:{coins:380, xp:200, bait:"corn", baitN:25},
+   tip:"Кнопка прикормки появляется у шкалы силы, когда поплавок уже в воде."},
+  {id:"q_window",  chapter:"Ловкость", title:"Своё время",     sub:"Поймай 3 рыбы в лучшее время своего водоёма",
+   goal:{type:"window", n:3},  reward:{coins:460, xp:240, pearl:1},
+   tip:"У каждого водоёма своё окно: рассвет, день, вечер или ночь. Оно написано в карточке водоёма."},
+  {id:"q_duel",    chapter:"Дуэли",   title:"Стенка на стенку", sub:"Выиграй дуэль у любого соперника",
+   goal:{type:"duelWin", n:1}, reward:{coins:900, xp:420, pearl:2},
+   tip:"Дуэль — в карточке Топи, Горного озера или Лагуны. 12 забросов, победа даёт жемчуг."},
+  {id:"q_bowfin",  chapter:"Дуэли",   title:"Ильная рыба",     sub:"Поймай амию в Тенистой топи",
+   goal:{type:"species", list:["bowfin"]}, reward:{coins:720, xp:360, rod:"kevlar"},
+   tip:"Амия берёт лягушку или живца в коряжнике. Нужна снасть от «Титана»."},
+  {id:"q_lagoon",  chapter:"Дуэли",   title:"Тёплая бирюза",    sub:"Лагуновый горбыль и лагуновый кефаль",
+   goal:{type:"species", list:["lago_bar","lag_kefal"]}, reward:{coins:1100, xp:520, line:"ocean"},
+   tip:"Оба живут в Коралловой лагуне: горбыль на креветку, кефаль на водоросли."},
+  {id:"q_alllocs", chapter:"Восемь",  title:"Все водоёмы",     sub:"Поймай рыбу в каждом из 8 водоёмов",
+   goal:{type:"allLocs", n:8},  reward:{coins:1500, xp:700, pearl:2},
+   tip:"Топь, Горное озеро и Лагуна — самые «дорогие» по уровню, но и самые богатые."}
+);
 
 /* ежедневные цели: обновляются по дате (стабильны в течение дня) */
 const DAILY_POOL = [
@@ -614,7 +773,7 @@ const DAILY_POOL = [
   {id:"d_rare",  text:"Поймай рыбу редкости «редкий» или выше", type:"rar", n:1, coins:180, xp:90}
 ];
 
-const CHAPTER_ORDER = ["Начало","Река","Озеро","Зима","Глубина","Море","Финал"];
+const CHAPTER_ORDER = ["Начало","Река","Озеро","Зима","Глубина","Море","Ловкость","Дуэли","Восемь","Финал"];
 
 const JUNK_ART = {
   boot: '<svg viewBox="0 0 64 64"><path d="M18 10h12v20l14 6c4 2 6 5 6 9v5H14V22c0-6 2-12 4-12z" fill="#6b5136" stroke="#3f2f1e" stroke-width="2"/><path d="M14 44h36v6H14z" fill="#3f2f1e"/></svg>',

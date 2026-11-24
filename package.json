@@ -1,13 +1,14 @@
 {
   "name": "tihaya-zavod-rybalka",
-  "version": "7.1.0",
+  "version": "8.0.0",
   "private": true,
-  "description": "Тихая заводь — рыбалка 7.1: одна HTML-страница, офлайн, 100 видов рыбы",
+  "description": "Тихая заводь — рыбалка 8.0: одна HTML-страница, офлайн, 105 видов рыбы, 8 водоёмов, дуэли",
   "scripts": {
     "build": "python3 build.py",
-    "test": "node tests/smoke.mjs && node tests/z7.mjs && node tests/club.mjs && node tests/club2.mjs && node tests/game75.mjs",
+    "test": "node tests/smoke.mjs && node tests/z7.mjs && node tests/club.mjs && node tests/club2.mjs && node tests/game75.mjs && node tests/game80.mjs",
     "shots": "node tests/shots.mjs",
-    "test:club": "node tests/club.mjs && node tests/club2.mjs"
+    "test:club": "node tests/club.mjs && node tests/club2.mjs",
+    "test:fps": "node tests/fps80.mjs"
   },
   "devDependencies": {
     "playwright": "1.49.0"

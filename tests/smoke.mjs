@@ -1,5 +1,5 @@
 // smoke: главный сценарий игры — свободный заброс в любое место, ожидание с интересом,
-// подсечка, вываживание, карточка улова. Проверяем 5 водоёмов и отсутствие ошибок консоли.
+// подсечка, вываживание, карточка улова. Проверяем 8 водоёмов и отсутствие ошибок консоли.
 import { chromium } from "playwright";
 const b = await chromium.launch();
 const p = await b.newPage({ viewport:{width:430,height:860}, deviceScaleFactor:2 });
@@ -32,7 +32,18 @@ async function fish(cfg){
       else if (s.tension >= 0.72 && held){ await p.mouse.up(); held=false; }
       await p.waitForTimeout(70);
     }
-    else if (s.state==="result"){ if(held){await p.mouse.up(); held=false;} await p.waitForTimeout(1150);
+    else if (s.state==="snag"){
+      // 8.0: зацеп — три коротких подёргивания освобождают снасть
+      if (held){ await p.mouse.up(); held=false; }
+      for (let t=0;t<3;t++){ await p.mouse.down(); await p.waitForTimeout(60); await p.mouse.up(); await p.waitForTimeout(260); }
+      await p.waitForTimeout(400);
+      // после освобождения бросаем снова в ту же точку
+      if ((await p.evaluate(()=>window.__dbg().state)) === "aim"){
+        await p.mouse.move(box.x, box.y); await p.mouse.down(); await p.waitForTimeout(420); await p.mouse.up();
+      }
+      await p.waitForTimeout(300);
+    }
+    else if (s.state==="result"){ if(held){await p.mouse.up(); held=false;} await p.waitForTimeout(1450);
       const card = await p.evaluate(()=>document.getElementById("catchCard").classList.contains("on"));
       await p.evaluate(()=>{const n=document.getElementById("btnNext"); if(window.__dbg().state==="result") n.click();});
       await p.waitForTimeout(400);
@@ -48,6 +59,9 @@ const cases = [
   ["зима",  {loc:"winter", bait:"bloodworm", xy:[210,660]}],
   ["ночь",  {loc:"night", bait:"corn", xy:[150,600]}],
   ["море",  {loc:"sea", bait:"corn", xy:[300,620]}],
+  ["топь",  {loc:"swamp", bait:"corn", xy:[210,640]}],
+  ["горы",  {loc:"mountain", bait:"corn", xy:[250,650]}],
+  ["лагуна",{loc:"lagoon", bait:"corn", xy:[300,640]}],
 ];
 const res = {};
 for (const [name, cfg] of cases){ await boot(cfg); res[name] = await fish(cfg); }

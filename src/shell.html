@@ -9,17 +9,17 @@
 <meta name="apple-mobile-web-app-title" content="Рыбалка">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="Тихая заводь">
-<meta name="description" content="Тихая заводь — рыбалка: 100 видов рыбы, 5 водоёмов, премиум-снасти. Работает офлайн.">
-<link rel="manifest" href="manifest.webmanifest?v=715">
-<link rel="icon" href="favicon-32.png?v=715" sizes="32x32" type="image/png">
+<meta name="description" content="Тихая заводь — рыбалка: 105 видов рыбы, 8 водоёмов, дуэли, премиум-снасти. Работает офлайн.">
+<link rel="manifest" href="manifest.webmanifest?v=716">
+<link rel="icon" href="favicon-32.png?v=716" sizes="32x32" type="image/png">
 <!-- iOS: иконка «На экран Домой». Safari берёт последний подходящий размер,
      поэтому перечисляем все типовые; ?v= — чтобы не подхватилась старая копия из кэша -->
-<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=715">
-<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=715">
-<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=715">
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=715">
-<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=715">
-<link rel="apple-touch-icon" href="icon-180.png?v=715">
+<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=716">
+<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=716">
+<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=716">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=716">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=716">
+<link rel="apple-touch-icon" href="icon-180.png?v=716">
 <title>Тихая заводь — рыбалка</title>
 <style>
 :root{
@@ -262,6 +262,166 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 #progWrap{height:7px;border-radius:999px;margin-bottom:8px;overflow:hidden;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.26);box-shadow:0 2px 10px rgba(0,0,0,.3)}
 #progFill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#7ee7ff,#4ade80,#ffe066);box-shadow:0 0 12px rgba(120,240,200,.75);transition:width .08s linear}
 
+/* ============ 8.0: механика водоёмов ============ */
+.locCard .locTop{display:flex;align-items:center;gap:8px}
+.locCard .locTop h3{flex:1;min-width:0}
+.tag.lvl{background:rgba(10,26,32,.66);border-color:rgba(255,255,255,.2);color:#ffe6b0;font-weight:900;
+  text-shadow:none;backdrop-filter:blur(4px)}
+.tag.lvl svg{width:10px;height:10px;opacity:.9}
+.tag.lvl.off{color:#ffc3ae;border-color:rgba(255,140,110,.4)}
+
+.locMech{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.mchip{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:800;letter-spacing:.1px;
+  padding:3px 7px;border-radius:8px;background:rgba(255,255,255,.10);
+  border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.86);white-space:nowrap}
+.mchip svg{width:11px;height:11px;flex:none;opacity:.9}
+.mchip.win{border-color:rgba(255,203,105,.34);background:rgba(255,203,105,.12);color:#ffdf9e}
+.mchip.win.on{border-color:rgba(255,203,105,.8);background:rgba(255,203,105,.26);color:#fff3d0;
+  box-shadow:0 0 12px rgba(255,203,105,.25)}
+.mchip.stream{border-color:rgba(127,200,238,.32);background:rgba(127,200,238,.12);color:#cbeafd}
+.mchip.snag{border-color:rgba(255,162,104,.32);background:rgba(255,162,104,.12);color:#ffd2b3}
+.mchip.hand{border-color:rgba(167,240,189,.3);background:rgba(167,240,189,.11);color:#cdf7d8}
+.mchip.water{background:rgba(255,255,255,.07);color:rgba(255,255,255,.7)}
+.duelBtn{margin-top:9px;width:100%;display:flex;align-items:center;gap:7px;cursor:pointer;
+  padding:8px 10px;border-radius:12px;font:800 11.5px/1.2 -apple-system,Segoe UI,Roboto,sans-serif;
+  color:#e9deff;background:linear-gradient(180deg,rgba(120,92,196,.55),rgba(78,58,140,.6));
+  border:1px solid rgba(198,176,255,.42);box-shadow:0 6px 18px rgba(60,30,120,.28)}
+.duelBtn svg{width:14px;height:14px;flex:none;color:#dccdff}
+.duelBtn b{font-weight:900}
+.duelBtn span{font-weight:700;opacity:.8;font-size:10.5px;display:inline-flex;align-items:center;gap:3px}
+.duelBtn span svg{width:10px;height:10px}
+.duelBtn:active{transform:scale(.985)}
+.duelBtn.off{filter:saturate(.35);opacity:.7}
+
+/* строка «здесь и сейчас» под шапкой */
+#locInfo{position:absolute;z-index:10;left:11px;right:11px;
+  top:calc(env(safe-area-inset-top,0px) + 104px);
+  justify-content:center;flex-wrap:wrap;transition:opacity .2s;
+  display:flex;gap:4px;flex-wrap:wrap;pointer-events:none}
+#locInfo .li{display:inline-flex;align-items:center;gap:3px;font:800 10px/1 -apple-system,Segoe UI,Roboto,sans-serif;
+  padding:4px 7px;border-radius:999px;background:rgba(6,20,26,.5);border:1px solid rgba(255,255,255,.12);
+  color:rgba(255,255,255,.82);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  text-shadow:0 1px 4px rgba(0,0,0,.6)}
+#locInfo .li svg{width:10px;height:10px}
+@media (max-width:400px){ #locInfo .li{padding:3px 6px;font-size:9.5px} }
+#locInfo.off{opacity:0}
+#locInfo .li.on{color:#fff3d0;border-color:rgba(255,203,105,.5);background:rgba(72,50,14,.55)}
+#locInfo .li.hand.on{color:#cdf7d8;border-color:rgba(167,240,189,.45);background:rgba(14,52,30,.55)}
+#locInfo .li.stream{color:#cbeafd;border-color:rgba(127,200,238,.35)}
+#locInfo .li.snag{color:#ffd2b3;border-color:rgba(255,162,104,.32)}
+
+/* кнопка прикормки у шкалы силы */
+#handBtn{position:absolute;z-index:13;left:50%;transform:translate(-50%,0);
+  bottom:calc(env(safe-area-inset-bottom,0px) + 174px);
+  /* показываем только пока метят заброс (класс .on из syncHandVisibility) */
+  display:none;align-items:center;gap:5px;padding:6px 11px;border-radius:999px;cursor:pointer;
+  background:rgba(6,20,26,.62);border:1px solid rgba(255,255,255,.16);color:#e9f6ec;
+  font:800 11px/1 -apple-system,Segoe UI,Roboto,sans-serif;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  box-shadow:0 8px 20px rgba(0,0,0,.32)}
+#handBtn.on{display:inline-flex;border-color:rgba(255,225,160,.45);color:#f2f7ec}
+#handBtn.live{border-color:rgba(167,240,189,.55);color:#d9ffe4;background:rgba(14,52,30,.62)}
+#handBtn svg{width:13px;height:13px}
+#handBtn b{color:#ffd979;font-variant-numeric:tabular-nums}
+/* когда полоска натяжения не показана — кнопка живёт у кнопки заброса */
+#handBtn.up{bottom:calc(env(safe-area-inset-bottom,0px) + 174px);opacity:.92}
+#handBtn:active{transform:translate(-50%,0) scale(.95)}
+@media (max-height:700px){ #handBtn{bottom:calc(env(safe-area-inset-bottom,0px) + 168px)} }
+
+/* зацеп */
+#snagBar{position:absolute;z-index:13;left:12px;right:12px;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 148px);
+  display:none;align-items:center;gap:9px;padding:9px 12px;border-radius:16px;
+  background:rgba(24,14,8,.8);border:1px solid rgba(255,162,104,.4);
+  box-shadow:0 12px 30px rgba(0,0,0,.45);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+#snagBar.on{display:flex}
+#snagBar .snagIco{width:26px;height:26px;flex:none;display:grid;place-items:center;border-radius:9px;
+  background:rgba(255,162,104,.16);color:#ffbf96}
+#snagBar .snagIco svg{width:15px;height:15px}
+#snagBar .snagTxt{flex:1;min-width:0}
+#snagBar .snagTxt b{display:block;font:900 12px/1.2 -apple-system,Segoe UI,Roboto,sans-serif;color:#ffd9bf}
+#snagBar .snagTxt small{font:700 10.5px/1.2 -apple-system,Segoe UI,Roboto,sans-serif;color:rgba(255,255,255,.6)}
+#snagTaps{display:flex;gap:4px;flex:none}
+#snagTaps i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.18);
+  border:1px solid rgba(255,255,255,.22)}
+#snagTaps i.on{background:#ffb26b;border-color:#ffd0a8;box-shadow:0 0 8px rgba(255,178,107,.8)}
+
+/* дуэль: чип в игре и карточка итога */
+#duelChip{position:absolute;z-index:12;left:50%;transform:translateX(-50%);
+  top:calc(env(safe-area-inset-top,0px) + 138px);
+  display:none;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;
+  background:linear-gradient(180deg,rgba(96,72,168,.9),rgba(64,44,120,.92));
+  border:1px solid rgba(198,176,255,.5);color:#f0e9ff;
+  font:800 11.5px/1 -apple-system,Segoe UI,Roboto,sans-serif;
+  box-shadow:0 8px 22px rgba(30,10,70,.45);backdrop-filter:blur(10px)}
+#duelChip.on{display:flex}
+#duelChip .dc-vs{font:900 9px/1 -apple-system,Segoe UI,Roboto,sans-serif;letter-spacing:.6px;
+  background:#ff5b8a;color:#fff;padding:3px 5px;border-radius:6px}
+#duelChip .dc-score{font-variant-numeric:tabular-nums;color:#dcd0ff}
+#duelChip i{font-style:normal;background:rgba(255,255,255,.16);padding:2px 6px;border-radius:6px}
+
+#duelCard{z-index:65}
+#duelCard .card{width:min(400px,100%);border-radius:26px;padding:20px;text-align:center;
+  background:linear-gradient(180deg,#241a3d,#150f28);color:#f0e9ff;border:1px solid rgba(198,176,255,.28);
+  box-shadow:0 28px 70px rgba(0,0,0,.6);animation:pop .3s cubic-bezier(.2,1.2,.4,1)}
+#duelCard .dc-kicker{font:900 10px/1 -apple-system,Segoe UI,Roboto,sans-serif;letter-spacing:1.2px;
+  text-transform:uppercase;color:rgba(220,208,255,.6)}
+#duelCard .dc-rival{font:900 20px/1.2 -apple-system,Segoe UI,Roboto,sans-serif;margin:4px 0 10px}
+#duelCard .dc-verdict{display:inline-block;font:900 13px/1 -apple-system,Segoe UI,Roboto,sans-serif;
+  letter-spacing:.6px;text-transform:uppercase;padding:6px 12px;border-radius:999px;margin-bottom:10px}
+#duelCard .dc-verdict.win{background:rgba(74,222,128,.2);color:#a7f0bd;border:1px solid rgba(74,222,128,.5)}
+#duelCard .dc-verdict.lose{background:rgba(255,90,90,.16);color:#ffb3a0;border:1px solid rgba(255,120,100,.4)}
+#duelCard .dc-verdict.draw{background:rgba(255,203,105,.16);color:#ffdf9e;border:1px solid rgba(255,203,105,.4)}
+#duelCard .dc-scoreRow{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin:6px 0 12px}
+#duelCard .dc-scoreRow>div{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  border-radius:14px;padding:9px 8px}
+#duelCard .dc-scoreRow small{display:block;font:800 9.5px/1 -apple-system,Segoe UI,Roboto,sans-serif;
+  letter-spacing:.5px;text-transform:uppercase;color:rgba(240,233,255,.5);margin-bottom:4px}
+#duelCard .dc-scoreRow b{font:900 16px/1 -apple-system,Segoe UI,Roboto,sans-serif}
+#duelCard .dc-scoreRow .vs{font:900 11px/1 -apple-system,Segoe UI,Roboto,sans-serif;color:rgba(240,233,255,.45)}
+#duelCard .dc-prize{font:800 12px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;color:#d9ccff}
+#duelCard .dc-prize svg{width:13px;height:13px;vertical-align:-2px}
+#duelCard .dc-list{display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin:12px 0 14px}
+#duelCard .dl{display:inline-flex;align-items:center;gap:3px;font:800 9.5px/1 -apple-system,Segoe UI,Roboto,sans-serif;
+  padding:3px 6px;border-radius:8px;background:rgba(255,255,255,.06);color:rgba(240,233,255,.8)}
+#duelCard .dl span{opacity:.45}
+#duelCard .dl i{font-style:normal;opacity:.4;font-size:8.5px}
+#duelCard .dl b.r{color:#ffb3a0}
+
+/* мини-карта водоёмов */
+#locMap{margin:2px 0 13px;border-radius:20px;padding:11px 12px 14px;position:relative;overflow:hidden;
+  background:radial-gradient(120% 90% at 20% 0%,#12414c 0%,#0a2530 45%,#071a22 100%);
+  border:1px solid rgba(255,255,255,.10);box-shadow:0 10px 26px rgba(0,0,0,.35)}
+#locMap .mapHead{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+#locMap .mapHead b{display:flex;align-items:center;gap:5px;font:850 12.5px/1 -apple-system,Segoe UI,Roboto,sans-serif;
+  color:#eaf6ff;letter-spacing:.1px}
+#locMap .mapHead svg{width:14px;height:14px;color:#ffc145}
+#locMap .mapHead span{font:700 10px/1.2 -apple-system,Segoe UI,Roboto,sans-serif;color:rgba(234,246,255,.45);margin-left:auto;text-align:right}
+.mapWrap{position:relative;width:100%;height:214px;margin-top:6px}
+.mapLinks{position:absolute;inset:0;width:100%;height:100%}
+.mapLinks line{stroke:rgba(160,220,240,.20);stroke-width:.5;stroke-dasharray:2 2}
+.mapDot{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:1px;
+  background:none;border:none;cursor:pointer;padding:2px 4px;border-radius:12px}
+.mapDot .md-ico{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+  font:900 13px/1 -apple-system,Segoe UI,Roboto,sans-serif;color:#cfefff;
+  background:radial-gradient(60% 60% at 40% 35%,rgba(120,210,235,.35),rgba(10,50,64,.9));
+  border:1px solid rgba(160,220,240,.4);box-shadow:0 4px 12px rgba(0,0,0,.4);transition:transform .14s}
+.mapDot .md-name{font:800 9.5px/1 -apple-system,Segoe UI,Roboto,sans-serif;color:rgba(234,246,255,.78);
+  text-shadow:0 1px 4px rgba(0,0,0,.85);white-space:nowrap;margin-top:3px}
+.mapDot.on .md-ico{background:radial-gradient(60% 60% at 40% 35%,#ffe08a,#f0a51f);color:#3a2a05;
+  border-color:#ffe2a0;box-shadow:0 0 0 3px rgba(255,193,69,.22),0 6px 16px rgba(240,165,31,.5);transform:scale(1.1)}
+.mapDot.on .md-name{color:#ffdf9e;font-weight:900}
+.mapDot.win .md-ico{border-color:rgba(167,240,189,.75);box-shadow:0 0 0 2px rgba(167,240,189,.2),0 4px 12px rgba(0,0,0,.4)}
+.mapDot.locked{opacity:.55}
+.mapDot.locked .md-ico{filter:grayscale(.7)}
+.mapDot.sea .md-ico{border-style:dashed}
+.mapDot .md-lvl{position:absolute;top:-4px;right:-2px;font:900 8px/1 -apple-system,Segoe UI,Roboto,sans-serif;
+  background:rgba(8,22,28,.95);color:#ffc145;border:1px solid rgba(255,193,69,.5);
+  border-radius:999px;padding:2px 4px}
+.mapDot .md-win{position:absolute;top:-5px;left:-8px;font:900 7px/1 -apple-system,Segoe UI,Roboto,sans-serif;
+  letter-spacing:.3px;text-transform:uppercase;background:rgba(74,222,128,.9);color:#06240f;
+  border-radius:999px;padding:2px 4px}
+.mapDot:active{transform:translate(-50%,-50%) scale(.94)}
+
 /* ============ toast ============ */
 #toast{
   position:absolute;z-index:30;left:50%;top:34%;transform:translate(-50%,-50%) scale(.94);
@@ -310,14 +470,14 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 .locCard h3{margin:0 0 3px;font-size:20px;font-weight:850;letter-spacing:-.2px}
 .locCard p{margin:0;font-size:12.5px;color:rgba(255,255,255,.86);line-height:1.42;font-weight:600;text-shadow:0 1px 6px rgba(0,0,0,.7);
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.locCard .tags{display:flex;gap:5px;margin-top:9px;flex-wrap:nowrap;overflow:hidden}
+.locCard .tags{display:flex;gap:5px;margin-top:9px;flex-wrap:wrap;row-gap:5px}
 .tag{
   font-size:10px;font-weight:800;letter-spacing:.2px;padding:3px 8px;border-radius:999px;
   background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.16);color:#fff;
   display:inline-flex;align-items:center;gap:4px;white-space:nowrap;flex:none;
 }
 .tag svg{width:11px;height:11px}
-.tag.trunc{overflow:hidden;text-overflow:ellipsis;max-width:44%}
+.tag.trunc{overflow:hidden;text-overflow:ellipsis;max-width:70%}
 .tag.gold{background:rgba(255,193,69,.2);border-color:rgba(255,193,69,.4);color:#ffd979}
 .tag.green{background:rgba(74,222,128,.16);border-color:rgba(74,222,128,.36);color:#a7f0bd}
 .locFish{display:flex;align-items:center;gap:2px;margin-top:8px}
@@ -430,7 +590,8 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
   backdrop-filter:blur(4px);text-shadow:none}
 .locHint.ok{background:rgba(24,90,60,.5);color:#b8f0c6}
 .locHint.warn{background:rgba(96,34,26,.55);color:#ffb9a6}
-.locBaits{font-size:10.5px;font-weight:750;color:rgba(255,255,255,.74);margin-top:5px;line-height:1.35;text-shadow:0 1px 5px rgba(0,0,0,.75)}
+.locBaits{font-size:10.5px;font-weight:750;color:rgba(255,255,255,.72);margin-top:5px;line-height:1.35;
+  text-shadow:0 1px 5px rgba(0,0,0,.75);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 /* карточка вида из дневника */
 #fishCard{z-index:70}
 #fishCard .roundbtn{position:absolute;right:10px;top:10px;z-index:6}
@@ -842,6 +1003,12 @@ button.buy.prem:disabled{opacity:.5}
   pointer-events:none;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis;
 }
 #hint.on{opacity:1}
+/* шапка на узком экране переносится в две строки — подсказку опускаем ниже */
+@media (max-width:470px){
+  #hint{top:calc(env(safe-area-inset-top,0px) + 84px);max-width:88vw}
+  #xpbar{top:calc(env(safe-area-inset-top,0px) + 74px)}
+  #locInfo{top:calc(env(safe-area-inset-top,0px) + 108px)}
+}
 .dim{position:absolute;inset:0;z-index:9;background:rgba(3,12,16,0);transition:background .3s;pointer-events:none}
 .dim.on{background:rgba(3,12,16,.35)}
 </style>
@@ -869,6 +1036,8 @@ button.buy.prem:disabled{opacity:.5}
     <button class="roundbtn" id="btnSound" aria-label="Звук"></button>
   </div>
   <div id="xpbar"><div id="xpfill"></div></div>
+  <div id="locInfo"></div>
+  <div id="duelChip"></div>
 
   <div id="hint"></div>
   <div class="dim" id="dim"></div>
@@ -896,6 +1065,13 @@ button.buy.prem:disabled{opacity:.5}
     </div>
   </div>
 
+  <button id="handBtn" aria-label="Прикормка"><span style="width:13px;height:13px;display:inline-flex" id="handIco"></span><b>12</b></button>
+  <div id="snagBar">
+    <span class="snagIco" id="snagIco"></span>
+    <div class="snagTxt"><b>Зацеп</b><small id="snagHint">дёргай, чтобы освободить</small></div>
+    <div id="snagTaps"></div>
+  </div>
+
   <div id="gearbar"></div>
   <div id="baitShelf"></div>
   <button id="action">ЗАБРОСИТЬ</button>
@@ -921,6 +1097,7 @@ button.buy.prem:disabled{opacity:.5}
       </button>
     </div>
     <div class="sheet-body">
+      <div id="locMap"></div>
       <div id="locList"></div>
       <div class="secTitle">Снаряжение</div>
       <div id="gearSummary"></div>
@@ -950,6 +1127,23 @@ button.buy.prem:disabled{opacity:.5}
     </div>
   </section>
 
+  <!-- ===== 8.0: итог дуэли ===== -->
+  <div class="overlay" id="duelCard">
+    <div class="card">
+      <div class="dc-kicker">Дуэль · стенка на стенку</div>
+      <div class="dc-rival">—</div>
+      <div class="dc-verdict">—</div>
+      <div class="dc-scoreRow">
+        <div><small>ты</small><b class="dc-me">0</b></div>
+        <div class="vs">VS</div>
+        <div><small>соперник</small><b class="dc-him">0</b></div>
+      </div>
+      <div class="dc-prize"></div>
+      <div class="dc-list"></div>
+      <button class="btn" id="btnDuelOk">На воду</button>
+    </div>
+  </div>
+
   <!-- ===== quest done ===== -->
   <div class="overlay" id="questDone">
     <div class="card">
@@ -968,7 +1162,7 @@ button.buy.prem:disabled{opacity:.5}
     <div class="sheet-head">
       <div style="flex:1">
         <h2>Как играть</h2>
-        <div class="sub">Пять шагов и четыре правила</div>
+        <div class="sub">Десять шагов и восемь правил</div>
       </div>
       <button class="roundbtn" data-close="sheetHelp" aria-label="Закрыть">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
@@ -980,8 +1174,12 @@ button.buy.prem:disabled{opacity:.5}
       <div class="helpRules">
         <div class="hr"><span class="hrIco" data-ico="bait"></span><div><b>Своя приманка</b>Каждая из 100 рыб берёт только одну приманку. На чужую — тишина.</div></div>
         <div class="hr"><span class="hrIco" data-ico="power"></span><div><b>Порог снасти</b>У рыбы есть «требуемая сила». Слабая удочка — рыба просто не клюнет.</div></div>
-        <div class="hr"><span class="hrIco" data-ico="map"></span><div><b>Водоём</b>5 водоёмов с 1 по 12 уровень. В море — только морская снасть.</div></div>
-        <div class="hr"><span class="hrIco" data-ico="star"></span><div><b>Квесты</b>26 сюжетных заданий и 3 ежедневные цели дают монеты, опыт и снасти.</div></div>
+        <div class="hr"><span class="hrIco" data-ico="map"></span><div><b>Водоём</b>8 водоёмов с 1 по 14 уровень. В море и лагуне — только морская снасть.</div></div>
+        <div class="hr"><span class="hrIco" data-ico="clock"></span><div><b>Своё время</b>У каждого водоёма есть лучшее время суток: клёв +22%, рыба крупнее. Не то время — вяло.</div></div>
+        <div class="hr"><span class="hrIco" data-ico="knot"></span><div><b>Зацепы</b>В коряжнике снасть садится: короткие подёргивания освобождают почти без потерь, сильный рывок — быстрее, но с риском.</div></div>
+        <div class="hr"><span class="hrIco" data-ico="feed"></span><div><b>Прикормка</b>Кнопка у шкалы силы: за монеты клёв и размер рыбы растут на полторы минуты.</div></div>
+        <div class="hr"><span class="hrIco" data-ico="swords"></span><div><b>Дуэли</b>Топь, Горное озеро и Лагуна: 12 забросов против соперника, победа по весу даёт жемчуг.</div></div>
+        <div class="hr"><span class="hrIco" data-ico="star"></span><div><b>Квесты</b>50 заданий и 3 ежедневные цели дают монеты, опыт и снасти.</div></div>
       </div>
       <button class="btn" id="btnHelpOk">Понятно, на воду</button>
     </div>
