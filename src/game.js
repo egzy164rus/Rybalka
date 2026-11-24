@@ -6261,6 +6261,13 @@ function renderHelp(){
 }
 
 /* ---------------- стартовый экран ---------------- */
+/* ТИТУЛ: «пробный заброс» — своя механика загрузочного экрана.
+   Зажми кружок — бежит стрелка силы; отпусти в золотой зоне — точный заброс.
+   Три точных заброса = «глаз намётан», и игра сама зовёт на воду. */
+const TITLE = {
+  power: 0, run: false, dir: 1, sweet: [0.52, 0.68], stars: 0, tries: 0, toastT: 0,
+  best: 0, flash: 0, castT: 0, lastRes: ""
+};
 const START = { on:false, cv:null, ctx:null, t:0, fishes:[], drops:[], clouds:[], ready:false, st:0 };
 function initStart(){
   START.cv = $("startCv");
@@ -6292,6 +6299,7 @@ function startFrame(now){
     cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr);
   }
   START.t += 0.016;
+  titleGaugeMove(0.016);
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.clearRect(0,0,w,h);
 
@@ -6323,8 +6331,11 @@ function startFrame(now){
   glow.addColorStop(0.18,"rgba(255,190,110,.42)");
   glow.addColorStop(1,"rgba(255,150,80,0)");
   ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(sunX,sunY,h*0.42,0,Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(sunX,sunY,h*0.036,0,Math.PI*2);
-  ctx.fillStyle = "rgba(255,248,220,.96)"; ctx.fill();
+  // на фото-фоне своё солнце: рисуем только мягкое ядро, а не «плоский кружок»
+  if (!(bg && bg.complete && bg.naturalWidth)){
+    ctx.beginPath(); ctx.arc(sunX,sunY,h*0.03,0,Math.PI*2);
+    ctx.fillStyle = "rgba(255,248,220,.9)"; ctx.fill();
+  }
 
   // облака-полосы
   for (const c of START.clouds){
@@ -6406,8 +6417,122 @@ function startFrame(now){
     ctx.fill();
   }
 
+  /* пробный заброс: поплавок летит в воду после отпускания */
+  if (TITLE.castT > 0){
+    TITLE.castT = Math.max(0, TITLE.castT - 0.016);
+    const k = 1 - TITLE.castT / 0.9;                  // 0 → 1
+    const bx = w*0.30 + k * w*0.42;
+    const by = h*0.30 + Math.sin(Math.min(1, k*1.25) * Math.PI/2) * h*0.34;
+    ctx.save();
+    ctx.globalAlpha = clamp(k*1.6, 0, 1) * (0.55 + 0.45*TITLE.flash);
+    ctx.beginPath(); ctx.arc(bx, by, 4.2, 0, Math.PI*2);
+    ctx.fillStyle = "rgba(255,120,90,.95)"; ctx.fill();
+    ctx.beginPath(); ctx.arc(bx, by-4.6, 3.4, 0, Math.PI*2);
+    ctx.fillStyle = "rgba(255,246,226,.95)"; ctx.fill();
+    ctx.restore();
+    if (k > 0.96){
+      for (let i=0;i<3;i++){
+        const rr = 8 + i*13 + k*10;
+        ctx.beginPath(); ctx.ellipse(bx, by+6, rr, rr*0.34, 0, 0, Math.PI*2);
+        ctx.strokeStyle = "rgba(255,236,190," + (0.28 - i*0.08) + ")"; ctx.lineWidth = 1.1; ctx.stroke();
+      }
+    }
+  }
+
   requestAnimationFrame(startFrame);
 }
+/* --- титул: логика пробного заброса --- */
+function titleGaugeMove(dt){
+  if (!TITLE.run) return;
+  TITLE.power += TITLE.dir * dt * 0.62;
+  if (TITLE.power >= 1){ TITLE.power = 1; TITLE.dir = -1; }
+  if (TITLE.power <= 0){ TITLE.power = 0; TITLE.dir = 1; }
+  titleNeedle();
+}
+function titleToast(txt){
+  let box = document.querySelector("#stPlay .st-toast");
+  if (!box){
+    box = document.createElement("div"); box.className = "st-toast";
+    const host = $("stPlay") || document.body; host.appendChild(box);
+  }
+  box.textContent = txt; box.classList.add("on");
+  clearTimeout(TITLE._tt); TITLE._tt = setTimeout(() => box.classList.remove("on"), 1500);
+}
+function titleNeedle(){
+  const nd = $("stNeedle");
+  if (nd) nd.style.left = "calc(" + (TITLE.power*100).toFixed(2) + "% - 1.5px)";
+}
+function titlePaintStars(){
+  const stars = $("stStars");
+  if (stars) stars.innerHTML = [0,1,2].map(i => i < TITLE.stars ? "<b>★</b>" : "★").join("");
+  const st = $("stStreak");
+  if (st) st.textContent = TITLE.stars >= 3 ? "глаз намётан — можно на воду"
+    : TITLE.stars === 2 ? "ещё один точный заброс"
+    : TITLE.stars === 1 ? "неплохо для начала" : "новичок";
+  const task = $("stTask");
+  if (task) task.textContent = TITLE.stars >= 3 ? "готов — жми «Начать рыбалку»"
+    : "точных забросов: " + TITLE.stars + " из 3";
+  const swz = $("stSweet");
+  if (swz){ swz.style.left = (TITLE.sweet[0]*100) + "%"; swz.style.width = ((TITLE.sweet[1]-TITLE.sweet[0])*100) + "%"; }
+  titleNeedle();
+}
+function titleRelease(){
+  if (!TITLE.run) return 0;
+  TITLE.run = false;
+  const p = TITLE.power, s = TITLE.sweet;
+  const dist = p < s[0] ? s[0] - p : p > s[1] ? p - s[1] : 0;
+  const acc = dist === 0 ? 1 : clamp(1 - dist / 0.22, 0, 0.9);
+  TITLE.tries++;
+  TITLE.castT = 0.9;
+  TITLE.flash = acc > 0.85 ? 1 : 0.5;
+  if (acc > 0.85){
+    TITLE.stars = Math.min(3, TITLE.stars + 1);
+    TITLE.lastRes = "точный заброс";
+    titleToast(["Точно!", "В яблочко!", "Как по нитке!"][(TITLE.stars - 1) % 3]);
+    try { sfx.tap(); } catch(_) {}
+  } else if (acc > 0.5){
+    TITLE.lastRes = "почти";
+    titleToast("почти — ещё чуть точнее");
+  } else {
+    TITLE.lastRes = "мимо зоны";
+    titleToast("мимо золотой зоны");
+  }
+  // зона «гуляет» после каждого заброса: три из трёх — честные
+  const mid = 0.28 + Math.random() * 0.42;
+  TITLE.sweet = [mid, Math.min(0.92, mid + 0.15)];
+  titlePaintStars();
+  if (TITLE.stars >= 3){
+    const main = document.querySelector(".sb-main");
+    if (main && !save.total) main.textContent = "Начать рыбалку";
+    const play = $("stPlay"); if (play) play.classList.add("done");
+  }
+  save.titleStars = Math.max(save.titleStars || 0, TITLE.stars);
+  // механика титула имеет цену: три точных заброса один раз дают стартовый набор
+  if (TITLE.stars >= 3 && !save.titleBonus){
+    save.titleBonus = 1;
+    save.coins = (save.coins || 0) + 20;
+    save.baits = save.baits || {};
+    save.baits[save.equipped.bait || "worm"] = (save.baits[save.equipped.bait || "worm"] || 0) + 5;
+    titleToast("+20 монет и 5 приманок за точность");
+    updateChips();
+  }
+  persist();
+  return acc;
+}
+/* сезон и погода «за окном» — на титуле, как в настоящем лаунчере */
+function titleSetup(){
+  const se = seasonDef();
+  const ic = (save.weather || {}).type || "sunny";
+  const sb = $("stSeason"), sw = $("stWx"), ico = $("stBadgeIco");
+  if (sb) sb.textContent = se.name;
+  if (sw) sw.textContent = (WEATHER[ic] || {}).name || "ясно";
+  if (ico) ico.innerHTML = (WEATHER_ICONS[ic] || "") ||
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#ffd979" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="4.4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4"/></svg>';
+  const mh = $("miHelp"); if (mh) mh.innerHTML = ICONS.book || ICONS.star;
+  const ms = $("miSound"); if (ms) ms.innerHTML = save.mute ? (ICONS.mute || ICONS.sound) : ICONS.sound;
+  titlePaintStars();
+}
+
 function updateStartStats(){
   return;
   const lvl = levelInfo().lvl;
@@ -6434,6 +6559,7 @@ function openStart(){
   START.on = true;
   $("start").classList.add("on");
   updateStartStats();
+  titleSetup();
   const lbl = $("soundStartLabel");
   if (lbl) lbl.textContent = save.mute ? "Звук выкл." : "Звук вкл.";
   if (START.cv && !START.started){ START.started = true; requestAnimationFrame(startFrame); }
@@ -6505,6 +6631,44 @@ function boot(){
   openStart();
   const startBtn = $("btnStart");
   if (startBtn) startBtn.addEventListener("click", closeStart);
+
+  /* титул: удержание и отпускание «заброса» (мышь, палец, пробел) */
+  const castBtn = $("btnTitleCast");
+  if (castBtn){
+    const press = (e) => {
+      if (e && e.cancelable) e.preventDefault();
+      if (TITLE.stars >= 3) return;
+      TITLE.run = true; TITLE.power = 0; TITLE.dir = 1;
+      try { sfx.tap(); } catch(_) {}
+    };
+    const rel = (e) => {
+      if (e && e.cancelable && TITLE.run) e.preventDefault();
+      titleRelease();
+    };
+    castBtn.addEventListener("pointerdown", press);
+    castBtn.addEventListener("pointerup", rel);
+    castBtn.addEventListener("pointercancel", rel);
+    castBtn.addEventListener("pointerleave", rel);
+    castBtn.addEventListener("click", (e) => { e.preventDefault(); if (!TITLE.tries) press(e); });
+    window.addEventListener("keydown", (e) => {
+      if (!START.on || TITLE.stars >= 3) return;
+      if (e.code === "Space" && !TITLE.run && !e.repeat){ e.preventDefault(); press(e); }
+    });
+    window.addEventListener("keyup", (e) => {
+      if (!START.on) return;
+      if (e.code === "Space" && TITLE.run){ e.preventDefault(); rel(e); }
+    });
+  }
+  const helpBtn = $("btnStartHelp");
+  if (helpBtn) helpBtn.addEventListener("click", () => { closeStart(); openSheet("sheetHelp", renderHelp); });
+  const sndBtn = $("btnStartSound");
+  if (sndBtn) sndBtn.addEventListener("click", () => {
+    save.mute = !save.mute; persist();
+    const lbl = $("soundStartLabel"); if (lbl) lbl.textContent = save.mute ? "Звук выкл." : "Звук вкл.";
+    const ms = $("miSound"); if (ms) ms.innerHTML = save.mute ? (ICONS.mute || ICONS.sound) : ICONS.sound;
+    const bs = $("btnSound"); if (bs) bs.innerHTML = save.mute ? ICONS.mute : ICONS.sound;
+    if (!save.mute){ try { audio(); tone(660, 0.08, "sine", 0.05, 880); } catch(_) {} }
+  });
 
   // клавиши стартового экрана
   window.addEventListener("keydown", e => {
@@ -6580,6 +6744,12 @@ window.__debugLog = () => DEBUG.slice();
 window.__biteWait = () => biteWait();
 window.__day = () => ({ bait: baitOfDay(), onBait: baitDayOn(), locDay: locDayOn(),
   locDayName: locDayName(), days: daysToLocDay(), locDayK: LOC_DAY_K });
+/* титул: механика пробного заброса — наружу для проверок */
+window.__title = () => ({ stars: TITLE.stars, tries: TITLE.tries, power: +TITLE.power.toFixed(3),
+  run: TITLE.run, sweet: TITLE.sweet.slice(), res: TITLE.lastRes, saved: save.titleStars || 0 });
+window.__titleHold = (on) => { TITLE.run = !!on; if (on){ TITLE.power = 0; TITLE.dir = 1; } return TITLE.power; };
+window.__titleSetPower = (v) => { TITLE.power = clamp(v, 0, 1); return TITLE.power; };
+window.__titleRelease = () => titleRelease();
 window.__ui = { openStart, closeStart, renderQuests, renderBaitShelf, claimQuest, dailyNow, questClaimable, openSheet, closeAllSheets,
   renderBase, renderLocMap, showCatch, renderHelp, updateChips, syncLocInfo, renderHandBtn };
 

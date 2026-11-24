@@ -10,16 +10,16 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="Тихая заводь">
 <meta name="description" content="Тихая заводь — рыбалка: 105 видов рыбы, 8 водоёмов, дуэли, премиум-снасти. Работает офлайн.">
-<link rel="manifest" href="manifest.webmanifest?v=728">
-<link rel="icon" href="favicon-32.png?v=728" sizes="32x32" type="image/png">
+<link rel="manifest" href="manifest.webmanifest?v=729">
+<link rel="icon" href="favicon-32.png?v=729" sizes="32x32" type="image/png">
 <!-- iOS: иконка «На экран Домой». Safari берёт последний подходящий размер,
      поэтому перечисляем все типовые; ?v= — чтобы не подхватилась старая копия из кэша -->
-<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=728">
-<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=728">
-<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=728">
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=728">
-<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=728">
-<link rel="apple-touch-icon" href="icon-180.png?v=728">
+<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=729">
+<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=729">
+<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=729">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=729">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=729">
+<link rel="apple-touch-icon" href="icon-180.png?v=729">
 <title>Тихая заводь — рыбалка</title>
 <style>
 :root{
@@ -922,14 +922,69 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 .start-vignette{position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(70% 55% at 50% 38%,rgba(4,16,20,0) 30%,rgba(4,16,20,.55) 78%,rgba(3,10,14,.92) 100%),
              linear-gradient(180deg,rgba(3,10,14,.55) 0%,rgba(3,10,14,0) 26%,rgba(3,10,14,0) 48%,rgba(3,10,14,.86) 100%)}
+.start-grain{position:absolute;inset:0;pointer-events:none;opacity:.16;mix-blend-mode:overlay;
+  background-image:radial-gradient(rgba(255,255,255,.55) .5px,transparent .5px);
+  background-size:3px 3px}
 .start-wrap{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;
-  padding:22px 18px calc(env(safe-area-inset-bottom,0px) + 26px)}
+  padding:calc(env(safe-area-inset-top,0px) + 14px) 16px calc(env(safe-area-inset-bottom,0px) + 18px)}
 .start-head{width:min(430px,100%);text-align:center;animation:startUp .7s cubic-bezier(.2,.9,.3,1) both}
+.st-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:auto}
+.logo{text-align:left;padding-bottom:0}
+.st-badge{display:flex;align-items:center;gap:6px;padding:6px 9px 7px;border-radius:13px;flex:none;max-width:44%;
+  background:rgba(6,20,24,.5);border:1px solid rgba(255,232,190,.22);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  box-shadow:0 10px 24px rgba(0,0,0,.32)}
+.st-badge-ico{width:18px;height:18px;display:block;flex:none}
+.st-badge-ico svg{width:18px;height:18px;display:block}
+.st-badge-tx{display:flex;flex-direction:column;line-height:1.05;text-align:left}
+.st-badge-tx b{text-transform:lowercase;font-size:10.5px;font-weight:900;letter-spacing:.3px;color:#fff2d8;text-transform:capitalize}
+.st-badge-tx i{font-style:normal;font-size:9px;font-weight:800;color:rgba(255,240,215,.6);letter-spacing:.2px}
+
+/* --- мини-игра титула --- */
+.st-play{margin:14px 0 12px;padding:11px 12px 12px;border-radius:20px;text-align:left;
+  background:linear-gradient(180deg,rgba(8,26,32,.62),rgba(4,16,20,.78));
+  border:1px solid rgba(255,232,190,.16);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  box-shadow:0 18px 44px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.07)}
+.st-play-head{display:flex;flex-direction:column;gap:2px;margin-bottom:9px}
+.st-play-head b{font-size:10px;font-weight:900;letter-spacing:1.6px;text-transform:uppercase;color:#ffd979}
+.st-play-head span{font-size:9.5px;font-weight:750;color:rgba(255,240,215,.6);line-height:1.25}
+.st-gauge{position:relative;height:15px;border-radius:999px;overflow:hidden;
+  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.04));
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.5)}
+.st-gauge-sweet{position:absolute;top:0;bottom:0;left:52%;width:16%;
+  background:linear-gradient(180deg,rgba(255,224,138,.95),rgba(247,174,46,.85));
+  box-shadow:0 0 14px rgba(255,196,90,.55)}
+.st-gauge-needle{position:absolute;top:-2px;bottom:-2px;width:3px;left:0;border-radius:2px;
+  background:#fff6e2;box-shadow:0 0 10px rgba(255,255,255,.8);transition:none}
+.st-gauge-ticks{position:absolute;inset:0;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.16) 0 1px,transparent 1px 10%)}
+.st-play-foot{display:flex;align-items:center;gap:11px;margin-top:10px}
+.st-cast{position:relative;width:54px;height:54px;flex:none;border-radius:50%;cursor:pointer;
+  border:1px solid rgba(255,214,122,.55);background:radial-gradient(circle at 38% 30%,#ffe6a6,#f3a92b 70%,#d98a10);
+  color:#3a2a05;font:900 9.5px/1 -apple-system,Segoe UI,Roboto,sans-serif;letter-spacing:.6px;
+  box-shadow:0 10px 22px rgba(190,120,0,.4), inset 0 -3px 8px rgba(150,90,0,.3);
+  display:grid;place-items:center;transition:transform .1s}
+.st-cast:active{transform:scale(.96)}
+.st-cast-ring{position:absolute;inset:-4px;border-radius:50%;border:1px solid rgba(255,214,122,.35);
+  animation:stPulse 2.2s ease-in-out infinite}
+@keyframes stPulse{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.08);opacity:.9}}
+.st-cast-tx{position:relative;z-index:1}
+.st-stars{display:flex;flex-direction:column;gap:3px;min-width:0}
+#stStars{display:block;font-size:14px;letter-spacing:2px;color:rgba(255,232,190,.28);line-height:1}
+#stStars b{font-weight:900;color:#ffd979;text-shadow:0 0 12px rgba(255,190,90,.55)}
+#stStreak{font-style:normal;font-size:9.5px;font-weight:800;color:rgba(255,240,215,.55);letter-spacing:.2px}
+.st-play.done .st-cast{opacity:.55}
+.st-play .st-toast{position:absolute;right:12px;top:-9px;padding:3px 9px;border-radius:999px;
+  font-size:9px;font-weight:900;letter-spacing:.4px;color:#3a2a05;background:linear-gradient(180deg,#ffe08a,#f7ae2e);
+  box-shadow:0 6px 16px rgba(190,120,0,.4);opacity:0;transform:translateY(6px);transition:.25s}
+.st-play .st-toast.on{opacity:1;transform:none}
 @keyframes startUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
-.logo{margin-bottom:auto;padding-bottom:18px}
-.logo-kicker{display:inline-block;font-size:10px;font-weight:900;letter-spacing:3.4px;text-transform:uppercase;
-  color:rgba(255,232,190,.72);margin-bottom:2px}
-.logo h1{margin:0;font-size:clamp(38px,13vw,58px);font-weight:900;letter-spacing:clamp(2px,2.4vw,7px);
+.logo{padding-bottom:0;min-width:0;flex:1 1 auto}
+.logo-kicker{display:inline-flex;align-items:center;gap:6px;font-size:9.5px;font-weight:900;
+  letter-spacing:3.2px;text-transform:uppercase;color:rgba(255,232,190,.72);margin-bottom:3px}
+.logo-kicker:before{content:"";width:16px;height:1px;background:rgba(255,232,190,.5);display:block}
+.logo-sub{margin:7px 0 0;font-size:10px;font-weight:800;letter-spacing:.3px;color:rgba(255,240,215,.55)}
+.logo h1{margin:0;font-size:clamp(32px,10.2vw,50px);font-weight:900;letter-spacing:clamp(1px,1.4vw,5px);
   line-height:.95;color:#fff6e2;
   text-shadow:0 2px 0 rgba(120,70,10,.5),0 10px 34px rgba(0,0,0,.62),0 0 46px rgba(255,190,90,.35)}
 .logo p{margin:9px 0 0;font-size:11.5px;font-weight:800;letter-spacing:.3px;color:rgba(255,240,215,.66)}
@@ -960,6 +1015,21 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 .start-mini svg{width:14px;height:14px;flex:none}
 .start-mini:active{transform:scale(.97);background:rgba(20,44,52,.8)}
 .start-mini i{font-style:normal}
+
+@media (max-height:730px){
+  .logo-sub{display:none}
+  .logo h1{font-size:clamp(30px,9vw,42px)}
+  .st-play{margin:10px 0 9px;padding:9px 10px 10px}
+  .st-cast{width:48px;height:48px}
+  .start-btn{padding:13px 14px 12px}
+  .sb-main{font-size:16px}
+}
+@media (max-height:640px){
+  .st-play-head span{display:none}
+  .st-gauge{height:13px}
+  .st-cast{width:44px;height:44px}
+  .start-row{margin-top:8px}
+}
 
 /* подсказки-пузыри в игре */
 #coach{position:absolute;inset:0;z-index:30;pointer-events:none}
@@ -1377,15 +1447,48 @@ button.buy.prem:disabled{opacity:.5}
   <div id="start" class="on">
     <canvas id="startCv"></canvas>
     <div class="start-vignette"></div>
+    <div class="start-grain"></div>
     <div class="start-wrap">
       <div class="start-head">
-        <div class="logo">
-          <span class="logo-kicker">тихая заводь</span>
-          <h1>РЫБАЛКА</h1>
+        <div class="st-top">
+          <div class="logo">
+            <span class="logo-kicker">тихая заводь</span>
+            <h1>РЫБАЛКА</h1>
+            <p class="logo-sub">живая вода · 105 видов · 8 водоёмов</p>
+          </div>
+          <div class="st-badge" id="stBadge" title="Сезон и погода за окном">
+            <span class="st-badge-ico" id="stBadgeIco"></span>
+            <span class="st-badge-tx"><b id="stSeason">весна</b><i id="stWx">ясно</i></span>
+          </div>
         </div>
+
+        <!-- своя механика титула: заброс и подсечка -->
+        <div class="st-play" id="stPlay">
+          <div class="st-play-head">
+            <b>Пробный заброс</b>
+            <span id="stTask">зажми кружок и отпусти в золотой зоне</span>
+          </div>
+          <div class="st-gauge" id="stGauge">
+            <div class="st-gauge-sweet" id="stSweet"></div>
+            <div class="st-gauge-needle" id="stNeedle"></div>
+            <div class="st-gauge-ticks"></div>
+          </div>
+          <div class="st-play-foot">
+            <button class="st-cast" id="btnTitleCast" type="button">
+              <span class="st-cast-ring"></span><span class="st-cast-tx">ЗАБРОС</span>
+            </button>
+            <div class="st-stars"><span id="stStars"></span><i id="stStreak">новичок</i></div>
+          </div>
+        </div>
+
         <button class="start-btn" id="btnStart">
           <span class="sb-main">Начать играть</span>
+          <span class="sb-sub" id="btnStartSub">точка → заброс → подсечка → вываживание</span>
         </button>
+        <div class="start-row">
+          <button class="start-mini" id="btnStartHelp" type="button"><span class="mi-ico" id="miHelp"></span><i>Как играть</i></button>
+          <button class="start-mini" id="btnStartSound" type="button"><span class="mi-ico" id="miSound"></span><i id="soundStartLabel">Звук вкл.</i></button>
+        </div>
       </div>
     </div>
   </div>
@@ -8732,6 +8835,13 @@ function renderHelp(){
 }
 
 /* ---------------- стартовый экран ---------------- */
+/* ТИТУЛ: «пробный заброс» — своя механика загрузочного экрана.
+   Зажми кружок — бежит стрелка силы; отпусти в золотой зоне — точный заброс.
+   Три точных заброса = «глаз намётан», и игра сама зовёт на воду. */
+const TITLE = {
+  power: 0, run: false, dir: 1, sweet: [0.52, 0.68], stars: 0, tries: 0, toastT: 0,
+  best: 0, flash: 0, castT: 0, lastRes: ""
+};
 const START = { on:false, cv:null, ctx:null, t:0, fishes:[], drops:[], clouds:[], ready:false, st:0 };
 function initStart(){
   START.cv = $("startCv");
@@ -8763,6 +8873,7 @@ function startFrame(now){
     cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr);
   }
   START.t += 0.016;
+  titleGaugeMove(0.016);
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.clearRect(0,0,w,h);
 
@@ -8794,8 +8905,11 @@ function startFrame(now){
   glow.addColorStop(0.18,"rgba(255,190,110,.42)");
   glow.addColorStop(1,"rgba(255,150,80,0)");
   ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(sunX,sunY,h*0.42,0,Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(sunX,sunY,h*0.036,0,Math.PI*2);
-  ctx.fillStyle = "rgba(255,248,220,.96)"; ctx.fill();
+  // на фото-фоне своё солнце: рисуем только мягкое ядро, а не «плоский кружок»
+  if (!(bg && bg.complete && bg.naturalWidth)){
+    ctx.beginPath(); ctx.arc(sunX,sunY,h*0.03,0,Math.PI*2);
+    ctx.fillStyle = "rgba(255,248,220,.9)"; ctx.fill();
+  }
 
   // облака-полосы
   for (const c of START.clouds){
@@ -8877,8 +8991,122 @@ function startFrame(now){
     ctx.fill();
   }
 
+  /* пробный заброс: поплавок летит в воду после отпускания */
+  if (TITLE.castT > 0){
+    TITLE.castT = Math.max(0, TITLE.castT - 0.016);
+    const k = 1 - TITLE.castT / 0.9;                  // 0 → 1
+    const bx = w*0.30 + k * w*0.42;
+    const by = h*0.30 + Math.sin(Math.min(1, k*1.25) * Math.PI/2) * h*0.34;
+    ctx.save();
+    ctx.globalAlpha = clamp(k*1.6, 0, 1) * (0.55 + 0.45*TITLE.flash);
+    ctx.beginPath(); ctx.arc(bx, by, 4.2, 0, Math.PI*2);
+    ctx.fillStyle = "rgba(255,120,90,.95)"; ctx.fill();
+    ctx.beginPath(); ctx.arc(bx, by-4.6, 3.4, 0, Math.PI*2);
+    ctx.fillStyle = "rgba(255,246,226,.95)"; ctx.fill();
+    ctx.restore();
+    if (k > 0.96){
+      for (let i=0;i<3;i++){
+        const rr = 8 + i*13 + k*10;
+        ctx.beginPath(); ctx.ellipse(bx, by+6, rr, rr*0.34, 0, 0, Math.PI*2);
+        ctx.strokeStyle = "rgba(255,236,190," + (0.28 - i*0.08) + ")"; ctx.lineWidth = 1.1; ctx.stroke();
+      }
+    }
+  }
+
   requestAnimationFrame(startFrame);
 }
+/* --- титул: логика пробного заброса --- */
+function titleGaugeMove(dt){
+  if (!TITLE.run) return;
+  TITLE.power += TITLE.dir * dt * 0.62;
+  if (TITLE.power >= 1){ TITLE.power = 1; TITLE.dir = -1; }
+  if (TITLE.power <= 0){ TITLE.power = 0; TITLE.dir = 1; }
+  titleNeedle();
+}
+function titleToast(txt){
+  let box = document.querySelector("#stPlay .st-toast");
+  if (!box){
+    box = document.createElement("div"); box.className = "st-toast";
+    const host = $("stPlay") || document.body; host.appendChild(box);
+  }
+  box.textContent = txt; box.classList.add("on");
+  clearTimeout(TITLE._tt); TITLE._tt = setTimeout(() => box.classList.remove("on"), 1500);
+}
+function titleNeedle(){
+  const nd = $("stNeedle");
+  if (nd) nd.style.left = "calc(" + (TITLE.power*100).toFixed(2) + "% - 1.5px)";
+}
+function titlePaintStars(){
+  const stars = $("stStars");
+  if (stars) stars.innerHTML = [0,1,2].map(i => i < TITLE.stars ? "<b>★</b>" : "★").join("");
+  const st = $("stStreak");
+  if (st) st.textContent = TITLE.stars >= 3 ? "глаз намётан — можно на воду"
+    : TITLE.stars === 2 ? "ещё один точный заброс"
+    : TITLE.stars === 1 ? "неплохо для начала" : "новичок";
+  const task = $("stTask");
+  if (task) task.textContent = TITLE.stars >= 3 ? "готов — жми «Начать рыбалку»"
+    : "точных забросов: " + TITLE.stars + " из 3";
+  const swz = $("stSweet");
+  if (swz){ swz.style.left = (TITLE.sweet[0]*100) + "%"; swz.style.width = ((TITLE.sweet[1]-TITLE.sweet[0])*100) + "%"; }
+  titleNeedle();
+}
+function titleRelease(){
+  if (!TITLE.run) return 0;
+  TITLE.run = false;
+  const p = TITLE.power, s = TITLE.sweet;
+  const dist = p < s[0] ? s[0] - p : p > s[1] ? p - s[1] : 0;
+  const acc = dist === 0 ? 1 : clamp(1 - dist / 0.22, 0, 0.9);
+  TITLE.tries++;
+  TITLE.castT = 0.9;
+  TITLE.flash = acc > 0.85 ? 1 : 0.5;
+  if (acc > 0.85){
+    TITLE.stars = Math.min(3, TITLE.stars + 1);
+    TITLE.lastRes = "точный заброс";
+    titleToast(["Точно!", "В яблочко!", "Как по нитке!"][(TITLE.stars - 1) % 3]);
+    try { sfx.tap(); } catch(_) {}
+  } else if (acc > 0.5){
+    TITLE.lastRes = "почти";
+    titleToast("почти — ещё чуть точнее");
+  } else {
+    TITLE.lastRes = "мимо зоны";
+    titleToast("мимо золотой зоны");
+  }
+  // зона «гуляет» после каждого заброса: три из трёх — честные
+  const mid = 0.28 + Math.random() * 0.42;
+  TITLE.sweet = [mid, Math.min(0.92, mid + 0.15)];
+  titlePaintStars();
+  if (TITLE.stars >= 3){
+    const main = document.querySelector(".sb-main");
+    if (main && !save.total) main.textContent = "Начать рыбалку";
+    const play = $("stPlay"); if (play) play.classList.add("done");
+  }
+  save.titleStars = Math.max(save.titleStars || 0, TITLE.stars);
+  // механика титула имеет цену: три точных заброса один раз дают стартовый набор
+  if (TITLE.stars >= 3 && !save.titleBonus){
+    save.titleBonus = 1;
+    save.coins = (save.coins || 0) + 20;
+    save.baits = save.baits || {};
+    save.baits[save.equipped.bait || "worm"] = (save.baits[save.equipped.bait || "worm"] || 0) + 5;
+    titleToast("+20 монет и 5 приманок за точность");
+    updateChips();
+  }
+  persist();
+  return acc;
+}
+/* сезон и погода «за окном» — на титуле, как в настоящем лаунчере */
+function titleSetup(){
+  const se = seasonDef();
+  const ic = (save.weather || {}).type || "sunny";
+  const sb = $("stSeason"), sw = $("stWx"), ico = $("stBadgeIco");
+  if (sb) sb.textContent = se.name;
+  if (sw) sw.textContent = (WEATHER[ic] || {}).name || "ясно";
+  if (ico) ico.innerHTML = (WEATHER_ICONS[ic] || "") ||
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#ffd979" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="4.4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4"/></svg>';
+  const mh = $("miHelp"); if (mh) mh.innerHTML = ICONS.book || ICONS.star;
+  const ms = $("miSound"); if (ms) ms.innerHTML = save.mute ? (ICONS.mute || ICONS.sound) : ICONS.sound;
+  titlePaintStars();
+}
+
 function updateStartStats(){
   return;
   const lvl = levelInfo().lvl;
@@ -8905,6 +9133,7 @@ function openStart(){
   START.on = true;
   $("start").classList.add("on");
   updateStartStats();
+  titleSetup();
   const lbl = $("soundStartLabel");
   if (lbl) lbl.textContent = save.mute ? "Звук выкл." : "Звук вкл.";
   if (START.cv && !START.started){ START.started = true; requestAnimationFrame(startFrame); }
@@ -8976,6 +9205,44 @@ function boot(){
   openStart();
   const startBtn = $("btnStart");
   if (startBtn) startBtn.addEventListener("click", closeStart);
+
+  /* титул: удержание и отпускание «заброса» (мышь, палец, пробел) */
+  const castBtn = $("btnTitleCast");
+  if (castBtn){
+    const press = (e) => {
+      if (e && e.cancelable) e.preventDefault();
+      if (TITLE.stars >= 3) return;
+      TITLE.run = true; TITLE.power = 0; TITLE.dir = 1;
+      try { sfx.tap(); } catch(_) {}
+    };
+    const rel = (e) => {
+      if (e && e.cancelable && TITLE.run) e.preventDefault();
+      titleRelease();
+    };
+    castBtn.addEventListener("pointerdown", press);
+    castBtn.addEventListener("pointerup", rel);
+    castBtn.addEventListener("pointercancel", rel);
+    castBtn.addEventListener("pointerleave", rel);
+    castBtn.addEventListener("click", (e) => { e.preventDefault(); if (!TITLE.tries) press(e); });
+    window.addEventListener("keydown", (e) => {
+      if (!START.on || TITLE.stars >= 3) return;
+      if (e.code === "Space" && !TITLE.run && !e.repeat){ e.preventDefault(); press(e); }
+    });
+    window.addEventListener("keyup", (e) => {
+      if (!START.on) return;
+      if (e.code === "Space" && TITLE.run){ e.preventDefault(); rel(e); }
+    });
+  }
+  const helpBtn = $("btnStartHelp");
+  if (helpBtn) helpBtn.addEventListener("click", () => { closeStart(); openSheet("sheetHelp", renderHelp); });
+  const sndBtn = $("btnStartSound");
+  if (sndBtn) sndBtn.addEventListener("click", () => {
+    save.mute = !save.mute; persist();
+    const lbl = $("soundStartLabel"); if (lbl) lbl.textContent = save.mute ? "Звук выкл." : "Звук вкл.";
+    const ms = $("miSound"); if (ms) ms.innerHTML = save.mute ? (ICONS.mute || ICONS.sound) : ICONS.sound;
+    const bs = $("btnSound"); if (bs) bs.innerHTML = save.mute ? ICONS.mute : ICONS.sound;
+    if (!save.mute){ try { audio(); tone(660, 0.08, "sine", 0.05, 880); } catch(_) {} }
+  });
 
   // клавиши стартового экрана
   window.addEventListener("keydown", e => {
@@ -9051,6 +9318,12 @@ window.__debugLog = () => DEBUG.slice();
 window.__biteWait = () => biteWait();
 window.__day = () => ({ bait: baitOfDay(), onBait: baitDayOn(), locDay: locDayOn(),
   locDayName: locDayName(), days: daysToLocDay(), locDayK: LOC_DAY_K });
+/* титул: механика пробного заброса — наружу для проверок */
+window.__title = () => ({ stars: TITLE.stars, tries: TITLE.tries, power: +TITLE.power.toFixed(3),
+  run: TITLE.run, sweet: TITLE.sweet.slice(), res: TITLE.lastRes, saved: save.titleStars || 0 });
+window.__titleHold = (on) => { TITLE.run = !!on; if (on){ TITLE.power = 0; TITLE.dir = 1; } return TITLE.power; };
+window.__titleSetPower = (v) => { TITLE.power = clamp(v, 0, 1); return TITLE.power; };
+window.__titleRelease = () => titleRelease();
 window.__ui = { openStart, closeStart, renderQuests, renderBaitShelf, claimQuest, dailyNow, questClaimable, openSheet, closeAllSheets,
   renderBase, renderLocMap, showCatch, renderHelp, updateChips, syncLocInfo, renderHandBtn };
 

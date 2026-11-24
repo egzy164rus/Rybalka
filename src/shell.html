@@ -10,16 +10,16 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="Тихая заводь">
 <meta name="description" content="Тихая заводь — рыбалка: 105 видов рыбы, 8 водоёмов, дуэли, премиум-снасти. Работает офлайн.">
-<link rel="manifest" href="manifest.webmanifest?v=728">
-<link rel="icon" href="favicon-32.png?v=728" sizes="32x32" type="image/png">
+<link rel="manifest" href="manifest.webmanifest?v=729">
+<link rel="icon" href="favicon-32.png?v=729" sizes="32x32" type="image/png">
 <!-- iOS: иконка «На экран Домой». Safari берёт последний подходящий размер,
      поэтому перечисляем все типовые; ?v= — чтобы не подхватилась старая копия из кэша -->
-<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=728">
-<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=728">
-<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=728">
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=728">
-<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=728">
-<link rel="apple-touch-icon" href="icon-180.png?v=728">
+<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=729">
+<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=729">
+<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=729">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=729">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=729">
+<link rel="apple-touch-icon" href="icon-180.png?v=729">
 <title>Тихая заводь — рыбалка</title>
 <style>
 :root{
@@ -922,14 +922,69 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 .start-vignette{position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(70% 55% at 50% 38%,rgba(4,16,20,0) 30%,rgba(4,16,20,.55) 78%,rgba(3,10,14,.92) 100%),
              linear-gradient(180deg,rgba(3,10,14,.55) 0%,rgba(3,10,14,0) 26%,rgba(3,10,14,0) 48%,rgba(3,10,14,.86) 100%)}
+.start-grain{position:absolute;inset:0;pointer-events:none;opacity:.16;mix-blend-mode:overlay;
+  background-image:radial-gradient(rgba(255,255,255,.55) .5px,transparent .5px);
+  background-size:3px 3px}
 .start-wrap{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;
-  padding:22px 18px calc(env(safe-area-inset-bottom,0px) + 26px)}
+  padding:calc(env(safe-area-inset-top,0px) + 14px) 16px calc(env(safe-area-inset-bottom,0px) + 18px)}
 .start-head{width:min(430px,100%);text-align:center;animation:startUp .7s cubic-bezier(.2,.9,.3,1) both}
+.st-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:auto}
+.logo{text-align:left;padding-bottom:0}
+.st-badge{display:flex;align-items:center;gap:6px;padding:6px 9px 7px;border-radius:13px;flex:none;max-width:44%;
+  background:rgba(6,20,24,.5);border:1px solid rgba(255,232,190,.22);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  box-shadow:0 10px 24px rgba(0,0,0,.32)}
+.st-badge-ico{width:18px;height:18px;display:block;flex:none}
+.st-badge-ico svg{width:18px;height:18px;display:block}
+.st-badge-tx{display:flex;flex-direction:column;line-height:1.05;text-align:left}
+.st-badge-tx b{text-transform:lowercase;font-size:10.5px;font-weight:900;letter-spacing:.3px;color:#fff2d8;text-transform:capitalize}
+.st-badge-tx i{font-style:normal;font-size:9px;font-weight:800;color:rgba(255,240,215,.6);letter-spacing:.2px}
+
+/* --- мини-игра титула --- */
+.st-play{margin:14px 0 12px;padding:11px 12px 12px;border-radius:20px;text-align:left;
+  background:linear-gradient(180deg,rgba(8,26,32,.62),rgba(4,16,20,.78));
+  border:1px solid rgba(255,232,190,.16);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  box-shadow:0 18px 44px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.07)}
+.st-play-head{display:flex;flex-direction:column;gap:2px;margin-bottom:9px}
+.st-play-head b{font-size:10px;font-weight:900;letter-spacing:1.6px;text-transform:uppercase;color:#ffd979}
+.st-play-head span{font-size:9.5px;font-weight:750;color:rgba(255,240,215,.6);line-height:1.25}
+.st-gauge{position:relative;height:15px;border-radius:999px;overflow:hidden;
+  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.04));
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.5)}
+.st-gauge-sweet{position:absolute;top:0;bottom:0;left:52%;width:16%;
+  background:linear-gradient(180deg,rgba(255,224,138,.95),rgba(247,174,46,.85));
+  box-shadow:0 0 14px rgba(255,196,90,.55)}
+.st-gauge-needle{position:absolute;top:-2px;bottom:-2px;width:3px;left:0;border-radius:2px;
+  background:#fff6e2;box-shadow:0 0 10px rgba(255,255,255,.8);transition:none}
+.st-gauge-ticks{position:absolute;inset:0;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.16) 0 1px,transparent 1px 10%)}
+.st-play-foot{display:flex;align-items:center;gap:11px;margin-top:10px}
+.st-cast{position:relative;width:54px;height:54px;flex:none;border-radius:50%;cursor:pointer;
+  border:1px solid rgba(255,214,122,.55);background:radial-gradient(circle at 38% 30%,#ffe6a6,#f3a92b 70%,#d98a10);
+  color:#3a2a05;font:900 9.5px/1 -apple-system,Segoe UI,Roboto,sans-serif;letter-spacing:.6px;
+  box-shadow:0 10px 22px rgba(190,120,0,.4), inset 0 -3px 8px rgba(150,90,0,.3);
+  display:grid;place-items:center;transition:transform .1s}
+.st-cast:active{transform:scale(.96)}
+.st-cast-ring{position:absolute;inset:-4px;border-radius:50%;border:1px solid rgba(255,214,122,.35);
+  animation:stPulse 2.2s ease-in-out infinite}
+@keyframes stPulse{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.08);opacity:.9}}
+.st-cast-tx{position:relative;z-index:1}
+.st-stars{display:flex;flex-direction:column;gap:3px;min-width:0}
+#stStars{display:block;font-size:14px;letter-spacing:2px;color:rgba(255,232,190,.28);line-height:1}
+#stStars b{font-weight:900;color:#ffd979;text-shadow:0 0 12px rgba(255,190,90,.55)}
+#stStreak{font-style:normal;font-size:9.5px;font-weight:800;color:rgba(255,240,215,.55);letter-spacing:.2px}
+.st-play.done .st-cast{opacity:.55}
+.st-play .st-toast{position:absolute;right:12px;top:-9px;padding:3px 9px;border-radius:999px;
+  font-size:9px;font-weight:900;letter-spacing:.4px;color:#3a2a05;background:linear-gradient(180deg,#ffe08a,#f7ae2e);
+  box-shadow:0 6px 16px rgba(190,120,0,.4);opacity:0;transform:translateY(6px);transition:.25s}
+.st-play .st-toast.on{opacity:1;transform:none}
 @keyframes startUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
-.logo{margin-bottom:auto;padding-bottom:18px}
-.logo-kicker{display:inline-block;font-size:10px;font-weight:900;letter-spacing:3.4px;text-transform:uppercase;
-  color:rgba(255,232,190,.72);margin-bottom:2px}
-.logo h1{margin:0;font-size:clamp(38px,13vw,58px);font-weight:900;letter-spacing:clamp(2px,2.4vw,7px);
+.logo{padding-bottom:0;min-width:0;flex:1 1 auto}
+.logo-kicker{display:inline-flex;align-items:center;gap:6px;font-size:9.5px;font-weight:900;
+  letter-spacing:3.2px;text-transform:uppercase;color:rgba(255,232,190,.72);margin-bottom:3px}
+.logo-kicker:before{content:"";width:16px;height:1px;background:rgba(255,232,190,.5);display:block}
+.logo-sub{margin:7px 0 0;font-size:10px;font-weight:800;letter-spacing:.3px;color:rgba(255,240,215,.55)}
+.logo h1{margin:0;font-size:clamp(32px,10.2vw,50px);font-weight:900;letter-spacing:clamp(1px,1.4vw,5px);
   line-height:.95;color:#fff6e2;
   text-shadow:0 2px 0 rgba(120,70,10,.5),0 10px 34px rgba(0,0,0,.62),0 0 46px rgba(255,190,90,.35)}
 .logo p{margin:9px 0 0;font-size:11.5px;font-weight:800;letter-spacing:.3px;color:rgba(255,240,215,.66)}
@@ -960,6 +1015,21 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 .start-mini svg{width:14px;height:14px;flex:none}
 .start-mini:active{transform:scale(.97);background:rgba(20,44,52,.8)}
 .start-mini i{font-style:normal}
+
+@media (max-height:730px){
+  .logo-sub{display:none}
+  .logo h1{font-size:clamp(30px,9vw,42px)}
+  .st-play{margin:10px 0 9px;padding:9px 10px 10px}
+  .st-cast{width:48px;height:48px}
+  .start-btn{padding:13px 14px 12px}
+  .sb-main{font-size:16px}
+}
+@media (max-height:640px){
+  .st-play-head span{display:none}
+  .st-gauge{height:13px}
+  .st-cast{width:44px;height:44px}
+  .start-row{margin-top:8px}
+}
 
 /* подсказки-пузыри в игре */
 #coach{position:absolute;inset:0;z-index:30;pointer-events:none}
@@ -1377,15 +1447,48 @@ button.buy.prem:disabled{opacity:.5}
   <div id="start" class="on">
     <canvas id="startCv"></canvas>
     <div class="start-vignette"></div>
+    <div class="start-grain"></div>
     <div class="start-wrap">
       <div class="start-head">
-        <div class="logo">
-          <span class="logo-kicker">тихая заводь</span>
-          <h1>РЫБАЛКА</h1>
+        <div class="st-top">
+          <div class="logo">
+            <span class="logo-kicker">тихая заводь</span>
+            <h1>РЫБАЛКА</h1>
+            <p class="logo-sub">живая вода · 105 видов · 8 водоёмов</p>
+          </div>
+          <div class="st-badge" id="stBadge" title="Сезон и погода за окном">
+            <span class="st-badge-ico" id="stBadgeIco"></span>
+            <span class="st-badge-tx"><b id="stSeason">весна</b><i id="stWx">ясно</i></span>
+          </div>
         </div>
+
+        <!-- своя механика титула: заброс и подсечка -->
+        <div class="st-play" id="stPlay">
+          <div class="st-play-head">
+            <b>Пробный заброс</b>
+            <span id="stTask">зажми кружок и отпусти в золотой зоне</span>
+          </div>
+          <div class="st-gauge" id="stGauge">
+            <div class="st-gauge-sweet" id="stSweet"></div>
+            <div class="st-gauge-needle" id="stNeedle"></div>
+            <div class="st-gauge-ticks"></div>
+          </div>
+          <div class="st-play-foot">
+            <button class="st-cast" id="btnTitleCast" type="button">
+              <span class="st-cast-ring"></span><span class="st-cast-tx">ЗАБРОС</span>
+            </button>
+            <div class="st-stars"><span id="stStars"></span><i id="stStreak">новичок</i></div>
+          </div>
+        </div>
+
         <button class="start-btn" id="btnStart">
           <span class="sb-main">Начать играть</span>
+          <span class="sb-sub" id="btnStartSub">точка → заброс → подсечка → вываживание</span>
         </button>
+        <div class="start-row">
+          <button class="start-mini" id="btnStartHelp" type="button"><span class="mi-ico" id="miHelp"></span><i>Как играть</i></button>
+          <button class="start-mini" id="btnStartSound" type="button"><span class="mi-ico" id="miSound"></span><i id="soundStartLabel">Звук вкл.</i></button>
+        </div>
       </div>
     </div>
   </div>
