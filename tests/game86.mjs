@@ -11,6 +11,10 @@ await p.goto(GAME, { waitUntil:"load" });
 await p.waitForTimeout(900);
 await p.evaluate(() => window.__ui.closeStart());
 await p.waitForTimeout(300);
+// 8.7: сезон меняет воду и активность рыбы — экологические инварианты проверяем
+// в пик активности (лето), иначе карась зимой честно вялый и тест ловит не то.
+await p.evaluate(() => window.__setSeason("summer"));
+await p.waitForTimeout(150);
 
 const fails = [];
 const check = (name, ok, info) => {
@@ -90,13 +94,18 @@ check("горное озеро холоднее лагуны и моря",
 
 /* ---------- 5. мир не опустел: новичку есть кого ловить ---------- */
 const census = await p.evaluate(() => window.__census("bamboo"));
-// новичок с бамбуком: в стартовой Тихой заводи должна клевать на каждой точке хотя бы одна рыба
+// новичок с бамбуком: летом в стартовой Тихой заводи клюёт в каждом месте,
+// а в яме нужна снасть посерьёзнее — там живут только крупные виды
 const empty = [];
 for (const id in census.lake){
-  if (id.indexOf("prem_") === 0 || id.endsWith("|ids")) continue;
+  if (id.indexOf("prem_") === 0 || id.endsWith("|ids") || id === "deep") continue;
   if ((parseInt(census.lake[id], 10) || 0) < 1) empty.push(["lake", id, census.lake[id]]);
 }
-check("новичку на бамбук есть кого поймать в каждом месте стартовой заводи", empty.length === 0, { empty, lake: census.lake });
+check("новичку на бамбук летом есть кого поймать у камыша и на открытой воде",
+  empty.length === 0, { empty, lake: census.lake });
+const deepRod = await p.evaluate(() => window.__census("fiber"));
+check("в яму надо приходить со стекловолокном: там клюёт лещ и карп",
+  (parseInt(deepRod.lake.deep, 10) || 0) >= 2, deepRod.lake);
 check("в Тихой заводи на камыше клюёт больше, чем в яме у новичка",
   (parseInt(census.lake.reeds, 10) || 0) >= (parseInt(census.lake.deep, 10) || 0), census.lake);
 

@@ -12,12 +12,17 @@ async function boot(cfg){
   await p.evaluate(c=>{
     const s=window.__test.save(); s.xp=140000; s.coins=9000; s.loc=c.loc; s.weather=null;
     s.equipped.rod="sea"; s.seenCoach={c_power:1,c_bite:1,c_fight:1}; s.equipped.bait=c.bait;
-    // приманка должна подходить водоёму: если на этой точке такой рыбы нет,
-    // берём первую приманку из списка точки — как сделал бы игрок
+    // 8.7: приманку выбираем по сезону так же, как игрок — по той рыбе, что реально
+    // берёт на этой точке сейчас (fishFit учитывает воду), а не по таблице «кто тут живёт».
     const spots=(window.__test.LOCATIONS[c.loc]||{}).spots||[];
-    const pool=Object.keys((spots[0]||{}).w||{});
-    const ok=pool.some(id=>{const f=window.__fishDef(id); return f && f.bait===c.bait;});
-    if(!ok){ for(const id of pool){ const f=window.__fishDef(id); if(f && f.bait){ s.equipped.bait=f.bait; break; } } }
+    const pool=Object.keys(spots[0] ? spots[0].w : {});
+    const fit=(id)=>window.__fit(id, (spots[0]||{}).id, c.loc);
+    const ok=pool.some(id=>{const f=window.__fishDef(id); return f && f.bait===c.bait && fit(id) > 0.25;});
+    if(!ok){
+      let best=null, bestFit=0.2;
+      for(const id of pool){ const f=window.__fishDef(id); if(f && f.bait){ const k=fit(id); if(k>bestFit){ bestFit=k; best=f.bait; } } }
+      if(best) s.equipped.bait=best;
+    }
     s.baits[s.equipped.bait]=999;
     window.__test.persist();
   }, cfg);
