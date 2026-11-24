@@ -65,7 +65,9 @@ const DEF = {
   streakBest:0, dayCasts:0, doubleDay:null, doublesToday:0, baits:{},
   /* 8.0: механика водоёмов */
   hand:null, unsnags:0, snagTotal:0, handLocs:{}, windowCatches:0,
-  duelWins:0, duelLosses:0, duelDay:null, duelPearlDay:null, duelPearlToday:0, rivalSeen:{}
+  duelWins:0, duelLosses:0, duelDay:null, duelPearlDay:null, duelPearlToday:0, rivalSeen:{},
+  /* 8.7: сезоны и погодная физика */
+  firstDay:null, lastWeatherType:null, stormAt:0
 };
 let save;
 try {
@@ -94,7 +96,10 @@ function deepMerge(base, extra){
   }
   return base;
 }
-function persist(){ try { localStorage.setItem(KEY, JSON.stringify(save)); } catch(e){} }
+function persist(){
+  if (!save.firstDay) save.firstDay = todayKey();     // 8.7: точка отсчёта сезонов
+  try { localStorage.setItem(KEY, JSON.stringify(save)); } catch(e){}
+}
 
 /* ---------------- экономика / уровни ---------------- */
 const xpForLvl = lvl => Math.round(26 + lvl*36);
@@ -381,6 +386,155 @@ function timeMults(loc){
   return {klyov:OFF_WINDOW_K, size:1, coins:1, pearl:0};
 }
 
+
+/* ============================================================================
+   8.7: СЕЗОНЫ, ПОГОДА КАК ФИЗИКА, ВОДА
+   Сезон идёт по календарю игрока, но с шагом 14 дней от первого запуска:
+   за месяц игры игрок увидит все четыре. Погода задаёт давление, ветер и
+   видимость; из них считается клёв. Мутность делает важной толщину лески.
+   ========================================================================== */
+let SEASON_F_NOW = null;          // подмена сезона для тестов (null — по календарю)
+let WIND_DIR_F = null;            // подмена направления ветра для тестов
+/* сколько дней прошло с первого запуска игры */
+function daysPlayed(){
+  const t0 = save.firstDay || todayKey();
+  const a = new Date(t0 + "T00:00:00"), b = new Date(todayKey() + "T00:00:00");
+  return Math.max(0, Math.round((b - a) / 86400000));
+}
+function seasonNow(){
+  if (SEASON_F_NOW) return SEASON_F_NOW;
+  const idx = Math.floor(daysPlayed() / SEASON.days) % 4;
+  return SEASON.order[idx];
+}
+const seasonDef = () => SEASON.defs[seasonNow()] || SEASON.defs.summer;
+const seasonDay = () => (daysPlayed() % SEASON.days) + 1;
+/* на водоёме лёд? южные (топь, лагуна, море) не замерзают */
+function iceNow(loc){
+  const L = loc || save.loc, env = locEnv(L);
+  if (env.ice === "never") return false;
+  if (env.ice === "always") return true;
+  return seasonNow() === "winter";
+}
+const iceAnywhere = () => Object.keys(LOCATIONS).some(k => iceNow(k));
+
+/* давление и ветер «сейчас» — из типа погоды (без случайности, чтобы прогноз не врал) */
+function pressureNow(loc){
+  const L = loc || save.loc;
+  const ic = (L === save.loc) ? (save.weather && save.weather.type) : locMech(L).weather[0];
+  const ph = WX_PHYS[ic] || WX_PHYS.overcast;
+  return Math.round(ph.p + (locEnv(L).tempOff || 0) * -0.4);
+}
+function pressureTrend(loc){
+  const L = loc || save.loc;
+  const ic = (L === save.loc) ? (save.weather && save.weather.type) : locMech(L).weather[0];
+  return (WX_PHYS[ic] || WX_PHYS.overcast).dP;
+}
+/* ветер: направление -1..1 (в берег / от берега) и сила 0..1 */
+function windAt(loc){
+  const L = loc || save.loc;
+  const ic = (L === save.loc) ? (save.weather && save.weather.type) : locMech(L).weather[0];
+  const ph = WX_PHYS[ic] || WX_PHYS.overcast;
+  // направление медленно «гуляет» по часам, но остаётся в характере погоды
+  const dir = (WIND_DIR_F != null) ? WIND_DIR_F
+    : Math.sin((G.clock + 900) * 0.0007) * 0.8 + Math.sin((G.clock + 300) * 0.00023) * 0.2;
+  return { power: ph.wind, dir: clamp(dir, -1, 1), onshore: dir > 0.15, offshore: dir < -0.15 };
+}
+/* клёв от погоды: давление + тренд + ветер + «жор после грозы» */
+function weatherBite(loc){
+  const L = loc || save.loc;
+  let k = 1, why = [];
+  const p = pressureNow(L);
+  const pk = clamp((p - 1013) / 120, -0.14, 0.12);
+  k *= 1 + pk;
+  if (p >= 1018) why.push("давление высокое");
+  else if (p <= 1004) why.push("давление низкое");
+  const tr = pressureTrend(L);
+  if (tr <= -1.5){ k *= 0.88; why.push("давление падает"); }
+  else if (tr >= 0.5) why.push("давление растёт");
+  const w = windAt(L);
+  if (w.onshore){ k *= 1 + (WIND_K.onshore - 1) * w.power; why.push("ветер в берег"); }
+  else if (w.offshore){ k *= 1 + (WIND_K.offshore - 1) * w.power; why.push("ветер с берега"); }
+  if (afterStormOn()){ k *= AFTER_STORM.klyov; why.push("жор после грозы"); }
+  return { k: clamp(k, 0.62, 1.55), why, p, wind: w };
+}
+
+/* «жор после грозы»: 40 минут после того, как гроза стихла (не чаще раза в 2 часа) */
+function afterStormOn(){
+  const st = save.stormAt;
+  if (!st) return false;
+  const mins = (Date.now() - st) / 60000;
+  return mins >= 0 && mins < AFTER_STORM.mins;
+}
+function markStormEnded(){
+  const prev = save.lastWeatherType;
+  const cur = save.weather && save.weather.type;
+  if (prev === "thunder" && cur !== "thunder") save.stormAt = Date.now();
+  save.lastWeatherType = cur;
+  persist();
+}
+
+/* прозрачность воды: паводок и цветение мутят, течение промывает */
+function clarityAt(loc, depth){
+  const L = loc || save.loc, env = locEnv(L), se = seasonDef();
+  const ic = (L === save.loc) ? (save.weather && save.weather.type) : locMech(L).weather[0];
+  const rain = ic === "rain" ? 0.45 : ic === "thunder" ? 0.55 : ic === "snow" ? 0.25 : 0;
+  const algae = (se.algae || 0) * (seasonNow() === "summer" ? 1 : 0.6);
+  let c = env.clarity * (1 - rain * 0.55) * (1 - algae * 0.22);
+  c *= 0.85 + 0.30 * clamp((env.flow || 0) / 1.2, 0, 1);   // течение промывает
+  if (depth > 8) c *= 0.88;                                 // в глубине темнее
+  return clamp(c, 0.08, 1);
+}
+/* насколько леска заметна рыбе: тонкая в прозрачной воде — плюс к клёву */
+function lineNoticeK(loc){
+  const L = loc || save.loc;
+  const cl = clarityAt(L, (spotEnv(G.spot, L) || {}).depth || 3);
+  const dia = LINE_DIA[save.equipped.line] || 0.25;
+  const k = 1 - 0.55 * cl * clamp((dia - 0.12) / 0.22, 0, 1.2);
+  return { k: clamp(k, 0.72, 1.02), clarity: cl, dia };
+}
+/* вода для интерфейса */
+/* 8.7б: где стоит рыба по глубине — температура и кислород по горизонтам.
+   Летом у поверхности теплее на 2–3°, у дна на столько же холоднее — это и есть термоклин,
+   из-за него в жару рыба уходит под термоклин, а карась остаётся в тёплых камышах. */
+function waterLayers(loc){
+  const L = loc || save.loc;
+  const out = [];
+  for (const d of [1.0, 3.0, 6.0, 9.0]){
+    out.push({ depth: d, temp: waterTemp(L, d),
+      oxy: +clamp(1.02 - clamp((waterTemp(L, d) - 20) / 14, 0, 1) * 0.5 +
+        clamp(locEnv(L).flow || 0, 0, 1.5) * 0.12 - (d > 7 ? 0.06 : 0), 0.4, 1.2).toFixed(2) });
+  }
+  return out;
+}
+function waterInfo(loc, depth){
+  const L = loc || save.loc;
+  return { temp: waterTemp(L, depth || 3), clarity: clarityAt(L, depth || 3),
+           level: 1, oxygen: oxygenAt(L), layers: waterLayers(L) };
+}
+/* кислород: теплее и «цветёт» — меньше, течение добавляет */
+function oxygenAt(loc){
+  const L = loc || save.loc, env = locEnv(L), se = seasonDef();
+  const t = waterTemp(L, 3);
+  let o = 1.05 - clamp((t - 20) / 12, 0, 1) * 0.55 - (se.algae || 0) * 0.18 + clamp(env.flow, 0, 1.5) * 0.12;
+  return clamp(o, 0.45, 1.2);
+}
+const zamorOn = () => oxygenAt() < 0.6;
+
+/* 8.7б: почему сейчас тихо — одна честная строка вместо «просто не клюёт».
+   Порядок по «силе» причины: лёд → замор → сезон → мутность → давление. */
+function waterWhy(loc){
+  const L = loc || save.loc, sp = (L === save.loc) ? G.spot : null;
+  const se = spotEnv(sp, L), seDef = seasonDef();
+  if (iceNow(L)) return "Глухозимье: подо льдом рыба стоит в ямах и берёт на игру.";
+  if (zamorOn()) return "Замор: в воде мало кислорода, рыба стоит у поверхности.";
+  if (!sp && (seDef.fishK || 1) < 0.9) return "Зима: рыба экономна — лучше ловить в оттепель и по перволёдью.";
+  const cl = clarityAt(L, se.depth);
+  if (cl < 0.22) return "Вода мутная: рыба не видит наживку, попробуй пахучую (червь, тесто).";
+  const wb = weatherBite(L);
+  if (wb.k < 0.9 && wb.why.length) return "Погода не кормит: " + wb.why[0] + ".";
+  return "";
+}
+
 /* ============================================================================
    8.6: ЖИВАЯ ВОДА — экология водоёма
    Идея: у водоёма есть паспорт (солёность, течение, прозрачность, тип), у точки —
@@ -395,10 +549,27 @@ const TEMP_TYPE = {lake:0, pond:1, river:-2, brook:-4, sea:-1, lagoon:4, bog:3};
 const TEMP_DAY  = {dawn:-1.5, day:2.5, dusk:0.5, night:-2};
 const TEMP_WX   = {sun:1.5, cloud:0, rain:-1, fog:-1, storm:-1.5, moon:-1, snow:-5};
 const tempOf = (loc) => (loc || save.loc) === save.loc ? weatherNow().icon : (WEATHER[locMech(loc).weather[0]] || WEATHER.sunny).icon;
+const SEASON_WATER = {spring:9.5, summer:22.0, autumn:12.0, winter:2.6};
+/* у каждой воды свой ход за сезон: ручей держит холод, топь греется, море инертно */
+const SEASON_SWING = {lake:1.00, pond:1.15, river:0.85, brook:0.62, sea:0.45, lagoon:0.80, bog:1.20};
+/* средняя температура открытой воды по сезонам — к ней тянется каждая вода */
+const SEASON_MEAN = {spring:8.0, summer:19.5, autumn:11.5, winter:2.5};
 function waterTemp(loc, depth){
   const env = locEnv(loc), d = dayTimeNow(), ic = tempOf(loc);
-  let t = 17.4 + (TEMP_TYPE[env.type] || 0) + (TEMP_DAY[d] || 0) * 0.7 + (TEMP_WX[ic] || 0) * 0.55 + (env.tempOff || 0);
+  // 8.7б: НЕ сдвигаем весь год одной поправкой (иначе ручей зимой «теплее» озера).
+  // Считаем так: летом каждая вода уходит от общего среднего в свою сторону
+  // (ручей холоднее, топь теплее), зимой — сходится к +2…+4 у всех, как в жизни.
+  const se = seasonNow();
+  const mean = SEASON_MEAN[se] || 13.5;
+  const dev = (TEMP_TYPE[env.type] || 0) * 0.55 + (env.tempOff || 0) * 0.7;   // «характер» воды
+  const open = (se === "winter") ? 0.35 : 1;                                   // зимой характер слабеет
+  let t = mean + dev * open +
+          (TEMP_DAY[d] || 0) * 0.55 + (TEMP_WX[ic] || 0) * 0.40;
+  const swing = SEASON_SWING[env.type] || 1;                                   // инертное море медленнее
+  if (se === "summer") t -= (1 - swing) * 3.2;                                 // летом инерция = прохлада
+  if (se === "winter") t += (1 - swing) * 1.2;                                 // зимой инерция = тепло
   t -= clamp((depth - 1.5) * 0.22, 0, 4.2);  // глубина холоднее и стабильнее
+  if (iceNow(loc)) t = Math.min(t, 4.2);     // подо льдом всегда около +2…+4
   return Math.round(clamp(t, 0.5, 31) * 10) / 10;
 }
 
@@ -476,11 +647,30 @@ function fishFit(id, spot, loc){
   if (marine && E.s[1] < 0.4) return 0;
   if (!marine && E.s[0] > 0.3) return 0;
   const tW = waterTemp(L, se.depth);
-  // физически невозможно: слишком холодно или слишком жарко для вида
-  if (tW < E.t[0] - 9 || tW > E.t[2] + 6) return 0;
-  // теплолюбивые не клюют из-подо льда
-  if (env.ice === "always" && E.t[0] >= 12) return 0;
-  let f = ecoTrap(se.depth, E.dep[0], E.dep[1], E.dep[2]) * ecoTrap(tW, E.t[0], E.t[1], E.t[2]);
+  let f0 = 1;
+  // 8.7: подо льдом вода +2…+4 у всех — карась и линь зимой берут, но вяло,
+  // а совсем теплолюбивые (сом, змееголов, басс) не клюют вовсе.
+  const frozen = iceNow(L) || env.ice === "always";
+  if (frozen){
+    // 8.7: подо льдом градусник не различает виды — различает холодоустойчивость.
+    // Сом, змееголов, басс в спячке — их нет. Карась и линь берут редко.
+    if (E.t[0] >= 16) return 0;
+    if (E.t[0] >= 12) f0 *= 0.50;   // карась, линь, карп подо льдом — в спячке
+  } else {
+    // 8.7б: холод не убивает вид — он вводит его в оцепенение. Поэтому за холодом
+    // вида нет вовсе, есть только «берёт редко»: рыба в точке остаётся, но не кормится.
+    // Полный ноль оставлен там, где вода физически смертельна: перегрев и духота.
+    if (tW > E.t[2] + 6) return 0;
+    // холодоустойчивость важнее градусника: налим и палия в холодной воде как дома,
+    // карасю и линю холод — спячка, поэтому штраф у них жёстче
+    const cold = E.t[0] <= 8 ? 0.80 : E.t[0] <= 9.5 ? 0.58 : E.t[0] <= 12 ? 0.46 : 0.30;
+    if (tW < E.t[0] - 6) f0 *= cold;
+    else if (tW < E.t[0] - 2) f0 *= Math.max(cold, 0.72);
+  }
+  // 8.7: вне «своего» тепла вид не «уходит из точки», а перестаёт кормиться —
+  // поэтому термо-ловушку считаем от нижней границы вида, а не от фактических градусов.
+  const tEff = (frozen || tW < E.t[1]) ? E.t[1] : tW;   // в холодной воде вид «в норме» по теплу
+  let f = ecoTrap(se.depth, E.dep[0], E.dep[1], E.dep[2]) * ecoTrap(tEff, E.t[0], E.t[1], E.t[2]);
   if (!inRange(se.flow, E.f)) f *= 0.7;           // на струе стоячей рыбы мало
   // 8.6: штрафуем только если профиль дна известен (у старых тест-точек его нет)
   const BK = {sand:"s",gravel:"g",clay:"c",silt:"i",mud:"m",stone:"k",shell:"h",reef:"r"};
@@ -489,7 +679,13 @@ function fishFit(id, spot, loc){
   const WK = {reeds:"r",grass:"g",snags:"n",rocks:"k",reef:"f",none:"0"};
   const wk = WK[se.weed];
   if (wk && !E.w.includes(wk)) f *= 0.82;
+  f *= f0;
   f *= clamp(1 + 0.4 * E.c * (se.cover - 0.5), 0.7, 1.25);
+  // 8.7: замор бьёт по холодолюбивым, карась и линь терпят
+  if (oxygenAt(L) < 0.6 && E.t[2] <= 22) f *= 0.55;
+  // в мутной воде хищник находит приманку хуже, чем мирная рыба по запаху
+  const cl = clarityAt(L, se.depth);
+  if (cl < 0.35 && FISH[id] && FISH[id].aggr >= 0.6) f *= 0.85;
   return clamp(f, 0, 1);
 }
 const fitOk = (id, spot, loc) => fishFit(id, spot, loc) >= ECO_RULE.minFit;
@@ -562,13 +758,27 @@ function biteForecast(loc){
   loc = loc || save.loc;
   const m = locMech(loc);
   const wt = (loc === save.loc) ? weatherNow() : (WEATHER[m.weather[0]] || WEATHER.sunny);
-  let k = 1, why = [];
+  let k = 1; const why = [];
   if (windowOn(loc)){ k *= WINDOW_K.klyov; why.push("своё время"); } else { k *= OFF_WINDOW_K; why.push("не своё время"); }
-  if (waveOn(loc)){ k *= 1/BITE_WAVE.klyov; why.push("буй клёва"); }
-  k *= clamp(wt.bite, 0.5, 1.5);
-  if (wt.bite >= 1.05) why.push(wt.name.toLowerCase());
-  else if (wt.bite < 0.8) why.push(wt.name.toLowerCase() + " мешает");
-  if (loc === save.loc && handActive()){ k *= HAND.klyov; why.push("прикормка"); }
+  if (waveOn(loc)){ k *= 1/BITE_WAVE.klyov; why.push("выход рыбы"); }
+  // 8.7: вместо «множителя погоды» — давление, ветер и жор после грозы
+  const wb = weatherBite(loc);
+  k *= wb.k;
+  for (const r of wb.why) if (!why.includes(r)) why.push(r);
+  const se = SEASON.defs[seasonNow()];
+  k *= se.fishK;
+  if (seasonNow() === "autumn") why.push("осенний жор");
+  if (seasonNow() === "winter") why.push("зима: клёв вялый");
+  if (seasonNow() === "summer" && (m.stream || 0) < 0.3) why.push("летняя жара");
+  if (loc === save.loc){
+    const ln = lineNoticeK(loc);
+    if (ln.k < 0.95 && ln.clarity > 0.5) why.push("толстая леска видна");
+    if (ln.k > 0.99 && ln.clarity > 0.6) why.push("тонкая леска не видна");
+    if (handActive()){ k *= HAND.klyov; why.push("прикормка"); }
+    if (zamorOn()) why.push("замор: рыба у поверхности");
+  }
+  // мутная вода: хищник хуже находит приманку
+  if (clarityAt(loc, 3) < 0.35) k *= 0.92;
   if (m.stream >= 0.5) k *= 1 / (1 + m.stream*0.12);
   const score = clamp((k - 0.7) / 0.75, 0, 1);
   const level = score >= 0.78 ? "great" : score >= 0.55 ? "good" : score >= 0.33 ? "fair" : "poor";
@@ -1285,6 +1495,7 @@ for (const k in IMG.fish){
 /* ---------------- сцена ---------------- */
 function geo(){
   const L = save.loc;
+  // 8.7: зимой сцена светлее и «стекляннее», осенью — золотистее
   const horizon = L === "night" ? 0.385 : (L === "sea" || L === "lagoon") ? 0.44
     : L === "mountain" ? 0.455 : L === "swamp" ? 0.425 : 0.435;
   const surfaceY = H*horizon;
@@ -1383,11 +1594,16 @@ function holeXY(){
 const GREEN_LO = 0.40;
 
 /* погода зависит от водоёма и «крутится» после каждого N забросов */
+/* 8.7б: зимой на каждом озере своя погода, но лёд правит всем: снег и мороз.
+   Гроза (а с ней и «жор после грозы») остаётся только в открытой воде лета и осени. */
 function rollWeather(){
   const night = save.loc === "night";
-  const pool = night ? ["sunny","moon","mist","overcast","thunder"]
-    : save.loc === "winter" ? ["snow","frost","snow","overcast","sunny","mist"]
+  const se = seasonNow();
+  const pool = iceNow() ? ["snow","frost","snow","overcast","sunny","mist","snow"]
+    : night ? ["sunny","moon","mist","overcast","thunder"]
     : save.loc === "sea" ? ["sunny","overcast","thunder","rain","mist","sunny"]
+    : se === "spring" ? ["sunny","overcast","rain","mist","sunny","rain"]
+    : se === "autumn" ? ["sunny","overcast","rain","mist","thunder","sunny","overcast"]
     : ["sunny","overcast","rain","mist","thunder","sunny","overcast"];
   const w = pool[(Math.random()*pool.length)|0];
   save.weather = {type:w, rolls: -(1 + ((Math.random()*4)|0))};   // сколько забросов ещё действует
@@ -1401,7 +1617,7 @@ function weatherNow(){
 function tickWeather(){
   if (!save.weather) { rollWeather(); return; }
   save.weather.rolls++;
-  if (save.weather.rolls >= 0) { rollWeather(); syncWeatherChip(); announceWeather(); }
+  if (save.weather.rolls >= 0){ rollWeather(); syncWeatherChip(); announceWeather(); markStormEnded(); }
   persist();
 }
 const G = {
@@ -1511,8 +1727,10 @@ function pickFish(spot){
     (clamp((seK.depth - 1.5) / 9, 0, 1) * 0.16 - (seK.cover > 0.6 ? 0.04 : 0) + (seK.flow > 1.0 ? -0.08 : 0));
   const u = Math.pow(Math.random(), Math.max(0.6, 1.55 + perk("big")*3 - bigDay*2.2));   // наживка дня и лучший день — крупнее рыба
   const waveSize = waveOn(save.loc) ? BITE_WAVE.size : 1;
+  const stormSize = afterStormOn() ? AFTER_STORM.size : 1;
+  const seasonSize = seasonNow() === "autumn" ? 1.05 : seasonNow() === "winter" ? 0.96 : 1;
   // «своё время» водоёма даёт рыбу крупнее (8.0) — держим этот множитель явно
-  const weight = Math.round((F.wMin + u*(F.wMax-F.wMin)) * L.sizeMul * weatherNow().size * timeMults(save.loc).size *
+  const weight = Math.round((F.wMin + u*(F.wMax-F.wMin)) * L.sizeMul * weatherNow().size * stormSize * seasonSize * timeMults(save.loc).size *
     (1 + perk("all")) * waveSize);
   const norm = clamp((weight - F.wMin*L.sizeMul) / (F.wMax*L.sizeMul - F.wMin*L.sizeMul), 0, 1);
   return {
@@ -1594,7 +1812,7 @@ function setState(s){
       break;
     case "waiting":
       btn.disabled = false; btn.dataset.mode = "wait";
-      btn.innerHTML = save.loc === "winter" ? "ПОДЁРНУТЬ МОРМЫШКУ" : "ПОДЕРГАТЬ ПРИМАНКУ";
+      btn.innerHTML = iceNow() ? "ПОДЁРНУТЬ МОРМЫШКУ" : "ПОДЕРГАТЬ ПРИМАНКУ";
       // подсказку в ожидании не навязываем: рисуем «интерес» прямо на воде
       hint("");
       break;
@@ -1636,7 +1854,7 @@ function selectSpot(spot){
   $("sweetZone").style.width = ((s[1]-s[0])*100)+"%";
   $("tensionZone").style.left = (GREEN_LO*100)+"%";
   $("tensionZone").style.width = ((lineHI()-GREEN_LO)*100)+"%";
-  if (save.loc === "winter") startDrill();
+  if (iceNow()) startDrill();   // 8.7: зимой лунка на любом озере
   setState("aim");
   sfx.tap();
   coachTip("c_power");
@@ -1720,10 +1938,13 @@ function biteWait(){
   if (baitsLeft(save.equipped.bait) <= 0) return 999;
   // 1) насколько место «богатое»: чем больше рыба берёт эту приманку, тем скорее поклёвка
   const richK = 1.35 - 0.35 * clamp(avail / 3, 0, 1);
-  // 2) погода: гроза тормозит, облачно/мороз ускоряет
-  const wxK = 1 / Math.max(0.62, weatherNow().bite);
+  // 2) погода: давление, ветер и «жор после грозы» (8.7) + видимость лески
+  const wx = weatherBite(save.loc);
+  const wxK = 1 / Math.max(0.62, wx.k);
+  const lineK = 1 / Math.max(0.75, lineNoticeK(save.loc).k);
+  const oxyK = oxygenAt(save.loc) < 0.6 ? 1.25 : 1;
   // 3) прозрачная тихая вода - рыба осторожнее
-  const calmK = G.waterClear ? (save.loc === "winter" ? 1.08 : 1.15) : 1;
+  const calmK = G.waterClear ? (iceNow() ? 1.08 : 1.15) : 1;
   // 4) точность заброса
   const accK = 1.10 - 0.25 * clamp(G.acc || 0, 0, 1);
   const dayK = baitDayOn() ? 1 / BAIT_DAY.mul : 1;
@@ -1735,7 +1956,7 @@ function biteWait(){
   // 8.5: буй клёва —«час активности» водоёма (ожидание почти вдвое короче)
   const waveK = waveMult(save.loc);
   const streamK = 1 / (1 + (locMech().stream || 0) * 0.12);
-  const mean = 4.4 * richK * wxK * calmK * accK * (1 - perk("bite")) * dayK * locDayK * timeK * handK * streamK * waveK;
+  const mean = 4.4 * richK * wxK * lineK * oxyK * calmK * accK * (1 - perk("bite")) * dayK * locDayK * timeK * handK * streamK * waveK;
   // сумма двух равномерных: чаще 4-8 с, реже крайности
   const g = (Math.random() + Math.random()) / 2;
   let t = mean * (0.42 + g * 1.32);
@@ -1754,7 +1975,10 @@ function startWaiting(){
   G.drift = clamp(((G.spot && G.spot.free ? clamp(windNow().dir, -1, 1) * windNow().power : 0) + streamDrift), -1, 1);
   G.hookSet = (G.hookSet || 0) + 1;
   if (G.fish && G.fish.noBite){
-    // приманку тут никто не берёт: ждём впустую, интереса нет
+    // приманку тут никто не берёт: ждём впустую, интереса нет.
+    // 8.7: если дело не в приманке, а в физике воды (лёд, замор, жара, сезон) — причина честнее
+    const envWhy = G.fish.noLife ? "" : waterWhy();
+    if (envWhy) G.fish.note = envWhy;
     G.waitDur = rnd(2.6, 4.4);
     G.interest = 0.04; G.pureCasts = G.waitDur; G.falseBite = 0;
     G.nibble = rnd(0.9, 1.8); G.nibbling = false;
@@ -2018,7 +2242,10 @@ function showCatch(f){
         (baitDayOn() ? '<span class="gold">наживка дня +' + Math.round(BAIT_DAY.xp*100) + '% опыта</span>' : '') +
         (locDayOn() ? '<span class="gold">лучший день водоёма</span>' : '') +
         (windowOn() ? '<span class="gold">своё время +' + Math.round((WINDOW_K.klyov-1)*100) + '%</span>' : '') +
-        (waveOn(save.loc) ? '<span class="gold">буй клёва ×' + BITE_WAVE.size.toFixed(2) + '</span>' : '') +
+        (waveOn(save.loc) ? '<span class="gold">выход рыбы ×' + BITE_WAVE.size.toFixed(2) + '</span>' : '') +
+        (afterStormOn() ? '<span class="gold">жор после грозы</span>' : '') +
+        (lineNoticeK(save.loc).k > 0.99 ? '<span class="ok">леска не видна</span>' : '') +
+        (seasonNow() === "autumn" ? '<span class="gold">осенний жор</span>' : '') +
         (handActive() ? '<span class="ok">прикормка</span>' : '') +
         (G.duel && G.duel.active ? '<span class="gold">дуэль · ' + G.duel.left + '</span>' : '') +
         '<span>'+(WEATHER_ICONS[wt.icon]||"")+wt.name+'</span>' +
@@ -2306,7 +2533,7 @@ function drawUnderwater(g){
   const t = G.clock;
   const night = save.loc === "night";
   const top = g.surfaceY;
-  const isSea = save.loc === "sea", isIce = save.loc === "winter";
+  const isSea = save.loc === "sea", isIce = iceNow();   // 8.7: лёд по сезону
   const wt = (locMech().water) || "calm";
   const grd = ctx.createLinearGradient(0, top, 0, H);
   if (wt === "brown"){
@@ -2422,7 +2649,7 @@ function drawScene(g){
     cool.addColorStop(1, "rgba(2,18,36,0.30)");
     ctx.fillStyle = cool; ctx.fillRect(0, g.surfaceY, W, H-g.surfaceY);
   }
-  if (save.loc === "winter"){
+  if (iceNow()){
     ctx.fillStyle = "rgba(150,200,235,0.10)";
     ctx.fillRect(0,0,W,H);
   }
@@ -2772,7 +2999,7 @@ function drawAmbient(g){
 /* ---------------- 7.5: новые слои визуала ---------------- */
 /* 1) дорожка солнечного света по воде — «столб» бликов от солнца/луны */
 function drawSunPath(g){
-  if (save.loc === "winter") return;
+  if (iceNow()) return;
   const ic = weatherNow().icon;
   if (!["sun","sunny","frost","moon"].includes(ic)) return;
   const night = ic === "moon";
@@ -2805,7 +3032,7 @@ function initLitter(){
 }
 function drawLitter(g){
   if (!LITTER.length) initLitter();
-  if (save.loc === "winter") return;
+  if (iceNow()) return;
   const night = save.loc === "night";
   ctx.save();
   for (const p of LITTER){
@@ -2995,7 +3222,7 @@ function drawSpots(g){
     let by = y - ry - bh - 12*s;
     // на льду подпись не должна налезать на лунку: разводим точки по вертикали
     // клубной лунке подъём не нужен: её подпись и так стоит выше пятна
-    if (save.loc === "winter" && !isClub){
+    if (iceNow() && !isClub){
       const holeY = y + 6;
       if (holeY - (by + bh) < 46*s) by = y - ry - bh - 52*s;
     }
@@ -3720,6 +3947,63 @@ function drawImpactBurst(g){
   }
 }
 
+
+/* 8.7: сезонная «плёнка» на сцене — цвет и лёгкий морозный/золотистый градиент */
+function seasonTint(){
+  const se = seasonNow();
+  if (se === "summer") return { sky:"rgba(255,214,150,0.10)", water:"rgba(120,200,170,0.05)" };
+  if (se === "autumn") return { sky:"rgba(255,170,96,0.16)",  water:"rgba(150,110,60,0.10)" };
+  if (se === "winter") return { sky:"rgba(190,225,250,0.20)", water:"rgba(150,200,230,0.14)" };
+  return { sky:"rgba(150,220,180,0.12)", water:"rgba(120,190,170,0.08)" };   // весна
+}
+function drawSeasonTint(g){
+  const t = seasonTint();
+  const grd = ctx.createLinearGradient(0, 0, 0, H);
+  grd.addColorStop(0, t.sky);
+  grd.addColorStop(0.5, "rgba(0,0,0,0)");
+  grd.addColorStop(0.62, t.water);
+  grd.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.save();
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+}
+/* 8.7: зимой на воде — битый лёд и снежные заплаты */
+function drawWinterIce(g){
+  if (!iceNow(save.loc)) return;
+  const y0 = g.surfaceY + 6, h = H - y0;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, y0, W, h); ctx.clip();
+  // «стекло»: светлая плёнка с бликами
+  const grd = ctx.createLinearGradient(0, y0, 0, H);
+  grd.addColorStop(0, "rgba(222,242,252,0.44)");
+  grd.addColorStop(0.45, "rgba(196,228,242,0.26)");
+  grd.addColorStop(1, "rgba(168,206,230,0.34)");
+  ctx.fillStyle = grd; ctx.fillRect(0, y0, W, h);
+  // трещины и снежные заплаты
+  const s = clamp(Math.min(W,H)/620, 0.7, 1.5);
+  for (let i=0;i<9;i++){
+    const bx = ((i*0.137 + 0.05) % 0.96) * W;
+    const by = y0 + ((i*0.271 + 0.08) % 0.9) * h;
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    for (let k=1;k<=4;k++){
+      ctx.lineTo(bx + Math.sin(i*3.1 + k*1.7)*22*s, by + k*9*s);
+    }
+    ctx.strokeStyle = "rgba(255,255,255,0.30)";
+    ctx.lineWidth = 1.1*s;
+    ctx.stroke();
+  }
+  for (let i=0;i<7;i++){
+    const bx = ((i*0.19 + 0.11) % 0.94) * W;
+    const by = y0 + ((i*0.33 + 0.15) % 0.85) * h;
+    ctx.beginPath();
+    ctx.ellipse(bx, by, 26*s, 9*s, 0.2*i, 0, Math.PI*2);
+    ctx.fillStyle = "rgba(255,255,255," + (0.16 + (i%3)*0.06) + ")";
+    ctx.fill();
+  }
+  ctx.restore();
+}
 function drawBobberTrail(g){
   if (G.state !== "fight") return;
   const s = clamp(Math.min(W,H)/620, 0.62, 1.5);
@@ -4057,7 +4341,7 @@ function drawWaterLive(g){
   const icon = weatherNow().icon;
   const choppy = icon === "thunder" ? 1.6 : icon === "rain" ? 1.15 : icon === "overcast" ? 1.0 : 0.72;
   const night = save.loc === "night";
-  const ice = save.loc === "winter";
+  const ice = iceNow();     // 8.7: волны гасятся льдом по сезону
   const sea = save.loc === "sea";
   const wt = locMech().water;
   const stream = locMech().stream || 0;
@@ -4220,7 +4504,7 @@ function drawWaterLife(g){
 /* ---- стайка мелкой рыбы у поверхности ---- */
 const SCHOOL = { t:0, fish:[] };
 function drawSchool(g){
-  if (save.loc === "winter") return;   // подо льдом стайки не видно
+  if (iceNow()) return;   // подо льдом стайки не видно
   if (!SCHOOL.fish.length){
     for (let i=0;i<7;i++) SCHOOL.fish.push({ph:i*0.9, sp:0.14+Math.random()*0.1, y:0.10+Math.random()*0.16, s:0.5+Math.random()*0.5});
   }
@@ -4332,7 +4616,7 @@ function drawForeground(g){
   ts.addColorStop(1, "rgba(6,20,26,0)");
   ctx.fillStyle = ts; ctx.fillRect(0, 0, W, H*0.16);
 
-  if (save.loc === "winter"){
+  if (iceNow()){
     // лунку показываем только когда точка выбрана (или идёт ловля)
     if (!G.spot && (G.state === "idle" || G.state === "aim" || G.state === "power")) return;
     const hole = holeXY();
@@ -4529,6 +4813,9 @@ function draw(){
   drawLineDroplets(g);
   drawParticles();
   drawIce(g);
+  // 8.7: сезонный оттенок и зимний лёд поверх воды (но под интерфейсом и снастью)
+  drawSeasonTint(g);
+  drawWinterIce(g);
   drawHookFlash();
   drawForeground(g);
   drawVignette();
@@ -4798,16 +5085,35 @@ function syncLocInfo(){
   const m = locMech(), on = windowOn();
   const left = handLeft();
   const parts = [];
+  // 8.7: сезон и день сезона
+  const se = seasonDef();
+  parts.push('<span class="li season" title="Игровой сезон: ' + se.name + ', ' + seasonDay() + '-й день из ' + SEASON.days + '. ' + se.note + '">' +
+    ICONS.leaf + ' ' + se.name + ' · ' + seasonDay() + '/' + SEASON.days + '</span>');
   parts.push('<span class="li win' + (on ? " on" : "") + '">' + ICONS.clock + ' ' +
     (DAYTIME[dayTimeNow()]||DAYTIME.day).name + (on ? " · окно водоёма" : "") + '</span>');
   if (left > 0) parts.push('<span class="li hand on">' + ICONS.feed + ' прикормка ' +
     (left > 60 ? Math.ceil(left/60) + " мин" : left + " с") + '</span>');
   if (m.stream >= 0.4) parts.push('<span class="li stream">' + ICONS.wave + ' течение</span>');
   // 8.6: что под поплавком — глубина, грунт и температура воды
-  const se = spotEnv(G.spot, save.loc);
-  const tW = waterTemp(save.loc, se.depth);
-  parts.push('<span class="li water" title="' + spotEnvText(G.spot, save.loc) + ', вода ' + tW + ' °C">' +
-    ICONS.drop + ' ' + se.depth.toFixed(1).replace(".", ",") + ' м · ' + (ECO_BOT_RU[se.bottom] || "дно").slice(0, 6) + ' · ' + tW + '°</span>');
+  const seK = spotEnv(G.spot, save.loc);
+  const tW = waterTemp(save.loc, seK.depth);
+  const cl = clarityAt(save.loc, seK.depth);
+  const clTxt = cl > 0.7 ? "прозрачная" : cl > 0.42 ? "мутноватая" : "мутная";
+  parts.push('<span class="li water" title="' + spotEnvText(G.spot, save.loc) + ' · вода ' + tW + ' °C, ' + clTxt + '">' +
+    ICONS.drop + ' ' + seK.depth.toFixed(1).replace(".", ",") + ' м · ' + (ECO_BOT_RU[seK.bottom] || "дно").slice(0, 6) + ' · ' + tW + '°</span>');
+  // 8.7: давление со стрелкой тренда
+  const pr = pressureNow(save.loc), tr = pressureTrend(save.loc);
+  const arrow = tr >= 0.5 ? "↗" : tr <= -1.5 ? "↘" : "→";
+  parts.push('<span class="li press" title="Давление ' + pr + ' гПа, ' + (tr>=0.5?"растёт":tr<=-1.5?"падает":"стабильно") + '">' +
+    ICONS.gauge + ' ' + pr + ' ' + arrow + '</span>');
+  // 8.7: ветер — в берег или с берега
+  const wnd = windAt(save.loc);
+  if (wnd.power > 0.25){
+    const dirTxt = wnd.onshore ? "в берег" : wnd.offshore ? "с берега" : "боковой";
+    parts.push('<span class="li wind' + (wnd.onshore ? " on" : "") + '" title="Ветер ' + dirTxt + ', сила ' + Math.round(wnd.power*100) + '%">' +
+      ICONS.wind + ' ' + dirTxt + '</span>');
+  }
+  if (zamorOn()) parts.push('<span class="li warn" title="Мало кислорода: холодолюбивая рыба почти не берёт">' + ICONS.alert + ' замор</span>');
   box.innerHTML = parts.join("");
 }
 /* 8.5: чип буя клёва. Показывает либо «идёт буй» с остатком минут, либо «когда будет» */
@@ -5064,6 +5370,9 @@ function renderBase(){
         '<div class="echoBox"><div class="echoHead"><b>' + ICONS.echo + ' Эхолот · карта глубин</b>' +
           '<span>вода ' + waterTemp(key, 2) + ' °C · ' + (locEnv(key).type === "sea" || locEnv(key).type === "lagoon" ? "солёная" : "пресная") + '</span></div>' +
           echoMapSVG(key) + '</div>' +
+        '<div class="echoBox layersBox"><div class="echoHead"><b>' + ICONS.gauge +
+          ' Слои воды · термоклин</b><span>' + (iceNow(key) ? "подо льдом" : "темп. по глубине") + '</span></div>' +
+          waterLayersSVG(key) + '</div>' +
       '</div>';
     /* наживка дня и лучший день именно для этого водоёма */
     const bd = BAITS[baitOfDay(key)];
@@ -5604,6 +5913,37 @@ function echoMapSVG(loc){
   return svg;
 }
 
+/* 8.7б: видимый «разрез воды» — температура и кислород по горизонтам.
+   Игрок видит, где летом прохладно и где дышит рыба, и куда ставить снасть. */
+function waterLayersSVG(loc){
+  const L = loc || save.loc;
+  const lay = waterLayers(L);
+  const Wd = 300, Hh = 44, pad = 6;
+  const tMin = Math.min.apply(null, lay.map(x => x.temp)), tMax = Math.max.apply(null, lay.map(x => x.temp));
+  const span = Math.max(0.8, tMax - tMin);
+  let svg = '<svg viewBox="0 0 ' + Wd + ' ' + Hh + '" style="width:100%;height:auto;display:block">';
+  svg += '<defs><linearGradient id="wlG" x1="0" y1="0" x2="0" y2="1">' +
+    '<stop offset="0" stop-color="#2f7f9c"/><stop offset="1" stop-color="#0a2230"/></linearGradient></defs>';
+  svg += '<rect x="0" y="0" width="' + Wd + '" height="' + Hh + '" rx="9" fill="url(#wlG)"/>';
+  const colW = (Wd - pad*2) / lay.length;
+  lay.forEach((x, i) => {
+    const k = clamp((x.temp - tMin) / span, 0, 1);               // холоднее — светлее, теплее — золотистее
+    const cx = pad + colW*i + colW/2;
+    const barH = 6 + 16 * k;
+    svg += '<rect x="' + (pad + colW*i + 3).toFixed(1) + '" y="' + (Hh - 14).toFixed(1) +
+      '" width="' + (colW - 6).toFixed(1) + '" height="' + barH.toFixed(1) + '" rx="3" fill="' +
+      (k > 0.66 ? "rgba(255,196,96,.62)" : k > 0.33 ? "rgba(140,220,210,.52)" : "rgba(150,205,255,.52)") + '" stroke="rgba(255,255,255,.16)" stroke-width="0.8"/>';
+    svg += '<text x="' + cx.toFixed(1) + '" y="13" text-anchor="middle" fill="rgba(240,250,255,.92)" ' +
+      'font-size="7.5" font-weight="800" font-family="sans-serif">' +
+      (x.temp >= 10 ? Math.round(x.temp) : (Math.round(x.temp*10)/10).toFixed(1).replace(".", ","))  + '°</text>';
+    svg += '<text x="' + cx.toFixed(1) + '" y="' + (Hh - 2.5) + '" text-anchor="middle" fill="rgba(226,244,252,.82)" ' +
+      'font-size="6.5" font-family="sans-serif">' +
+      (x.depth >= 10 ? Math.round(x.depth) : (Math.round(x.depth*10)/10).toFixed(1).replace(".", ",")) + ' м</text>';
+  });
+  svg += '</svg>';
+  return svg;
+}
+
 /* 8.6: «где искать» — глубина, грунт, течение и лучшее время для вида */
 function fishWhereText(id){
   const E = FISH_ECO[id];
@@ -5719,7 +6059,7 @@ function pressStart(x, y, fromButton){
         } else {
           G.interest = clamp((G.interest || 0) + 0.075, 0, 0.95);
           G.waitDur = Math.max(1.8, (G.waitDur || 0) - 0.38);
-          hint(save.loc === "winter" ? "Мормышка играет…" : "Приманка играет…", true);
+          hint(iceNow() ? "Мормышка играет…" : "Приманка играет…", true);
         }
       } else {
         hint("Дай приманке полежать секунду-другую", true);
@@ -6201,6 +6541,7 @@ window.__castAt = (power) => {
   return G.acc;
 };
 window.__test = { save:() => save, persist, pickFish, spotPool, RODS, BAITS, gearPower,
+  FISH_ECO, LOC_ENV, SPOT_ENV,
   setEquip:(slot,id)=>{ save.equipped[slot]=id; }, questOnCatch, QUESTS, PREMIUM, PEARL_ITEMS, FISH,
   LOCATIONS, RARITY, rodDef, lineDef, hookDef, netDef, reelDef, levelInfo };
 window.__dbg = () => ({
@@ -6400,6 +6741,32 @@ function bootPWA(){
 
 if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", boot);
 else setTimeout(boot, 0);
+/* ---- 8.7: тест-хуки сезонов и погодной физики ---- */
+window.__setSeason = (id) => {
+  SEASON_F_NOW = id || null;
+  if (typeof updateChips === "function") updateChips();
+  if (typeof syncLocInfo === "function") syncLocInfo();
+  return { season: seasonNow(), day: seasonDay(), ice: iceNow(save.loc) };
+};
+window.__season = () => ({ id: seasonNow(), name: seasonDef().name, day: seasonDay(), days: SEASON.days,
+  daysPlayed: daysPlayed(), ice: { lake: iceNow("lake"), swamp: iceNow("swamp"), sea: iceNow("sea"), winter: iceNow("winter") } });
+window.__phys = (loc) => {
+  const L = loc || save.loc;
+  const wb = weatherBite(L);
+  return { pressure: pressureNow(L), trend: pressureTrend(L), wind: windAt(L),
+           weatherK: +wb.k.toFixed(3), why: wb.why,
+           clarity: +clarityAt(L, 3).toFixed(3), temp: waterTemp(L, 3),
+           oxygen: +oxygenAt(L).toFixed(2), zamor: zamorOn(), afterStorm: afterStormOn() };
+};
+window.__setStorm = (on) => { save.stormAt = on ? Date.now() : 0; return afterStormOn(); };
+window.__setLine = (id) => { save.equipped.line = id; return lineNoticeK(save.loc); };
+window.__lineK = () => lineNoticeK(save.loc);
+window.__setWindDir = (d) => { WIND_DIR_F = (d == null ? null : d); return windAt(); };
+window.__waterWhy = (loc) => waterWhy(loc);
+window.__layers = (loc) => waterLayers(loc);
+window.__layersSVG = (loc) => waterLayersSVG(loc);
+window.__peakStorm = () => { save.lastWeatherType = "thunder"; save.weather = { type:"overcast", rolls:-3 }; markStormEnded(); return afterStormOn(); };
+
 /* ---- 8.6: тест-хуки экологии ---- */
 window.__fitWhy = (id, spotId, loc) => {
   const L = loc || save.loc;

@@ -675,6 +675,48 @@ const ECO_RULE = {
   iceBlock: 1            // теплолюбивые подо льдом не клюют
 };
 
+
+/* ---------------- 8.7: СЕЗОНЫ, ПОГОДА КАК ФИЗИКА, ВОДА ----------------
+   Сезоны игровые: смена каждые `days` дней реального календаря (счёт идёт от
+   первого запуска игры), поэтому за месяц игры игрок видит все четыре.
+   Погода больше не «множитель к клёву»: она задаёт давление, ветер и температуру
+   воздуха, а клёв считается из них. */
+const SEASON = {
+  days: 14,                                  // один сезон = 14 дней
+  order: ["spring","summer","autumn","winter"],
+  defs: {
+    spring: {name:"весна", from:3,  to:5,  air:[4,14],  ice:"thaw",  algae:0.10, fishK:1.05,
+             note:"половодье, вода мутная и холодная"},
+    summer: {name:"лето",  from:6,  to:8,  air:[18,29], ice:"none",  algae:0.90, fishK:1.00,
+             note:"жара и цветение воды, утром и вечером лучше"},
+    autumn: {name:"осень", from:9,  to:11, air:[3,13],  ice:"none",  algae:0.30, fishK:1.15,
+             note:"рыба жирует перед зимой — лучший сезон"},
+    winter: {name:"зима",  from:12, to:2,  air:[-18,-3],ice:"ice",   algae:0.00, fishK:0.85,
+             note:"лёд: лунка, мормышка и терпение"}
+  }
+};
+
+/* давление и ветер по типу погоды: [давление гПа, скорость ветра 0..1, видимость 0..1] */
+const WX_PHYS = {
+  sunny:   {p:1022, wind:0.55, vis:1.00, dP:+0.6},
+  overcast:{p:1012, wind:0.65, vis:0.90, dP:-0.4},
+  rain:    {p:1004, wind:0.85, vis:0.70, dP:-1.2},
+  mist:    {p:1015, wind:0.20, vis:0.40, dP:+0.2},
+  thunder: {p: 996, wind:1.00, vis:0.60, dP:-2.4},
+  moon:    {p:1020, wind:0.25, vis:0.75, dP:+0.3},
+  snow:    {p:1008, wind:0.70, vis:0.55, dP:-0.6},
+  frost:   {p:1026, wind:0.30, vis:0.95, dP:+0.8}
+};
+
+/* что ветер делает с клёвом: рыба кормится у наветренного берега */
+const WIND_K = { onshore:1.14, offshore:0.86, calm:1.00 };
+
+/* леска: чем тоньше, тем незаметнее в прозрачной воде — и тем слабее */
+const LINE_DIA = { thin:0.20, norm:0.25, braid:0.28, fluo:0.16, kevlar:0.30, ocean:0.34, myth:0.12 };
+
+/* жор после грозы: 40 минут активного клёва */
+const AFTER_STORM = { mins:40, klyov:1.35, size:1.06 };
+
 /* время суток: локальное время игрока, 4 отрезка по 6 часов */
 const DAYTIME = {
   dawn:  {name:"рассвет",  from:4,  to:10, icon:"sunrise"},
@@ -695,7 +737,8 @@ const HAND = {                                                        // при�
    Часы разные по дням (детерминированно от даты и водоёма), поэтому у игрока есть
    смысл заглядывать в водоём в разное время — и «ехать на буй», когда он загорится. */
 const BITE_WAVE = {
-  dur: 60,          // окно действует час (60 минут)
+  dur: 60,          // «свой час» водоёма
+  win: 25,          // 8.7: сам выход рыбы — 25 минут внутри этого часа
   every: 3,         // начинается раз в ~3 часа (ровные слоты суток)
   klyov: 0.52,      // ожидание поклёвки ×0.52 — примерно вдвое быстрее
   size: 1.10,
@@ -764,6 +807,10 @@ const WEATHER_ICONS = {
 
 /* ---------------- SVG иконки ---------------- */
 const ICONS = {
+  leaf: '<svg viewBox="0 0 24 24" fill="none" stroke="#b7e08a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4C11 4 4 9 4 17c0 1 .2 2 .5 3M20 4c0 9-5 15-13 15"/><path d="M20 4c-6 1-9 4-11 8"/></svg>',
+  gauge: '<svg viewBox="0 0 24 24" fill="none" stroke="#9fd8f0" stroke-width="1.8" stroke-linecap="round"><path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4-4"/><circle cx="12" cy="16" r="1.4" fill="#9fd8f0"/></svg>',
+  wind: '<svg viewBox="0 0 24 24" fill="none" stroke="#cfeee6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h11a3 3 0 1 0-3-3"/><path d="M3 13h14a3 3 0 1 1-3 3"/><path d="M3 18h7"/></svg>',
+  alert: '<svg viewBox="0 0 24 24" fill="none" stroke="#ffb26b" stroke-width="1.9" stroke-linecap="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".9" fill="#ffb26b"/></svg>',
   echo: '<svg viewBox="0 0 24 24" fill="none" stroke="#8fd7f0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="12" rx="2.4"/><path d="M3 11h3l2-3 2.5 6L13 8l2 3h6"/><path d="M8 20h8"/></svg>',
   drop: '<svg viewBox="0 0 24 24" fill="none" stroke="#9fd8f0" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2c3.2 4 5.6 6.7 5.6 9.4a5.6 5.6 0 0 1-11.2 0c0-2.7 2.4-5.4 5.6-9.4z"/></svg>',
   coin: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" fill="#f7c948"/><circle cx="12" cy="12" r="9" stroke="#b8860b" stroke-width="1.6"/><path d="M12 7v10M9.5 9.2h4.2a1.9 1.9 0 0 1 0 3.8H9.5h4.4a1.9 1.9 0 0 1 0 3.8H9.5" stroke="#8a5a00" stroke-width="1.5" stroke-linecap="round"/></svg>',

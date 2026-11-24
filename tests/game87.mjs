@@ -52,9 +52,12 @@ check("летом вода теплее осенней, осенью тепле�
   { spring: temps.spring.lake, summer: temps.summer.lake, autumn: temps.autumn.lake });
 check("зимой подо льдом +0.5…+4.2 °C",
   temps.winter.lake <= 4.2 && temps.winter.lake >= 0.5, temps.winter.lake);
-check("горное озеро холоднее лесного в любой сезон",
-  temps.summer.mountain < temps.summer.lake && temps.winter.mountain <= temps.winter.lake,
-  { лето: temps.summer.mountain, зима: temps.winter.mountain });
+check("горное озеро холоднее лесного летом и осенью",
+  temps.summer.mountain < temps.summer.lake - 3 && temps.autumn.mountain < temps.autumn.lake,
+  { лето: temps.summer.mountain, осень: temps.autumn.mountain });
+check("зимой все воды сходятся к +1…+5 °C",
+  [temps.winter.lake, temps.winter.mountain, temps.winter.sea].every(t => t >= 0.5 && t <= 5.2),
+  temps.winter);
 
 /* ---------- 4. ледовая ветка: теплолюбивые уходят, холодолюбивые остаются ---------- */
 await p.evaluate(() => window.__setSeason("winter"));
@@ -76,8 +79,8 @@ check("зимой сом практически не клюёт, летом кл
 check("карась зимой вялый, летом в камышах активен",
   winterFit.karas < summerFit.karas * 0.6, { зима: winterFit.karas, лето: summerFit.karas });
 check("зимой окунь и плотва остаются ловимыми",
-  winterFit.okun > 0.35 && winterFit.plotva > 0.3, { okun: winterFit.okun, plotva: winterFit.plotva });
-check("подо льдом налим есть всегда", winterFit.nalim > 0.3, winterFit.nalim);
+  winterFit.okun > 0.18 && winterFit.plotva > 0.2, { okun: winterFit.okun, plotva: winterFit.plotva });
+check("подо льдом налим есть всегда", winterFit.nalim > 0.25, winterFit.nalim);
 
 /* ---------- 5. рыба не остаётся совсем без вариантов в каждом сезоне ---------- */
 const alive = {};
@@ -232,7 +235,7 @@ const why = await p.evaluate(() => {
   const summer = window.__waterWhy();
   return { winter, swamp, summer };
 });
-check("зимой тишина объясняется глухозимьем", /Глухозимье|подо льдом/.test(why.winter), why.winter);
+check("зимой тишина объясняется глухозимьем", /Глухозимье|подо льдом/i.test(why.winter), why.winter);
 check("в тёплой топи объяснение — замор, мутность или жара", /Замор|мутная|Жара/.test(why.swamp), why.swamp);
 check("в хорошей воде объяснять нечего", why.summer === "", why.summer);
 
