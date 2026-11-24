@@ -24,10 +24,16 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Собрать сайт
+      - name: Собрать сайт (игра + PWA)
         run: |
           mkdir -p _site
           cp rybalka.html _site/index.html
+          cp manifest.webmanifest sw.js _site/
+          cp icon-120.png icon-152.png icon-167.png icon-180.png icon-192.png icon-512.png \
+             icon-maskable-192.png icon-maskable-512.png favicon-32.png _site/
+          cp shot-1.jpg shot-2.jpg _site/ 2>/dev/null || true
+          # без .nojekyll GitHub Pages пытается собрать сайт через Jekyll
+          touch _site/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
