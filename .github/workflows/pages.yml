@@ -25,7 +25,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Собрать сайт (PWA)
-        id: build-site
         run: |
           mkdir -p _site
           # index.html уже собран build.py; на всякий случай пересоберём из rybalka.html
@@ -37,17 +36,8 @@ jobs:
           cp shot-1.jpg shot-2.jpg _site/ 2>/dev/null || true
           # .nojekyll: GitHub Pages не должен пытаться собирать сайт через Jekyll
           touch _site/.nojekyll || true
-          echo "---- содержимое _site ----"; ls -la _site; du -sh _site
-          echo "index.html: $(stat -c%s _site/index.html) байт"
       - uses: actions/upload-pages-artifact@v3
-        id: upload
         with:
           path: _site
-      - name: Параметры артефакта
-        if: always()
-        run: |
-          echo "upload outcome: ${{ steps.upload.outcome }}"
-          echo "artifact id: ${{ steps.upload.outputs.artifact_id }}"
-          echo "artifact url: ${{ steps.upload.outputs.artifact_url }}"
       - id: deployment
         uses: actions/deploy-pages@v4
