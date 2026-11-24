@@ -10,16 +10,16 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="Тихая заводь">
 <meta name="description" content="Тихая заводь — рыбалка: 105 видов рыбы, 8 водоёмов, дуэли, премиум-снасти. Работает офлайн.">
-<link rel="manifest" href="manifest.webmanifest?v=720">
-<link rel="icon" href="favicon-32.png?v=720" sizes="32x32" type="image/png">
+<link rel="manifest" href="manifest.webmanifest?v=723">
+<link rel="icon" href="favicon-32.png?v=723" sizes="32x32" type="image/png">
 <!-- iOS: иконка «На экран Домой». Safari берёт последний подходящий размер,
      поэтому перечисляем все типовые; ?v= — чтобы не подхватилась старая копия из кэша -->
-<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=720">
-<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=720">
-<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=720">
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=720">
-<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=720">
-<link rel="apple-touch-icon" href="icon-180.png?v=720">
+<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=723">
+<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=723">
+<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=723">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=723">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=723">
+<link rel="apple-touch-icon" href="icon-180.png?v=723">
 <title>Тихая заводь — рыбалка</title>
 <style>
 :root{
@@ -311,21 +311,24 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 #locInfo .li.snag{color:#ffd2b3;border-color:rgba(255,162,104,.32)}
 
 /* кнопка прикормки у шкалы силы */
-#handBtn{position:absolute;z-index:13;left:50%;transform:translate(-50%,0);
-  bottom:calc(env(safe-area-inset-bottom,0px) + 174px);
+#handBtn{position:absolute;z-index:13;right:11px;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 214px);
   /* показываем только пока метят заброс (класс .on из syncHandVisibility) */
   display:none;align-items:center;gap:5px;padding:6px 11px;border-radius:999px;cursor:pointer;
   background:rgba(6,20,26,.62);border:1px solid rgba(255,255,255,.16);color:#e9f6ec;
   font:800 11px/1 -apple-system,Segoe UI,Roboto,sans-serif;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
   box-shadow:0 8px 20px rgba(0,0,0,.32)}
-#handBtn.on{display:inline-flex;border-color:rgba(255,225,160,.45);color:#f2f7ec}
+/* на самом деле кнопка — <button>: display:inline-flex дал бы ширину по тексту и
+   налез бы на чипы «Клубный плёс», поэтому показываем её как flex, а ширину держим по контенту */
+#handBtn.on{display:flex;width:max-content;max-width:70vw;justify-content:center;
+  border-color:rgba(255,225,160,.45);color:#f2f7ec}
 #handBtn.live{border-color:rgba(167,240,189,.55);color:#d9ffe4;background:rgba(14,52,30,.62)}
 #handBtn svg{width:13px;height:13px}
 #handBtn b{color:#ffd979;font-variant-numeric:tabular-nums}
 /* когда полоска натяжения не показана — кнопка живёт у кнопки заброса */
-#handBtn.up{bottom:calc(env(safe-area-inset-bottom,0px) + 174px);opacity:.92}
-#handBtn:active{transform:translate(-50%,0) scale(.95)}
-@media (max-height:700px){ #handBtn{bottom:calc(env(safe-area-inset-bottom,0px) + 168px)} }
+#handBtn.up{bottom:calc(env(safe-area-inset-bottom,0px) + 214px);opacity:.92}
+#handBtn:active{transform:scale(.95)}
+@media (max-height:700px){ #handBtn{bottom:calc(env(safe-area-inset-bottom,0px) + 200px)} }
 
 /* зацеп */
 #snagBar{position:absolute;z-index:13;left:12px;right:12px;

@@ -4559,10 +4559,12 @@ function renderBase(){
     const top = all.slice().sort((a,b) => (order[FISH[a].rar] - order[FISH[b].rar]) || (FISH[b].wMax - FISH[a].wMax)).slice(0,4);
     const more = all.length - top.length;
     // подсказка: что здесь ловится на надетую приманку и хватает ли удочки
-    const baitName = BAITS[save.equipped.bait].name;
-    const here = all.filter(k => FISH[k].bait === save.equipped.bait);
+    // снасть могла быть продана/сброшена — не падаем на неизвестной приманке
+    const curBait = BAITS[save.equipped.bait] ? save.equipped.bait : "worm";
+    const baitName = (BAITS[curBait] || {name:"приманку"}).name;
+    const here = all.filter(k => FISH[k].bait === curBait);
     const powered = here.filter(k => FISH[k].reqPower <= rodDef().power);
-    const baitSet = new Set(all.map(k => BAITS[FISH[k].bait].name));
+    const baitSet = new Set(all.map(k => (BAITS[FISH[k].bait]||{name:"?"}).name));
     const hintTxt = powered.length
       ? "На «"+baitName+"»: " + fishCount(powered.length)
       : here.length
