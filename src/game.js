@@ -164,6 +164,116 @@ function restockCost(ids){
 }
 /* «сила снасти» — минимум из удочки и лески; если рыба сильнее, она уйдёт */
 const gearPower = () => Math.min(rodDef().power, lineDef().power);
+/* ============================================================================
+   9.1: ОПЛАТА ПРИВИЛЕГИЙ
+   Принцип: игра ничего не «включает» сама. Она просит сервер выдать ссылку на оплату
+   и принимает доступ только в виде подписанного ключа, который выдаёт сервер после
+   подтверждённой оплаты. Секретов в файле нет: подпись проверяется на сервере, игра
+   лишь хранит ключ и показывает срок.
+   ========================================================================== */
+/* адрес платёжного сервиса: подставь свой при публикации */
+const PAY = {
+  api: (window.RYBALKA_PAY_API || "").replace(/\/+$/, ""),   // "" — оплата ещё не подключена
+  status: "off"          // off | ok (после проверки ключа)
+};
+/* код игрока: по нему сервер связывает оплату с этим сохранением */
+function playerCode(){
+  if (save.playerCode) return save.playerCode;
+  const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let raw = "";
+  try {
+    const seed = navigator.userAgent + "|" + screen.width + "x" + screen.height + "|" + Math.random();
+    let h = 2166136261;
+    for (let i = 0; i < seed.length; i++){ h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+    for (let i = 0; i < 8; i++){ raw += A[Math.abs((h >>> (i*4)) ^ (i*97)) % A.length]; }
+  } catch(_){ raw = "K7M2QP4Z"; }
+  save.playerCode = raw.slice(0,4) + "-" + raw.slice(4,8);
+  persist();
+  return save.playerCode;
+}
+/* ключ, который сервер выдал после оплаты: {code, exp, token} */
+function passCheck(){
+  const P = save.pass;
+  if (!P || !P.exp) return { ok:false, why:"нет ключа" };
+  if (!P.code || P.code !== playerCode()) return { ok:false, why:"ключ от другого игрока" };
+  const left = Math.ceil((P.exp - Date.now()) / 86400000);
+  if (left <= 0) return { ok:false, why:"срок истёк", exp:P.exp };
+  return { ok:true, left, plan:P.plan || "", exp:P.exp };
+}
+const passOn = () => passCheck().ok;
+/* доступ к привилегиям: либо подписка, либо (по-старому) премиум-предмет за жемчуг */
+const clubAccess = () => passOn() || premOwned();
+/* выдать/обновить карту (вызывается только после успешной проверки на сервере) */
+function passGrant(planId, code){
+  const plan = (CLUB_PASS.plans.find(p => p.id === planId) || CLUB_PASS.plans[1]);
+  const cur = save.pass && save.pass.exp > Date.now() ? save.pass.exp : Date.now();
+  save.pass = { plan: plan.id, exp: cur + plan.days * 86400000, code: code || playerCode(), at: Date.now() };
+  persist();
+  return save.pass;
+}
+
+/* --- клиент оплаты: заявка → ссылка на оплату → проверка ключа --- */
+/* статус витрины: подключён ли платёжный сервис */
+const payReady = () => !!PAY.api;
+const passPlan = (id) => CLUB_PASS.plans.find(p => p.id === id) || CLUB_PASS.plans[1];
+const passDaysLeft = () => { const c = passCheck(); return c.ok ? c.left : 0; };
+
+/* Открыть оплату. Без платёжного сервиса честно говорим, что он ещё не подключён. */
+async function payStart(planId){
+  const plan = passPlan(planId);
+  if (!payReady()){
+    toast("Оплата не подключена", "Платёжный сервис ещё не подключён к этой копии игры. Включим — карта откроется здесь же.", 3400);
+    return { ok:false, why:"нет платёжного сервиса" };
+  }
+  try {
+    const r = await fetch(PAY.api + "/pay/start", {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ plan: plan.id, code: playerCode(), game: "rybalka", version: (typeof VERSION_STR === "string" ? VERSION_STR : "8.9") })
+    });
+    const j = await r.json();
+    if (!j || !j.url) throw new Error("нет ссылки на оплату");
+    // переходим на страницу оплаты платформы; возвращаемся по returnUrl
+    location.href = j.url;
+    return { ok:true, url:j.url };
+  } catch (e) {
+    toast("Не удалось начать оплату", "Проверь интернет и попробуй ещё раз.", 2600);
+    return { ok:false, why:String(e && e.message || e) };
+  }
+}
+/* Проверить оплату: просим сервер отдать ключ по коду игрока */
+async function payCheck(showToast){
+  if (!payReady()){
+    if (showToast) toast("Проверка недоступна", "Платёжный сервис не подключён — проверить нечего.", 2400);
+    return { ok:false, why:"нет платёжного сервиса" };
+  }
+  try {
+    const r = await fetch(PAY.api + "/pay/status?code=" + encodeURIComponent(playerCode()) + "&t=" + Date.now());
+    const j = await r.json();
+    if (j && j.ok && j.key){
+      // сервер уже проверил оплату и подписал ключ — здесь только сохраняем
+      save.pass = { plan:j.key.plan || "month", exp:j.key.exp, code:playerCode(), at:Date.now(), token:j.token || "" };
+      persist(); updateChips();
+      if (typeof renderClubCard === "function") renderClubCard();
+      if (typeof renderPaySheet === "function") renderPaySheet();
+      toast("Клубная карта активна", "Привилегии открыты до " + passEndText(), 3000);
+      try { sfx.level(); } catch(_) {}
+      return { ok:true, left:passCheck().left };
+    }
+    if (showToast) toast("Оплата не найдена", "Если деньги списались — напиши в поддержку, укажи код игрока " + playerCode() + ".", 4200);
+    return { ok:false, why:(j && j.why) || "нет оплаты" };
+  } catch (e) {
+    if (showToast) toast("Сервер не ответил", "Попробуй проверить ещё раз через минуту.", 2600);
+    return { ok:false, why:String(e && e.message || e) };
+  }
+}
+/* Когда закончится карта словами */
+function passEndText(){
+  const c = passCheck();
+  if (!c.ok) return "—";
+  const d = new Date(c.exp);
+  return d.toLocaleDateString("ru-RU", { day:"numeric", month:"long" });
+}
+
 /* ---------------- премиум-клуб: уровень, перки, клубный плёс ---------------- */
 /* в сохранении премиум-предметы лежат как «p_premRod», в PREMIUM — как «premRod» */
 const premKey = (id) => (id && id.slice(0,2) === "p_" ? id.slice(2) : id);
@@ -204,7 +314,7 @@ function perk(name){
   return (PERK_VAL[name] || [])[clubLvl()] || 0;
 }
 /* клубный плёс — четвёртая точка водоёма, видна только участникам клуба */
-const clubSpot = () => (premOwned() && CLUB_SPOTS[save.loc]) ? CLUB_SPOTS[save.loc] : null;
+const clubSpot = () => (clubAccess() && CLUB_SPOTS[save.loc]) ? CLUB_SPOTS[save.loc] : null;
 const locSpots = () => { const L = LOCATIONS[save.loc] || LOCATIONS.lake; const c = clubSpot(); return c ? L.spots.concat([c]) : L.spots; };
 /* ежедневный клубный набор: награда растёт с уровнем клуба */
 const clubDayBase = () => CLUB_DAY.byLvl[clamp(clubLvl(), 0, 5)] || CLUB_DAY.byLvl[1];
@@ -221,7 +331,7 @@ const clubDayReward = () => {
 };
 /* клубный случай: раз в сутки с клубного плёса падает редкая приманка и немного монет.
    Приманку выбираем из тех, что берут рыбу именно этого плёса, — она сразу рабочая. */
-const clubLuckReady = () => premOwned() && save.clubLuck !== todayKey();
+const clubLuckReady = () => clubAccess() && save.clubLuck !== todayKey();
 function clubSpotBaits(loc){
   const sp = CLUB_SPOTS[loc || save.loc];
   if (!sp) return [];
@@ -233,7 +343,7 @@ function clubSpotBaits(loc){
   return need;
 }
 /* первый точный заброс на плёс за сутки — небольшой бонус, чтобы клубная точка звала */
-const clubVisitReady = () => premOwned() && save.clubVisit !== todayKey();
+const clubVisitReady = () => clubAccess() && save.clubVisit !== todayKey();
 function clubVisit(power){
   if (!clubVisitReady()) return false;
   const sp = G.spot;
@@ -249,7 +359,7 @@ function clubVisit(power){
   return true;
 }
 function clubLuckRoll(spot){
-  if (!premOwned()) return false;
+  if (!clubAccess()) return false;
   if (!spot || spot.id.indexOf("prem_") !== 0) return false;
   if (!clubLuckReady()) return false;
   const list = clubSpotBaits(save.loc);
@@ -273,10 +383,10 @@ function dayLeft(){
   const h = Math.floor(m/60), mm = m % 60;
   return h > 0 ? h + " ч " + (mm ? mm + " мин" : "") : mm + " мин";
 }
-const clubDayReady = () => premOwned() && save.clubDay !== todayKey();
+const clubDayReady = () => clubAccess() && save.clubDay !== todayKey();
 /* новый день — новая клубная цель (сброс лениво, в карточке и при улове) */
 function claimClubDay(){
-  if (!premOwned()){ toast("Только для клуба", "Купи любой премиум-предмет за жемчуг — и набор твой.", 2400); return false; }
+  if (!clubAccess()){ toast("Только для клуба", "Открой «Клубную карту» — и все привилегии твои.", 2600); return false; }
   if (!clubDayReady()){ toast("Набор уже забран", "Новый набор будет завтра.", 1800); return false; }
   const rw = clubDayReward();
   save.clubDay = todayKey();
@@ -293,7 +403,7 @@ function claimClubDay(){
 
 /* забрать клубную цель дня: 3 рыбы с клубного плёса */
 function claimClubGoal(){
-  if (!premOwned()) return false;
+  if (!clubAccess()) return false;
   const cur = save.clubGoalDay === todayKey() ? (save.clubGoal||0) : 0;
   if (save.clubGoalDone || cur < CLUB_GOAL.count){ return false; }
   save.clubGoalDone = true;
@@ -1107,7 +1217,7 @@ function duelPerDayLeft(){
   if (save.duelPearlDay !== todayKey()) return DUEL.pearlPerDay;
   return Math.max(0, DUEL.pearlPerDay - (save.duelPearlToday || 0));
 }
-const duelReady = () => premOwned();
+const duelReady = () => clubAccess();
 /* результат одного заброса противника: стабильно, без «скилла» */
 function rivalScore(rival){
   // соперник растёт вместе с игроком — дуэль не «бесплатная»
@@ -1319,7 +1429,7 @@ function questOnCatch(f){
   }
   save.noBreak++;
   /* клубная цель дня: три рыбы с клубного плёса */
-  if (premOwned() && G.spot && G.spot.id.indexOf("prem_") === 0){
+  if (clubAccess() && G.spot && G.spot.id.indexOf("prem_") === 0){
     if (save.clubGoalDay !== todayKey()){ save.clubGoalDay = todayKey(); save.clubGoal = 0; }
     if (!save.clubGoalDone) save.clubGoal = Math.min(CLUB_GOAL.count, (save.clubGoal||0) + 1);
   }
@@ -4959,7 +5069,7 @@ function renderBaitShelf(){
         const fishHere = Object.keys(FISH).filter(k => FISH[k].bait === id &&
           locSpots().some(sp => sp.w[k]) && FISH[k].reqPower <= rodDef().power).length;
         // клубный плёс: сколько редких видов возьмёт эта приманка
-        const clubSpotNow = premOwned() ? CLUB_SPOTS[save.loc] : null;
+        const clubSpotNow = clubAccess() ? CLUB_SPOTS[save.loc] : null;
         const clubHits = clubSpotNow
           ? Object.keys(clubSpotNow.w).filter(k => FISH[k] && FISH[k].bait === id && FISH[k].reqPower <= rodDef().power).length : 0;
         const price = b.price || 0;
@@ -5042,7 +5152,7 @@ function updateQuestDot(){
 function syncClubChip(){
   const el = $("clubChip");
   if (!el) return;
-  const show = premOwned();
+  const show = clubAccess();
   el.style.display = show ? "" : "none";
   if (!show) return;
   const ready = clubDayReady();
@@ -5613,6 +5723,81 @@ function renderShop(){
   list.appendChild(note);
 }
 
+/* ---------------- 9.1: витрина «Клубная карта» ---------------- */
+function renderPaySheet(){
+  const el = $("payBody");
+  if (!el) return;
+  const st = passCheck();
+  const ready = payReady();
+  const badge = st.ok
+    ? '<span class="pay-state on">' + ICONS.check + 'активна · до ' + passEndText() + '</span>'
+    : '<span class="pay-state off">' + ICONS.lock + 'не оформлена</span>';
+  const head =
+    '<div class="pay-hero">' +
+      '<div class="pay-hero-t">' + ICONS.pearl + '<div><b>Клубная карта</b>' +
+        '<small>Все привилегии клуба по подписке — без жемчуга и накоплений</small></div></div>' +
+      badge +
+    '</div>' +
+    '<div class="pay-list">' + CLUB_PASS.perks.map((p, i) =>
+      '<div class="pay-perk"><span class="pp-ico">' + ICONS[["pearl","bolt","coin","fish","map","star","swords"][i] || "star"] + '</span>' +
+        '<div><b>' + p.title + '</b><small>' + p.text + '</small></div></div>').join("") + '</div>';
+
+  const pk = CLUB_PASS.plans.map(p => {
+    const active = st.ok && (save.pass || {}).plan === p.id;
+    return '<button class="pay-plan' + (p.best ? " best" : "") + (active ? " active" : "") + '" data-plan="' + p.id + '">' +
+      '<span class="pl-top"><b>' + p.label + '</b>' + (p.best ? '<i>выгодно</i>' : '') + '</span>' +
+      '<span class="pl-price">' + p.price + '<small>₽</small></span>' +
+      '<span class="pl-note">' + p.days + ' дней · ' + p.note + '</span>' +
+      (active ? '<span class="pl-active">' + ICONS.check + 'твой тариф</span>' :
+        p.old ? '<span class="pl-old">вместо ' + p.old + ' ₽</span>' : '<span class="pl-old">&nbsp;</span>') +
+    '</button>';
+  }).join("");
+
+  const foot =
+    '<div class="pay-foot">' +
+      '<div class="pay-code"><span>код игрока</span><b id="payCode">' + playerCode() + '</b>' +
+        '<button class="pay-copy" id="payCopy" type="button">скопировать</button></div>' +
+      '<button class="pay-buy" id="payBuy"' + (ready ? "" : " disabled") + ' type="button">' +
+        (ready ? 'Оплатить и открыть клуб' : 'Оплата скоро подключится') + '</button>' +
+      '<button class="pay-check" id="payCheck" type="button"' + (ready ? "" : " disabled") + '>' +
+        'Уже оплатил — проверить оплату</button>' +
+      '<div class="pay-help">' + CLUB_PASS.help.map(x => '<p>' + x + '</p>').join("") + '</div>' +
+      '<div class="pay-alt">Не хочешь подписку? Премиум-предметы за жемчуг по-прежнему открывают клуб навсегда.</div>' +
+    '</div>';
+
+  el.innerHTML = head +
+    '<div class="pay-sec">Тариф</div><div class="pay-plans">' + pk + '</div>' + foot;
+
+  let planPick = (save.pass && save.pass.plan) || "month";
+  el.querySelectorAll(".pay-plan").forEach(b => b.addEventListener("click", () => {
+    planPick = b.dataset.plan;
+    el.querySelectorAll(".pay-plan").forEach(x => x.classList.toggle("active", x === b));
+    sfx.tap();
+  }));
+  const copy = $("payCopy");
+  if (copy) copy.addEventListener("click", async () => {
+    const code = playerCode();
+    try { await navigator.clipboard.writeText(code); copy.textContent = "скопировано"; }
+    catch(_){ copy.textContent = code; }
+    setTimeout(() => { const c = $("payCopy"); if (c) c.textContent = "скопировать"; }, 1600);
+  });
+  const buy = $("payBuy");
+  if (buy) buy.addEventListener("click", () => {
+    if (!payReady()){ payStart(planPick); return; }
+    sfx.tap();
+    payStart(planPick);
+  });
+  const chk = $("payCheck");
+  if (chk) chk.addEventListener("click", () => { payCheck(true); });
+}
+
+/* открыть раздел «Клубная карта» из любого места */
+function openPaySheet(){
+  closeAllSheets();
+  openSheet("sheetPay", renderPaySheet);
+  sfx.tap();
+}
+
 /* ---------------- квесты: интерфейс ---------------- */
 let qChapter = "all";
 function questRewardText(r){
@@ -5642,7 +5827,7 @@ function renderClubCard(){
   const perkRow = (key, label, val) =>
     '<span class="club-perk'+(val > 0 ? "" : " off")+'">'+ICONS.star+
       label + (val > 0 ? " +" + Math.round(val*100) + "%" : "")+'</span>';
-  const perks = premOwned()
+  const perks = clubAccess()
     ? perkRow("pearl","жемчуг за улов", perk("pearl")) +
       perkRow("xp","опыт", perk("xp")) +
       perkRow("bite","скорость поклёвки", perk("bite")) +
@@ -5654,10 +5839,10 @@ function renderClubCard(){
   if (save.doubleDay !== todayKey()){ save.doubleDay = todayKey(); save.doublesToday = 0; }
   /* клубная цель дня: новый день — счёт заново */
   if (save.clubGoalDay !== todayKey()){ save.clubGoal = 0; save.clubGoalDone = false; }
-  const gReady = premOwned() && (save.clubGoalDay === todayKey() ? (save.clubGoal||0) >= CLUB_GOAL.count : false);
-  const gDone = premOwned() && !!save.clubGoalDone;
+  const gReady = clubAccess() && (save.clubGoalDay === todayKey() ? (save.clubGoal||0) >= CLUB_GOAL.count : false);
+  const gDone = clubAccess() && !!save.clubGoalDone;
   const gCur = save.clubGoalDay === todayKey() ? (save.clubGoal||0) : 0;
-  const goalRow = premOwned()
+  const goalRow = clubAccess()
     ? '<div class="club-goal'+(gReady ? " ready" : gDone ? " done" : "")+'">' +
         '<div class="cg-top">' + ICONS.bolt + '<b>Цель дня: 3 рыбы на плёсе</b>' +
           '<i>' + (gDone ? "выполнено" : Math.min(gCur, CLUB_GOAL.count) + "/" + CLUB_GOAL.count) + '</i></div>' +
@@ -5667,11 +5852,13 @@ function renderClubCard(){
           : '<small>Награда: +' + CLUB_GOAL.coins + ' монет, +' + CLUB_GOAL.xp + ' опыта, +' + CLUB_GOAL.pearl + ' жемчуг</small>') +
       '</div>'
     : "";
-  el.className = "clubcard" + (premOwned() ? "" : " locked");
+  el.className = "clubcard" + (clubAccess() ? "" : " locked");
   el.innerHTML =
     '<div class="club-head">' +
       '<div class="club-medal">'+ICONS.pearl+'</div>' +
-      '<div class="club-title">Премиум-клуб<small>'+(premOwned() ? rank.name : "закрыт · предметы за жемчуг")+'</small></div>' +
+      '<div class="club-title">Премиум-клуб<small>'+(clubAccess()
+          ? rank.name + (passOn() ? " · карта до " + passEndText() : "")
+          : "закрыт · карта или предмет за жемчуг")+'</small></div>' +
       '<div class="club-lvl">'+(premOwned() ? "ур. "+lvl+" / 5" : "нет доступа")+
         (premOwned() ? '<small>' + cnt + ' из ' + PEARL_ITEMS.length + ' предметов</small>' : '')+'</div>' +
     '</div>' +
@@ -5683,15 +5870,17 @@ function renderClubCard(){
         '<div class="club-foot">Набор ранга: +'+rw.coins+' монет, +'+rw.xp+' опыта, +'+rw.pearl+
           ' жемчуг, приманки. На плёсе раз в сутки — клубный случай и бонус за точный заброс.' +
           '<br><b>Дальше:</b> '+needForNext+'.</div>'
-      : '<button class="club-btn" id="clubShopBtn">Открыть премиум-предметы</button>' +
-        '<div class="club-foot">Купи любой предмет за жемчуг — откроешь уровень клуба, перки, ' +
-          'клубный плёс на всех водоёмах и ежедневный набор.</div>');
+      : '<button class="club-btn" id="clubPayBtn">Открыть «Клубную карту»</button>' +
+        '<div class="club-foot">Карта открывает уровень клуба, перки, клубный плёс на всех водоёмах ' +
+          'и ежедневный набор. Хочешь навсегда — есть премиум-предметы за жемчуг.</div>');
   const gb = $("clubGoalBtn");
   if (gb) gb.addEventListener("click", claimClubGoal);
   const b1 = $("clubDayBtn");
   if (b1) b1.addEventListener("click", () => { claimClubDay(); });
   const b2 = $("clubShopBtn");
   if (b2) b2.addEventListener("click", () => { closeAllSheets(); openSheet("sheetShop", () => renderShop()); });
+  const b3 = $("clubPayBtn");
+  if (b3) b3.addEventListener("click", openPaySheet);
 }
 
 function renderQuests(){
@@ -6617,11 +6806,25 @@ function loop(now){
 }
 
 /* ---------------- старт ---------------- */
+/* кнопка «Клубная карта» в HUD: тихая, когда карта активна, яркая — когда нет */
+function syncPassBtn(){
+  const b = $("clubPassBtn");
+  if (!b) return;
+  b.innerHTML = ICONS.pearl;
+  b.classList.toggle("on", passOn());
+  b.title = passOn() ? "Клубная карта активна до " + passEndText() : "Клубная карта — открыть привилегии";
+  const pe = $("pearlIco3");
+  if (pe) pe.innerHTML = ICONS.pearl;
+  const pp = $("pearlsPay");
+  if (pp) pp.textContent = save.pearl || 0;
+}
+
 function boot(){
   resize();
   ["coinIco","coinIco2"].forEach(id => { const el = $(id); if (el) el.innerHTML = ICONS.coin; });
   ["pearlIco","pearlIco2"].forEach(id => { const el = $(id); if (el) el.innerHTML = ICONS.pearl; });
   $("btnSound").innerHTML = ICONS.sound;
+  syncPassBtn();
   initTabs();
   updateChips();
   renderQuests();
@@ -6659,6 +6862,13 @@ function boot(){
       if (e.code === "Space" && TITLE.run){ e.preventDefault(); rel(e); }
     });
   }
+  const passBtn = $("clubPassBtn");
+  if (passBtn) passBtn.addEventListener("click", openPaySheet);
+  // после возврата с оплаты: ?paid=1 → сразу проверяем
+  try {
+    if (/[?&]paid=1/.test(location.search)) setTimeout(() => payCheck(true), 700);
+  } catch(_) {}
+
   const helpBtn = $("btnStartHelp");
   if (helpBtn) helpBtn.addEventListener("click", () => { closeStart(); openSheet("sheetHelp", renderHelp); });
   const sndBtn = $("btnStartSound");
@@ -6750,6 +6960,13 @@ window.__title = () => ({ stars: TITLE.stars, tries: TITLE.tries, power: +TITLE.
 window.__titleHold = (on) => { TITLE.run = !!on; if (on){ TITLE.power = 0; TITLE.dir = 1; } return TITLE.power; };
 window.__titleSetPower = (v) => { TITLE.power = clamp(v, 0, 1); return TITLE.power; };
 window.__titleRelease = () => titleRelease();
+/* оплата: наружу для проверок (эмуляция сервера — только в тестах) */
+window.__pay = () => ({ ready: payReady(), api: PAY.api, code: playerCode(), pass: save.pass || null,
+  ok: passOn(), left: passDaysLeft(), access: clubAccess(), plans: CLUB_PASS.plans.map(p => p.id) });
+window.__payGrant = (plan) => { const p = passGrant(plan || "month"); syncPassBtn(); renderClubCard(); return p; };
+window.__payClear = () => { save.pass = null; persist(); syncPassBtn(); renderClubCard(); return passOn(); };
+window.__payExpire = () => { if (save.pass) save.pass.exp = Date.now() - 1000; persist(); syncPassBtn(); return passOn(); };
+window.__openPay = () => openPaySheet();
 window.__ui = { openStart, closeStart, renderQuests, renderBaitShelf, claimQuest, dailyNow, questClaimable, openSheet, closeAllSheets,
   renderBase, renderLocMap, showCatch, renderHelp, updateChips, syncLocInfo, renderHandBtn };
 

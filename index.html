@@ -10,16 +10,16 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="Тихая заводь">
 <meta name="description" content="Тихая заводь — рыбалка: 105 видов рыбы, 8 водоёмов, дуэли, премиум-снасти. Работает офлайн.">
-<link rel="manifest" href="manifest.webmanifest?v=729">
-<link rel="icon" href="favicon-32.png?v=729" sizes="32x32" type="image/png">
+<link rel="manifest" href="manifest.webmanifest?v=730">
+<link rel="icon" href="favicon-32.png?v=730" sizes="32x32" type="image/png">
 <!-- iOS: иконка «На экран Домой». Safari берёт последний подходящий размер,
      поэтому перечисляем все типовые; ?v= — чтобы не подхватилась старая копия из кэша -->
-<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=729">
-<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=729">
-<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=729">
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=729">
-<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=729">
-<link rel="apple-touch-icon" href="icon-180.png?v=729">
+<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=730">
+<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=730">
+<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=730">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=730">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=730">
+<link rel="apple-touch-icon" href="icon-180.png?v=730">
 <title>Тихая заводь — рыбалка</title>
 <style>
 :root{
@@ -910,6 +910,79 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
 #questDone .qd-later{background:none;border:none;color:rgba(243,236,221,.5);font:800 11.5px/1 inherit;
   margin-top:10px;cursor:pointer;padding:6px}
 
+/* ============ 9.1: клубная карта ============ */
+.clubchip2{width:32px;height:32px;border-radius:50%;flex:none;cursor:pointer;position:relative;
+  display:grid;place-items:center;padding:0;
+  background:linear-gradient(180deg,rgba(150,120,255,.30),rgba(70,50,140,.55));
+  border:1px solid rgba(190,170,255,.45);color:#e9e0ff;
+  box-shadow:0 6px 16px rgba(60,30,120,.35)}
+.clubchip2 svg{width:16px;height:16px}
+.clubchip2.on{background:linear-gradient(180deg,rgba(255,214,122,.32),rgba(160,110,20,.5));
+  border-color:rgba(255,214,122,.6);color:#ffe9b8}
+.clubchip2:active{transform:scale(.95)}
+.pay-hero{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:13px 14px;border-radius:18px;background:linear-gradient(135deg,rgba(120,92,220,.28),rgba(40,26,80,.5));
+  border:1px solid rgba(180,160,255,.3)}
+.pay-hero-t{display:flex;align-items:center;gap:10px;min-width:0}
+.pay-hero-t>svg{width:26px;height:26px;flex:none}
+.pay-hero-t b{display:block;font-size:15px;font-weight:900;color:#f4eeff;letter-spacing:-.2px}
+.pay-hero-t small{display:block;font-size:10.5px;font-weight:700;color:rgba(226,216,255,.62);line-height:1.35}
+.pay-state{display:inline-flex;align-items:center;gap:4px;padding:5px 9px;border-radius:999px;
+  font-size:9.5px;font-weight:900;white-space:nowrap;letter-spacing:.2px}
+.pay-state svg{width:12px;height:12px}
+.pay-state.on{background:rgba(120,235,160,.16);border:1px solid rgba(120,235,160,.45);color:#b6f5c9}
+.pay-state.off{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);color:rgba(240,235,255,.6)}
+.pay-list{display:grid;gap:6px;margin:12px 0 4px}
+.pay-perk{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:12px;
+  background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.06)}
+.pay-perk .pp-ico{width:22px;height:22px;flex:none;display:grid;place-items:center;border-radius:8px;
+  background:rgba(255,214,122,.14)}
+.pay-perk .pp-ico svg{width:13px;height:13px}
+.pay-perk b{display:block;font-size:11.5px;font-weight:850;color:#fff4e0}
+.pay-perk small{display:block;font-size:9.5px;font-weight:700;color:rgba(240,232,255,.55);line-height:1.3}
+.pay-sec{margin:14px 2px 7px;font-size:9.5px;font-weight:900;letter-spacing:1.6px;
+  text-transform:uppercase;color:rgba(226,216,255,.55)}
+.pay-plans{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.pay-plan{display:flex;flex-direction:column;gap:3px;padding:10px 8px 9px;border-radius:14px;cursor:pointer;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#f4eeff;text-align:left;
+  transition:transform .12s,border-color .15s}
+.pay-plan:active{transform:scale(.98)}
+.pay-plan.best{border-color:rgba(255,214,122,.5);background:linear-gradient(180deg,rgba(255,214,122,.14),rgba(255,255,255,.04))}
+.pay-plan.active{border-color:rgba(140,235,180,.6);box-shadow:0 0 0 1px rgba(140,235,180,.35) inset}
+.pl-top{display:flex;align-items:center;gap:4px;justify-content:space-between}
+.pl-top b{font-size:11px;font-weight:900}
+.pl-top i{font-style:normal;font-size:7.5px;font-weight:900;letter-spacing:.3px;color:#3a2a05;
+  background:linear-gradient(180deg,#ffe08a,#f7ae2e);padding:1px 5px;border-radius:999px}
+.pl-price{font-size:19px;font-weight:900;letter-spacing:-.5px;line-height:1.05}
+.pl-price small{font-size:10px;font-weight:800;opacity:.7;margin-left:1px}
+.pl-note{font-size:8.5px;font-weight:750;color:rgba(240,232,255,.55);line-height:1.25;min-height:21px}
+.pl-old{font-size:8.5px;font-weight:800;color:rgba(255,214,122,.75);min-height:11px}
+.pl-active{display:inline-flex;align-items:center;gap:3px;font-size:8.5px;font-weight:900;color:#b6f5c9;min-height:11px}
+.pl-active svg{width:10px;height:10px}
+.pay-foot{margin-top:13px}
+.pay-code{display:flex;align-items:center;gap:7px;padding:9px 10px;border-radius:12px;
+  background:rgba(0,0,0,.28);border:1px dashed rgba(190,170,255,.35)}
+.pay-code span{font-size:9px;font-weight:900;letter-spacing:.6px;text-transform:uppercase;color:rgba(226,216,255,.5)}
+.pay-code b{font-size:13px;font-weight:900;letter-spacing:1.4px;color:#f4eeff;font-variant-numeric:tabular-nums}
+.pay-copy{margin-left:auto;padding:5px 9px;border-radius:8px;cursor:pointer;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);
+  color:rgba(244,238,255,.8);font:850 9.5px/1 inherit}
+.pay-buy{width:100%;margin-top:9px;padding:14px;border:none;border-radius:15px;cursor:pointer;
+  font:900 14px/1 inherit;color:#2a2205;
+  background:linear-gradient(180deg,#ffe08a,#f9b32f 62%,#eda01d);
+  box-shadow:0 12px 26px rgba(180,110,0,.35), inset 0 2px 0 rgba(255,255,255,.4)}
+.pay-buy:disabled{background:rgba(255,255,255,.08);color:rgba(240,232,255,.45);
+  box-shadow:none;cursor:default}
+.pay-check{width:100%;margin-top:7px;padding:11px;border-radius:13px;cursor:pointer;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);
+  color:rgba(244,238,255,.86);font:850 11.5px/1 inherit}
+.pay-check:disabled{opacity:.45;cursor:default}
+.pay-help{margin-top:11px;padding:10px 11px;border-radius:12px;background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.07)}
+.pay-help p{margin:0 0 5px;font-size:9.5px;font-weight:700;line-height:1.4;color:rgba(240,232,255,.55)}
+.pay-help p:last-child{margin-bottom:0}
+.pay-alt{margin:9px 2px 4px;font-size:9.5px;font-weight:750;line-height:1.4;color:rgba(255,214,122,.7)}
+
 /* ============ стартовый экран ============ */
 #start{
   position:absolute;inset:0;z-index:60;display:none;overflow:hidden;
@@ -1202,6 +1275,7 @@ button.buy.prem:disabled{opacity:.5}
     <div class="spacer"></div>
     <button class="clubchip" id="clubChip" aria-label="Клубный набор" style="display:none"></button>
     <div class="lvlpill" id="lvlChip"><small>ур.</small><b id="lvl">1</b></div>
+    <button class="clubchip2" id="clubPassBtn" aria-label="Клубная карта" title="Клубная карта"></button>
     <button class="roundbtn" id="btnSound" aria-label="Звук"></button>
   </div>
   <div id="xpbar"><div id="xpfill"></div></div>
@@ -1378,6 +1452,21 @@ button.buy.prem:disabled{opacity:.5}
       <div class="segmented" id="shopSeg"></div>
       <div id="itemList"></div>
     </div>
+  </section>
+
+  <!-- ===== 9.1: клубная карта (платные привилегии) ===== -->
+  <section class="sheet" id="sheetPay">
+    <div class="sheet-head">
+      <div style="flex:1">
+        <h2>Клубная карта</h2>
+        <div class="sub">Привилегии клуба по подписке</div>
+      </div>
+      <div class="chip pearl" style="margin-right:6px"><span style="width:15px;height:15px" id="pearlIco3"></span><b id="pearlsPay">0</b></div>
+      <button class="roundbtn" data-close="sheetPay" aria-label="Закрыть">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body" id="payBody"></div>
   </section>
 
   <!-- ===== journal sheet ===== -->
@@ -1886,6 +1975,41 @@ const PERK_VAL = {
   coin:  [0, 0.00, 0.00, 0.06, 0.10, 0.14],
   big:   [0, 0.00, 0.00, 0.00, 0.05, 0.08],
   all:   [0, 0.00, 0.00, 0.00, 0.00, 0.05]
+};
+
+/* ============================================================================
+   9.1: ПЛАТНЫЕ ПРИВИЛЕГИИ — подписка «Клубная карта»
+   Деньги игрока идут мимо игры: покупка уходит на платёжную страницу платформы,
+   а доступ выдаётся только после того, как сервер подтвердит оплату и пришлёт ключ.
+   Поэтому в файле игры нет ни секретов, ни способа «включить» доступ кнопкой.
+   ========================================================================== */
+const CLUB_PASS = {
+  // срок · цена (в рублях, для витрины) · что открывает
+  plans: [
+    { id:"week",  days:7,  price:99,  old:0,    label:"Неделя",  note:"попробовать клуб",
+      perks:"все перки клуба, плёс, ежедневный набор" },
+    { id:"month", days:30, price:249, old:0,    label:"Месяц",   note:"выгоднее всего", best:true,
+      perks:"всё из «Недели» + цель дня ×2 и жемчуг за улов" },
+    { id:"year",  days:365,price:1790,old:2988, label:"Год",     note:"−40% к месяцу",
+      perks:"всё из «Месяца» на год" }
+  ],
+  // что даёт карта, когда активна
+  perks: [
+    { id:"pearl", title:"Жемчуг за каждый улов",      text:"шанс жемчуга +10…30% в зависимости от ранга" },
+    { id:"bite",  title:"Поклёвки чаще",              text:"до −14% времени ожидания" },
+    { id:"coin",  title:"Монеты за рыбу",             text:"до +14% к цене улова" },
+    { id:"big",   title:"Рыба крупнее",               text:"до +8% к размеру" },
+    { id:"spot",  title:"Клубный плёс",               text:"четвёртая точка на каждом водоёме" },
+    { id:"day",   title:"Ежедневный набор",           text:"монеты, опыт, жемчуг и приманки" },
+    { id:"goal",  title:"Цель дня на плёсе",          text:"3 рыбы — и награда в жемчуге" }
+  ],
+  // как оплатить и что делать, если платёж не пришёл
+  help: [
+    "Оплата идёт на защищённой странице платформы (ЮKassa, карта или СБП). Карта в игру не попадает.",
+    "После оплаты сервер присылает игре ключ доступа — карта включается сама за пару секунд.",
+    "Если ключ не пришёл: нажми «Проверить оплату» — игра переспросит сервер.",
+    "Оплата привязана к коду игрока ниже. Сохрани его: по нему можно восстановить карту на другом устройстве."
+  ]
 };
 
 /* Закрытый «клубный плёс»: четвёртая точка на каждом водоёме, видна только участникам клуба.
@@ -2738,6 +2862,116 @@ function restockCost(ids){
 }
 /* «сила снасти» — минимум из удочки и лески; если рыба сильнее, она уйдёт */
 const gearPower = () => Math.min(rodDef().power, lineDef().power);
+/* ============================================================================
+   9.1: ОПЛАТА ПРИВИЛЕГИЙ
+   Принцип: игра ничего не «включает» сама. Она просит сервер выдать ссылку на оплату
+   и принимает доступ только в виде подписанного ключа, который выдаёт сервер после
+   подтверждённой оплаты. Секретов в файле нет: подпись проверяется на сервере, игра
+   лишь хранит ключ и показывает срок.
+   ========================================================================== */
+/* адрес платёжного сервиса: подставь свой при публикации */
+const PAY = {
+  api: (window.RYBALKA_PAY_API || "").replace(/\/+$/, ""),   // "" — оплата ещё не подключена
+  status: "off"          // off | ok (после проверки ключа)
+};
+/* код игрока: по нему сервер связывает оплату с этим сохранением */
+function playerCode(){
+  if (save.playerCode) return save.playerCode;
+  const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let raw = "";
+  try {
+    const seed = navigator.userAgent + "|" + screen.width + "x" + screen.height + "|" + Math.random();
+    let h = 2166136261;
+    for (let i = 0; i < seed.length; i++){ h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+    for (let i = 0; i < 8; i++){ raw += A[Math.abs((h >>> (i*4)) ^ (i*97)) % A.length]; }
+  } catch(_){ raw = "K7M2QP4Z"; }
+  save.playerCode = raw.slice(0,4) + "-" + raw.slice(4,8);
+  persist();
+  return save.playerCode;
+}
+/* ключ, который сервер выдал после оплаты: {code, exp, token} */
+function passCheck(){
+  const P = save.pass;
+  if (!P || !P.exp) return { ok:false, why:"нет ключа" };
+  if (!P.code || P.code !== playerCode()) return { ok:false, why:"ключ от другого игрока" };
+  const left = Math.ceil((P.exp - Date.now()) / 86400000);
+  if (left <= 0) return { ok:false, why:"срок истёк", exp:P.exp };
+  return { ok:true, left, plan:P.plan || "", exp:P.exp };
+}
+const passOn = () => passCheck().ok;
+/* доступ к привилегиям: либо подписка, либо (по-старому) премиум-предмет за жемчуг */
+const clubAccess = () => passOn() || premOwned();
+/* выдать/обновить карту (вызывается только после успешной проверки на сервере) */
+function passGrant(planId, code){
+  const plan = (CLUB_PASS.plans.find(p => p.id === planId) || CLUB_PASS.plans[1]);
+  const cur = save.pass && save.pass.exp > Date.now() ? save.pass.exp : Date.now();
+  save.pass = { plan: plan.id, exp: cur + plan.days * 86400000, code: code || playerCode(), at: Date.now() };
+  persist();
+  return save.pass;
+}
+
+/* --- клиент оплаты: заявка → ссылка на оплату → проверка ключа --- */
+/* статус витрины: подключён ли платёжный сервис */
+const payReady = () => !!PAY.api;
+const passPlan = (id) => CLUB_PASS.plans.find(p => p.id === id) || CLUB_PASS.plans[1];
+const passDaysLeft = () => { const c = passCheck(); return c.ok ? c.left : 0; };
+
+/* Открыть оплату. Без платёжного сервиса честно говорим, что он ещё не подключён. */
+async function payStart(planId){
+  const plan = passPlan(planId);
+  if (!payReady()){
+    toast("Оплата не подключена", "Платёжный сервис ещё не подключён к этой копии игры. Включим — карта откроется здесь же.", 3400);
+    return { ok:false, why:"нет платёжного сервиса" };
+  }
+  try {
+    const r = await fetch(PAY.api + "/pay/start", {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ plan: plan.id, code: playerCode(), game: "rybalka", version: (typeof VERSION_STR === "string" ? VERSION_STR : "8.9") })
+    });
+    const j = await r.json();
+    if (!j || !j.url) throw new Error("нет ссылки на оплату");
+    // переходим на страницу оплаты платформы; возвращаемся по returnUrl
+    location.href = j.url;
+    return { ok:true, url:j.url };
+  } catch (e) {
+    toast("Не удалось начать оплату", "Проверь интернет и попробуй ещё раз.", 2600);
+    return { ok:false, why:String(e && e.message || e) };
+  }
+}
+/* Проверить оплату: просим сервер отдать ключ по коду игрока */
+async function payCheck(showToast){
+  if (!payReady()){
+    if (showToast) toast("Проверка недоступна", "Платёжный сервис не подключён — проверить нечего.", 2400);
+    return { ok:false, why:"нет платёжного сервиса" };
+  }
+  try {
+    const r = await fetch(PAY.api + "/pay/status?code=" + encodeURIComponent(playerCode()) + "&t=" + Date.now());
+    const j = await r.json();
+    if (j && j.ok && j.key){
+      // сервер уже проверил оплату и подписал ключ — здесь только сохраняем
+      save.pass = { plan:j.key.plan || "month", exp:j.key.exp, code:playerCode(), at:Date.now(), token:j.token || "" };
+      persist(); updateChips();
+      if (typeof renderClubCard === "function") renderClubCard();
+      if (typeof renderPaySheet === "function") renderPaySheet();
+      toast("Клубная карта активна", "Привилегии открыты до " + passEndText(), 3000);
+      try { sfx.level(); } catch(_) {}
+      return { ok:true, left:passCheck().left };
+    }
+    if (showToast) toast("Оплата не найдена", "Если деньги списались — напиши в поддержку, укажи код игрока " + playerCode() + ".", 4200);
+    return { ok:false, why:(j && j.why) || "нет оплаты" };
+  } catch (e) {
+    if (showToast) toast("Сервер не ответил", "Попробуй проверить ещё раз через минуту.", 2600);
+    return { ok:false, why:String(e && e.message || e) };
+  }
+}
+/* Когда закончится карта словами */
+function passEndText(){
+  const c = passCheck();
+  if (!c.ok) return "—";
+  const d = new Date(c.exp);
+  return d.toLocaleDateString("ru-RU", { day:"numeric", month:"long" });
+}
+
 /* ---------------- премиум-клуб: уровень, перки, клубный плёс ---------------- */
 /* в сохранении премиум-предметы лежат как «p_premRod», в PREMIUM — как «premRod» */
 const premKey = (id) => (id && id.slice(0,2) === "p_" ? id.slice(2) : id);
@@ -2778,7 +3012,7 @@ function perk(name){
   return (PERK_VAL[name] || [])[clubLvl()] || 0;
 }
 /* клубный плёс — четвёртая точка водоёма, видна только участникам клуба */
-const clubSpot = () => (premOwned() && CLUB_SPOTS[save.loc]) ? CLUB_SPOTS[save.loc] : null;
+const clubSpot = () => (clubAccess() && CLUB_SPOTS[save.loc]) ? CLUB_SPOTS[save.loc] : null;
 const locSpots = () => { const L = LOCATIONS[save.loc] || LOCATIONS.lake; const c = clubSpot(); return c ? L.spots.concat([c]) : L.spots; };
 /* ежедневный клубный набор: награда растёт с уровнем клуба */
 const clubDayBase = () => CLUB_DAY.byLvl[clamp(clubLvl(), 0, 5)] || CLUB_DAY.byLvl[1];
@@ -2795,7 +3029,7 @@ const clubDayReward = () => {
 };
 /* клубный случай: раз в сутки с клубного плёса падает редкая приманка и немного монет.
    Приманку выбираем из тех, что берут рыбу именно этого плёса, — она сразу рабочая. */
-const clubLuckReady = () => premOwned() && save.clubLuck !== todayKey();
+const clubLuckReady = () => clubAccess() && save.clubLuck !== todayKey();
 function clubSpotBaits(loc){
   const sp = CLUB_SPOTS[loc || save.loc];
   if (!sp) return [];
@@ -2807,7 +3041,7 @@ function clubSpotBaits(loc){
   return need;
 }
 /* первый точный заброс на плёс за сутки — небольшой бонус, чтобы клубная точка звала */
-const clubVisitReady = () => premOwned() && save.clubVisit !== todayKey();
+const clubVisitReady = () => clubAccess() && save.clubVisit !== todayKey();
 function clubVisit(power){
   if (!clubVisitReady()) return false;
   const sp = G.spot;
@@ -2823,7 +3057,7 @@ function clubVisit(power){
   return true;
 }
 function clubLuckRoll(spot){
-  if (!premOwned()) return false;
+  if (!clubAccess()) return false;
   if (!spot || spot.id.indexOf("prem_") !== 0) return false;
   if (!clubLuckReady()) return false;
   const list = clubSpotBaits(save.loc);
@@ -2847,10 +3081,10 @@ function dayLeft(){
   const h = Math.floor(m/60), mm = m % 60;
   return h > 0 ? h + " ч " + (mm ? mm + " мин" : "") : mm + " мин";
 }
-const clubDayReady = () => premOwned() && save.clubDay !== todayKey();
+const clubDayReady = () => clubAccess() && save.clubDay !== todayKey();
 /* новый день — новая клубная цель (сброс лениво, в карточке и при улове) */
 function claimClubDay(){
-  if (!premOwned()){ toast("Только для клуба", "Купи любой премиум-предмет за жемчуг — и набор твой.", 2400); return false; }
+  if (!clubAccess()){ toast("Только для клуба", "Открой «Клубную карту» — и все привилегии твои.", 2600); return false; }
   if (!clubDayReady()){ toast("Набор уже забран", "Новый набор будет завтра.", 1800); return false; }
   const rw = clubDayReward();
   save.clubDay = todayKey();
@@ -2867,7 +3101,7 @@ function claimClubDay(){
 
 /* забрать клубную цель дня: 3 рыбы с клубного плёса */
 function claimClubGoal(){
-  if (!premOwned()) return false;
+  if (!clubAccess()) return false;
   const cur = save.clubGoalDay === todayKey() ? (save.clubGoal||0) : 0;
   if (save.clubGoalDone || cur < CLUB_GOAL.count){ return false; }
   save.clubGoalDone = true;
@@ -3681,7 +3915,7 @@ function duelPerDayLeft(){
   if (save.duelPearlDay !== todayKey()) return DUEL.pearlPerDay;
   return Math.max(0, DUEL.pearlPerDay - (save.duelPearlToday || 0));
 }
-const duelReady = () => premOwned();
+const duelReady = () => clubAccess();
 /* результат одного заброса противника: стабильно, без «скилла» */
 function rivalScore(rival){
   // соперник растёт вместе с игроком — дуэль не «бесплатная»
@@ -3893,7 +4127,7 @@ function questOnCatch(f){
   }
   save.noBreak++;
   /* клубная цель дня: три рыбы с клубного плёса */
-  if (premOwned() && G.spot && G.spot.id.indexOf("prem_") === 0){
+  if (clubAccess() && G.spot && G.spot.id.indexOf("prem_") === 0){
     if (save.clubGoalDay !== todayKey()){ save.clubGoalDay = todayKey(); save.clubGoal = 0; }
     if (!save.clubGoalDone) save.clubGoal = Math.min(CLUB_GOAL.count, (save.clubGoal||0) + 1);
   }
@@ -7533,7 +7767,7 @@ function renderBaitShelf(){
         const fishHere = Object.keys(FISH).filter(k => FISH[k].bait === id &&
           locSpots().some(sp => sp.w[k]) && FISH[k].reqPower <= rodDef().power).length;
         // клубный плёс: сколько редких видов возьмёт эта приманка
-        const clubSpotNow = premOwned() ? CLUB_SPOTS[save.loc] : null;
+        const clubSpotNow = clubAccess() ? CLUB_SPOTS[save.loc] : null;
         const clubHits = clubSpotNow
           ? Object.keys(clubSpotNow.w).filter(k => FISH[k] && FISH[k].bait === id && FISH[k].reqPower <= rodDef().power).length : 0;
         const price = b.price || 0;
@@ -7616,7 +7850,7 @@ function updateQuestDot(){
 function syncClubChip(){
   const el = $("clubChip");
   if (!el) return;
-  const show = premOwned();
+  const show = clubAccess();
   el.style.display = show ? "" : "none";
   if (!show) return;
   const ready = clubDayReady();
@@ -8187,6 +8421,81 @@ function renderShop(){
   list.appendChild(note);
 }
 
+/* ---------------- 9.1: витрина «Клубная карта» ---------------- */
+function renderPaySheet(){
+  const el = $("payBody");
+  if (!el) return;
+  const st = passCheck();
+  const ready = payReady();
+  const badge = st.ok
+    ? '<span class="pay-state on">' + ICONS.check + 'активна · до ' + passEndText() + '</span>'
+    : '<span class="pay-state off">' + ICONS.lock + 'не оформлена</span>';
+  const head =
+    '<div class="pay-hero">' +
+      '<div class="pay-hero-t">' + ICONS.pearl + '<div><b>Клубная карта</b>' +
+        '<small>Все привилегии клуба по подписке — без жемчуга и накоплений</small></div></div>' +
+      badge +
+    '</div>' +
+    '<div class="pay-list">' + CLUB_PASS.perks.map((p, i) =>
+      '<div class="pay-perk"><span class="pp-ico">' + ICONS[["pearl","bolt","coin","fish","map","star","swords"][i] || "star"] + '</span>' +
+        '<div><b>' + p.title + '</b><small>' + p.text + '</small></div></div>').join("") + '</div>';
+
+  const pk = CLUB_PASS.plans.map(p => {
+    const active = st.ok && (save.pass || {}).plan === p.id;
+    return '<button class="pay-plan' + (p.best ? " best" : "") + (active ? " active" : "") + '" data-plan="' + p.id + '">' +
+      '<span class="pl-top"><b>' + p.label + '</b>' + (p.best ? '<i>выгодно</i>' : '') + '</span>' +
+      '<span class="pl-price">' + p.price + '<small>₽</small></span>' +
+      '<span class="pl-note">' + p.days + ' дней · ' + p.note + '</span>' +
+      (active ? '<span class="pl-active">' + ICONS.check + 'твой тариф</span>' :
+        p.old ? '<span class="pl-old">вместо ' + p.old + ' ₽</span>' : '<span class="pl-old">&nbsp;</span>') +
+    '</button>';
+  }).join("");
+
+  const foot =
+    '<div class="pay-foot">' +
+      '<div class="pay-code"><span>код игрока</span><b id="payCode">' + playerCode() + '</b>' +
+        '<button class="pay-copy" id="payCopy" type="button">скопировать</button></div>' +
+      '<button class="pay-buy" id="payBuy"' + (ready ? "" : " disabled") + ' type="button">' +
+        (ready ? 'Оплатить и открыть клуб' : 'Оплата скоро подключится') + '</button>' +
+      '<button class="pay-check" id="payCheck" type="button"' + (ready ? "" : " disabled") + '>' +
+        'Уже оплатил — проверить оплату</button>' +
+      '<div class="pay-help">' + CLUB_PASS.help.map(x => '<p>' + x + '</p>').join("") + '</div>' +
+      '<div class="pay-alt">Не хочешь подписку? Премиум-предметы за жемчуг по-прежнему открывают клуб навсегда.</div>' +
+    '</div>';
+
+  el.innerHTML = head +
+    '<div class="pay-sec">Тариф</div><div class="pay-plans">' + pk + '</div>' + foot;
+
+  let planPick = (save.pass && save.pass.plan) || "month";
+  el.querySelectorAll(".pay-plan").forEach(b => b.addEventListener("click", () => {
+    planPick = b.dataset.plan;
+    el.querySelectorAll(".pay-plan").forEach(x => x.classList.toggle("active", x === b));
+    sfx.tap();
+  }));
+  const copy = $("payCopy");
+  if (copy) copy.addEventListener("click", async () => {
+    const code = playerCode();
+    try { await navigator.clipboard.writeText(code); copy.textContent = "скопировано"; }
+    catch(_){ copy.textContent = code; }
+    setTimeout(() => { const c = $("payCopy"); if (c) c.textContent = "скопировать"; }, 1600);
+  });
+  const buy = $("payBuy");
+  if (buy) buy.addEventListener("click", () => {
+    if (!payReady()){ payStart(planPick); return; }
+    sfx.tap();
+    payStart(planPick);
+  });
+  const chk = $("payCheck");
+  if (chk) chk.addEventListener("click", () => { payCheck(true); });
+}
+
+/* открыть раздел «Клубная карта» из любого места */
+function openPaySheet(){
+  closeAllSheets();
+  openSheet("sheetPay", renderPaySheet);
+  sfx.tap();
+}
+
 /* ---------------- квесты: интерфейс ---------------- */
 let qChapter = "all";
 function questRewardText(r){
@@ -8216,7 +8525,7 @@ function renderClubCard(){
   const perkRow = (key, label, val) =>
     '<span class="club-perk'+(val > 0 ? "" : " off")+'">'+ICONS.star+
       label + (val > 0 ? " +" + Math.round(val*100) + "%" : "")+'</span>';
-  const perks = premOwned()
+  const perks = clubAccess()
     ? perkRow("pearl","жемчуг за улов", perk("pearl")) +
       perkRow("xp","опыт", perk("xp")) +
       perkRow("bite","скорость поклёвки", perk("bite")) +
@@ -8228,10 +8537,10 @@ function renderClubCard(){
   if (save.doubleDay !== todayKey()){ save.doubleDay = todayKey(); save.doublesToday = 0; }
   /* клубная цель дня: новый день — счёт заново */
   if (save.clubGoalDay !== todayKey()){ save.clubGoal = 0; save.clubGoalDone = false; }
-  const gReady = premOwned() && (save.clubGoalDay === todayKey() ? (save.clubGoal||0) >= CLUB_GOAL.count : false);
-  const gDone = premOwned() && !!save.clubGoalDone;
+  const gReady = clubAccess() && (save.clubGoalDay === todayKey() ? (save.clubGoal||0) >= CLUB_GOAL.count : false);
+  const gDone = clubAccess() && !!save.clubGoalDone;
   const gCur = save.clubGoalDay === todayKey() ? (save.clubGoal||0) : 0;
-  const goalRow = premOwned()
+  const goalRow = clubAccess()
     ? '<div class="club-goal'+(gReady ? " ready" : gDone ? " done" : "")+'">' +
         '<div class="cg-top">' + ICONS.bolt + '<b>Цель дня: 3 рыбы на плёсе</b>' +
           '<i>' + (gDone ? "выполнено" : Math.min(gCur, CLUB_GOAL.count) + "/" + CLUB_GOAL.count) + '</i></div>' +
@@ -8241,11 +8550,13 @@ function renderClubCard(){
           : '<small>Награда: +' + CLUB_GOAL.coins + ' монет, +' + CLUB_GOAL.xp + ' опыта, +' + CLUB_GOAL.pearl + ' жемчуг</small>') +
       '</div>'
     : "";
-  el.className = "clubcard" + (premOwned() ? "" : " locked");
+  el.className = "clubcard" + (clubAccess() ? "" : " locked");
   el.innerHTML =
     '<div class="club-head">' +
       '<div class="club-medal">'+ICONS.pearl+'</div>' +
-      '<div class="club-title">Премиум-клуб<small>'+(premOwned() ? rank.name : "закрыт · предметы за жемчуг")+'</small></div>' +
+      '<div class="club-title">Премиум-клуб<small>'+(clubAccess()
+          ? rank.name + (passOn() ? " · карта до " + passEndText() : "")
+          : "закрыт · карта или предмет за жемчуг")+'</small></div>' +
       '<div class="club-lvl">'+(premOwned() ? "ур. "+lvl+" / 5" : "нет доступа")+
         (premOwned() ? '<small>' + cnt + ' из ' + PEARL_ITEMS.length + ' предметов</small>' : '')+'</div>' +
     '</div>' +
@@ -8257,15 +8568,17 @@ function renderClubCard(){
         '<div class="club-foot">Набор ранга: +'+rw.coins+' монет, +'+rw.xp+' опыта, +'+rw.pearl+
           ' жемчуг, приманки. На плёсе раз в сутки — клубный случай и бонус за точный заброс.' +
           '<br><b>Дальше:</b> '+needForNext+'.</div>'
-      : '<button class="club-btn" id="clubShopBtn">Открыть премиум-предметы</button>' +
-        '<div class="club-foot">Купи любой предмет за жемчуг — откроешь уровень клуба, перки, ' +
-          'клубный плёс на всех водоёмах и ежедневный набор.</div>');
+      : '<button class="club-btn" id="clubPayBtn">Открыть «Клубную карту»</button>' +
+        '<div class="club-foot">Карта открывает уровень клуба, перки, клубный плёс на всех водоёмах ' +
+          'и ежедневный набор. Хочешь навсегда — есть премиум-предметы за жемчуг.</div>');
   const gb = $("clubGoalBtn");
   if (gb) gb.addEventListener("click", claimClubGoal);
   const b1 = $("clubDayBtn");
   if (b1) b1.addEventListener("click", () => { claimClubDay(); });
   const b2 = $("clubShopBtn");
   if (b2) b2.addEventListener("click", () => { closeAllSheets(); openSheet("sheetShop", () => renderShop()); });
+  const b3 = $("clubPayBtn");
+  if (b3) b3.addEventListener("click", openPaySheet);
 }
 
 function renderQuests(){
@@ -9191,11 +9504,25 @@ function loop(now){
 }
 
 /* ---------------- старт ---------------- */
+/* кнопка «Клубная карта» в HUD: тихая, когда карта активна, яркая — когда нет */
+function syncPassBtn(){
+  const b = $("clubPassBtn");
+  if (!b) return;
+  b.innerHTML = ICONS.pearl;
+  b.classList.toggle("on", passOn());
+  b.title = passOn() ? "Клубная карта активна до " + passEndText() : "Клубная карта — открыть привилегии";
+  const pe = $("pearlIco3");
+  if (pe) pe.innerHTML = ICONS.pearl;
+  const pp = $("pearlsPay");
+  if (pp) pp.textContent = save.pearl || 0;
+}
+
 function boot(){
   resize();
   ["coinIco","coinIco2"].forEach(id => { const el = $(id); if (el) el.innerHTML = ICONS.coin; });
   ["pearlIco","pearlIco2"].forEach(id => { const el = $(id); if (el) el.innerHTML = ICONS.pearl; });
   $("btnSound").innerHTML = ICONS.sound;
+  syncPassBtn();
   initTabs();
   updateChips();
   renderQuests();
@@ -9233,6 +9560,13 @@ function boot(){
       if (e.code === "Space" && TITLE.run){ e.preventDefault(); rel(e); }
     });
   }
+  const passBtn = $("clubPassBtn");
+  if (passBtn) passBtn.addEventListener("click", openPaySheet);
+  // после возврата с оплаты: ?paid=1 → сразу проверяем
+  try {
+    if (/[?&]paid=1/.test(location.search)) setTimeout(() => payCheck(true), 700);
+  } catch(_) {}
+
   const helpBtn = $("btnStartHelp");
   if (helpBtn) helpBtn.addEventListener("click", () => { closeStart(); openSheet("sheetHelp", renderHelp); });
   const sndBtn = $("btnStartSound");
@@ -9324,6 +9658,13 @@ window.__title = () => ({ stars: TITLE.stars, tries: TITLE.tries, power: +TITLE.
 window.__titleHold = (on) => { TITLE.run = !!on; if (on){ TITLE.power = 0; TITLE.dir = 1; } return TITLE.power; };
 window.__titleSetPower = (v) => { TITLE.power = clamp(v, 0, 1); return TITLE.power; };
 window.__titleRelease = () => titleRelease();
+/* оплата: наружу для проверок (эмуляция сервера — только в тестах) */
+window.__pay = () => ({ ready: payReady(), api: PAY.api, code: playerCode(), pass: save.pass || null,
+  ok: passOn(), left: passDaysLeft(), access: clubAccess(), plans: CLUB_PASS.plans.map(p => p.id) });
+window.__payGrant = (plan) => { const p = passGrant(plan || "month"); syncPassBtn(); renderClubCard(); return p; };
+window.__payClear = () => { save.pass = null; persist(); syncPassBtn(); renderClubCard(); return passOn(); };
+window.__payExpire = () => { if (save.pass) save.pass.exp = Date.now() - 1000; persist(); syncPassBtn(); return passOn(); };
+window.__openPay = () => openPaySheet();
 window.__ui = { openStart, closeStart, renderQuests, renderBaitShelf, claimQuest, dailyNow, questClaimable, openSheet, closeAllSheets,
   renderBase, renderLocMap, showCatch, renderHelp, updateChips, syncLocInfo, renderHandBtn };
 
