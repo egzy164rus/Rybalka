@@ -751,7 +751,7 @@ function isFishHome(id, sp){
 }
 
 /* ---- 8.5: прогноз клёва ---------------------------------------------------
-   Складываем то, что игрок видит своими глазами: время суток водоёма, буй, погоду,
+   Складываем то, что игрок видит своими глазами: время суток водоёма, выход рыбы, погоду,
    прикормку и свою точность заброса. Правила приманки и силы удочки не учитываем —
    они и так видны в карточке вида. */
 function biteForecast(loc){
@@ -788,10 +788,10 @@ function biteForecast(loc){
 /* 8.5: подмена «сейчас» для тестов прогноза (null — реальные часы устройства) */
 let WAVE_FORCE = null;
 const waveNowHour = () => WAVE_FORCE === null ? new Date().getHours() : WAVE_FORCE;
-/* ---- 8.5: буй клёва —«час активности» водоёма -------------------------------
+/* ---- 8.5: выход рыбы —«час активности» водоёма -------------------------------
    Часы выбираются детерминированно: одинаковые у всех, не «моргают» при перезагрузке.
    Водоём получает один слот каждые `every` часов; конкретный час зависит от даты и водоёма,
-   поэтому у каждого дня свой «буй» и есть смысл заглянуть в водоём в разное время. */
+   поэтому у каждого дня свой «выход рыбы» и есть смысл заглянуть в водоём в разное время. */
 function waveSeed(loc, d){
   const key = todayKey() + "|" + (loc || save.loc);
   let h = 0;
@@ -818,7 +818,7 @@ function waveOn(loc){
   if (waveSlot(loc, waveNowHour()) !== waveNowHour()) return false;
   return (d.getMinutes() % BITE_WAVE.dur) < BITE_WAVE.dur;
 }
-/* когда следующий буй: «через 1 ч 20 мин» */
+/* когда следующий выход: «через 1 ч 20 мин» */
 function waveIn(loc){
   const d = new Date();
   const nowMin = waveNowHour()*60 + d.getMinutes();
@@ -835,7 +835,7 @@ function waveIn(loc){
 }
 const fmtMins = m => m >= 60 ? Math.floor(m/60) + " ч " + (m%60 ? (m%60) + " мин" : "").trim() : m + " мин";
 const waveMult = (loc) => waveOn(loc) ? 1 / BITE_WAVE.klyov : 1;
-/* прогноз на ближайшие часы: [час, будет ли буй] — для панели прогноза */
+/* прогноз на ближайшие часы: [час, будет ли выход] — для панели прогноза */
 function waveForecast(loc, n){
   const out = [];
   for (let k=0;k<(n||6);k++){
@@ -1953,7 +1953,7 @@ function biteWait(){
   const tm = timeMults(save.loc);
   const timeK = 1 / Math.max(0.7, tm.klyov);
   const handK = handActive() ? 1 / (HAND.klyov * (1 + (save.hand.gain || 0))) : 1;
-  // 8.5: буй клёва —«час активности» водоёма (ожидание почти вдвое короче)
+  // 8.5: выход рыбы —«час активности» водоёма (ожидание почти вдвое короче)
   const waveK = waveMult(save.loc);
   const streamK = 1 / (1 + (locMech().stream || 0) * 0.12);
   const mean = 4.4 * richK * wxK * lineK * oxyK * calmK * accK * (1 - perk("bite")) * dayK * locDayK * timeK * handK * streamK * waveK;
@@ -2223,7 +2223,7 @@ function showCatch(f){
       }
     }
     G.perfectOnce = false;
-    // 8.5: приметы — буй клёва и любимая точка вида
+    // 8.5: приметы — выход рыбы и любимая точка вида
     if (waveOn(save.loc)) questBump("wave");
     if (G.spot && isFishHome(f.type, G.spot)) questBump("home");
     questOnCatch(f);
@@ -3101,7 +3101,7 @@ function drawPerfectFlash(g){
   ctx.restore();
 }
 
-/* 8.5: буй клёва на воде — мягкий круг у самой «живой» точки водоёма */
+/* 8.5: выход рыбы на воде — мягкий круг у самой «живой» точки водоёма */
 function drawWaveZone(g){
   const spots = locSpots();
   if (!spots.length) return;
@@ -3132,7 +3132,7 @@ function drawWaveZone(g){
 }
 function drawSpots(g){
   if (!["idle","aim","power","casting"].includes(G.state)) return;
-  // 8.5: подсвечиваем точку, где сейчас идёт буй клёва (там рыба ходит плотнее)
+  // 8.5: подсвечиваем точку, где сейчас идёт выход рыбы (там рыба ходит плотнее)
   if (waveOn(save.loc)) drawWaveZone(g);
   const spots = locSpots();
   const s = clamp(Math.min(W,H)/620, 0.7, 1.5);
@@ -5116,7 +5116,7 @@ function syncLocInfo(){
   if (zamorOn()) parts.push('<span class="li warn" title="Мало кислорода: холодолюбивая рыба почти не берёт">' + ICONS.alert + ' замор</span>');
   box.innerHTML = parts.join("");
 }
-/* 8.5: чип буя клёва. Показывает либо «идёт буй» с остатком минут, либо «когда будет» */
+/* 8.5: чип «выход рыбы». Показывает либо «идёт выход» с остатком минут, либо «когда будет» */
 function renderWaveChip(){
   const el = $("waveChip");
   if (!el) return;
@@ -5126,17 +5126,17 @@ function renderWaveChip(){
   el.classList.add("on");
   el.classList.toggle("hot", on);
   if (on){
-    el.innerHTML = ICONS.buoy + '<b>буй клёва</b><i>' + waveMinsLeft() + ' мин</i>';
+    el.innerHTML = ICONS.buoy + '<b>выход рыбы</b><i>' + waveMinsLeft() + ' мин</i>';
     el.title = "Час активности: поклёвки почти вдвое быстрее, рыба крупнее. Не уходи с воды.";
   } else {
-    el.innerHTML = ICONS.buoy + '<b>буй</b><i>через ' + fmtMins(waveIn(save.loc)) + '</i>';
-    el.title = "Буй клёва у этого водоёма начнётся через " + fmtMins(waveIn(save.loc)) +
+    el.innerHTML = ICONS.buoy + '<b>выход</b><i>через ' + fmtMins(waveIn(save.loc)) + '</i>';
+    el.title = "Выход рыбы у этого водоёма начнётся через " + fmtMins(waveIn(save.loc)) +
       ". Прогноз всех водоёмов — на «Базе».";
   }
   el.onclick = () => {
     const f = biteForecast(save.loc);
     toast("Прогноз: " + f.def.name,
-      (on ? "Буй идёт ещё " + waveMinsLeft() + " мин. " : "Буй через " + fmtMins(waveIn(save.loc)) + ". ") +
+      (on ? "Выход рыбы идёт ещё " + waveMinsLeft() + " мин. " : "Следующий выход через " + fmtMins(waveIn(save.loc)) + ". ") +
       (f.why.length ? "Сейчас: " + f.why.join(", ") + "." : ""), 2600);
     sfx.tap();
   };
@@ -5235,12 +5235,12 @@ function renderLocMap(){
     const sea = L.seaReq && !rodDef().sea;
     const act = save.loc === k;
     const on = windowOn(k);
-    const wv = waveOn(k);                    // 8.5: у водоёма идёт буй клёва
+    const wv = waveOn(k);                    // 8.5: у водоёма идёт выход рыбы
     return '<button class="mapDot'+(act?" on":"")+(locked?" locked":"")+(sea?" sea":"")+(on?" win":"")+(wv?" wave":"")+
       '" data-map="'+k+'" style="left:'+(P.x*100)+'%;top:'+(P.y*100)+'%">' +
       '<span class="md-ico">'+(LOC_ICON[k]||"~")+'</span>' +
       '<span class="md-name">'+L.short+'</span>' +
-      (locked ? '<span class="md-lvl">'+L.unlock+'</span>' : wv ? '<span class="md-wave">буй</span>' : on ? '<span class="md-win">сейчас</span>' : '') +
+      (locked ? '<span class="md-lvl">'+L.unlock+'</span>' : wv ? '<span class="md-wave">выход</span>' : on ? '<span class="md-win">сейчас</span>' : '') +
       '</button>';
   }).join("");
   box.innerHTML =
@@ -5311,28 +5311,28 @@ function renderForecast(){
   }).join("");
   box.innerHTML =
     '<div class="fc-head"><b>' + ICONS.bolt + ' Прогноз клёва</b><span>' +
-      (on ? "буй клёва · " + waveMinsLeft() + " мин" : "буй через " + fmtMins(waveIn(save.loc))) + '</span></div>' +
+      (on ? "выход рыбы · " + waveMinsLeft() + " мин" : "выход через " + fmtMins(waveIn(save.loc))) + '</span></div>' +
     '<div class="fc-card">' +
       '<div class="fc-now">' +
         '<div class="dot" style="color:' + col + ';background:' + col + '1f;border-color:' + col + '55">' +
           pct + '<small style="font-size:8px">%</small></div>' +
         '<div class="ttl"><b style="color:' + col + '">' + f.def.name + '</b>' +
           '<small>' + locDef().name + ' · ' + (DAYTIME[dayTimeNow()] || DAYTIME.day).name +
-          (on ? ' · буй' : '') + '</small></div>' +
+          (on ? ' · выход' : '') + '</small></div>' +
       '</div>' + bar +
       (why ? '<div class="fc-why">' + why + '</div>' : "") +
       '<div class="fc-hours">' + hours.map(h =>
         '<div class="fc-h' + (h.on ? " wave" : "") + (h.h === nowH ? " now" : "") + '">' +
-          '<b>' + String(h.h).padStart(2,"0") + ':00</b><small>' + (h.on ? "буй" : "—") + '</small></div>').join("") +
+          '<b>' + String(h.h).padStart(2,"0") + ':00</b><small>' + (h.on ? "выход" : "—") + '</small></div>').join("") +
       '</div>' +
       '<div class="fc-note">' + (on
-        ? "Буй идёт: поклёвки почти вдвое быстрее, рыба крупнее. Самое время бросать."
-        : "Буй — час активности водоёма. В прогнозе часы, когда он загорится: приходи к этому времени.") +
+        ? "Выход рыбы идёт: поклёвки почти вдвое быстрее, рыба крупнее. Самое время бросать."
+        : "Выход рыбы — час активности водоёма. В прогнозе часы, когда он начнётся: приходи к этому времени.") +
       '</div>' +
     '</div>';
   box.querySelectorAll(".fc-h.wave").forEach(el => el.addEventListener("click", () => {
     sfx.tap();
-    toast("Буй", "В этот час у водоёма «час активности»: клёв ×" + Math.round(1/BITE_WAVE.klyov*10)/10 +
+    toast("Выход рыбы", "В этот час у водоёма «час активности»: клёв ×" + Math.round(1/BITE_WAVE.klyov*10)/10 +
       " быстрее, рыба +" + Math.round((BITE_WAVE.size-1)*100) + "% к весу.", 2400);
   }));
 }
@@ -6253,7 +6253,7 @@ function renderHelp(){
     ["8","<b>У каждого водоёма свой характер.</b> Течение тянет поплавок, в коряжнике снасть садится на зацеп, а в «своё» время суток клёв и рыба заметно лучше — всё написано в карточке водоёма."],
     ["9","<b>Прикормка</b> — кнопка у шкалы силы: за монеты клёв +35% и рыба крупнее на полторы минуты. Работает в том водоёме, где сыпал."],
     ["10","<b>Дуэль «стенка на стенку»</b>: в Топи, Горном озере и Лагуне вызывай соперника на 12 забросов. Побеждаешь по весу — жемчуг."],
-    ["11","<b>Буй клёва</b> — час активности водоёма: поклёвки почти вдвое быстрее, рыба крупнее. Смотри прогноз на «Базе» и чип в HUD, чтобы не пропустить. Во время буя у поплавка всплывает <b>сигнальный шар</b> — тапни по нему и забери монеты."],
+    ["11","<b>Выход рыбы</b> — час активности водоёма: поклёвки почти вдвое быстрее, рыба крупнее. Смотри прогноз на «Базе» и чип в HUD, чтобы не пропустить. Во время буя у поплавка всплывает <b>сигнальный шар</b> — тапни по нему и забери монеты."],
     ["12","<b>Любимые места.</b> У каждого вида есть своя точка: бросай туда — он берёт чаще. Любимую точку видно в карточке вида в дневнике."],
     ["13","<b>Вода — как в жизни (8.6).</b> У каждой точки есть глубина в метрах, грунт (ил, песок, камни), трава и течение. Каждый вид держится в своих условиях: карась — у камыша на иле, судак — на песчаной бровке, форель — на камнях в холодной воде. Морская рыба в пресном озере не клюнет вовсе."],
     ["14","<b>Эхолот</b> на «Базе» в карточке водоёма показывает карту глубин: изолинии 2/5/10 м и грунт под каждой точкой. Подпись точки на воде тоже говорит глубину, а чип сверху — что под поплавком сейчас."]
