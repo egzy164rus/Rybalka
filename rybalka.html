@@ -10,16 +10,16 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="Тихая заводь">
 <meta name="description" content="Тихая заводь — рыбалка: 105 видов рыбы, 8 водоёмов, дуэли, премиум-снасти. Работает офлайн.">
-<link rel="manifest" href="manifest.webmanifest?v=732">
-<link rel="icon" href="favicon-32.png?v=732" sizes="32x32" type="image/png">
+<link rel="manifest" href="manifest.webmanifest?v=735">
+<link rel="icon" href="favicon-32.png?v=735" sizes="32x32" type="image/png">
 <!-- iOS: иконка «На экран Домой». Safari берёт последний подходящий размер,
      поэтому перечисляем все типовые; ?v= — чтобы не подхватилась старая копия из кэша -->
-<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=732">
-<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=732">
-<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=732">
-<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=732">
-<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=732">
-<link rel="apple-touch-icon" href="icon-180.png?v=732">
+<link rel="apple-touch-icon" sizes="120x120" href="icon-120.png?v=735">
+<link rel="apple-touch-icon" sizes="152x152" href="icon-152.png?v=735">
+<link rel="apple-touch-icon" sizes="167x167" href="icon-167.png?v=735">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png?v=735">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png?v=735">
+<link rel="apple-touch-icon" href="icon-180.png?v=735">
 <title>Тихая заводь — рыбалка</title>
 <style>
 :root{
@@ -2771,16 +2771,30 @@ const DEF = {
   /* 8.7: сезоны и погодная физика */
   firstDay:null, lastWeatherType:null, stormAt:0
 };
+/* 9.1: хранилище с запасным вариантом.
+   В стороннем iframe (ВК, другие площадки) браузер может запретить localStorage —
+   тогда игра должна всё равно запуститься. Пишем в память, играем, ничего не ломаем. */
+const STORE = (() => {
+  let ok = false;
+  try { const k = "__probe"; localStorage.setItem(k, "1"); localStorage.removeItem(k); ok = true; } catch(e){ ok = false; }
+  const mem = new Map();
+  const g = k => { try { return ok ? localStorage.getItem(k) : (mem.has(k) ? mem.get(k) : null); } catch(e){ return mem.has(k) ? mem.get(k) : null; } };
+  const set = (k, v) => { try { if (ok) localStorage.setItem(k, v); else mem.set(k, v); } catch(e){ mem.set(k, v); } };
+  const del = k => { try { if (ok) localStorage.removeItem(k); else mem.delete(k); } catch(e){ mem.delete(k); } };
+  return { get mode(){ return ok ? "local" : "memory"; }, get: g, set, del };
+})();
+if (typeof window !== "undefined") window.__store = () => ({ mode: STORE.mode, key: KEY, bytes: (STORE.get(KEY) || "").length });
+
 let save;
 try {
-  const raw = localStorage.getItem(KEY);
+  const raw = STORE.get(KEY);
   save = raw ? deepMerge(structuredClone(DEF), JSON.parse(raw)) : structuredClone(DEF);
 } catch(e){ save = structuredClone(DEF); }
 
 // миграция со старой версии
-if (!localStorage.getItem(KEY)) {
+if (!STORE.get(KEY)) {
   try {
-    const old = JSON.parse(localStorage.getItem(OLD) || "null");
+    const old = JSON.parse(STORE.get(OLD) || "null");
     if (old && old.total) {
       save.coins = Math.round((old.mass||0)/1000*30) + (old.total||0)*12;
       save.total = old.total||0; save.mass = old.mass||0; save.best = old.best||0;
@@ -2800,7 +2814,7 @@ function deepMerge(base, extra){
 }
 function persist(){
   if (!save.firstDay) save.firstDay = todayKey();     // 8.7: точка отсчёта сезонов
-  try { localStorage.setItem(KEY, JSON.stringify(save)); } catch(e){}
+  STORE.set(KEY, JSON.stringify(save));
   // 9.2: на Яндекс Играх прогресс дублируется в облако — один сейв на всех устройствах
   if (typeof ygCloudSave === "function" && typeof YG !== "undefined" && YG.ready) ygCloudSave();
 }
@@ -2897,7 +2911,7 @@ function ygLoad(){
     sc.onload = () => resolve(window.YaGames || null);
     sc.onerror = () => resolve(null);
     document.head.appendChild(sc);
-    setTimeout(() => resolve(window.YaGames || null), 6000);
+    setTimeout(() => resolve(window.YaGames || null), 2500);
   });
 }
 async function ygInit(){
@@ -3011,6 +3025,95 @@ async function ygBuy(productId){
 }
 
 /* ============================================================================
+   9.3: VK MINI APPS — второй канал (Яндекс Игры временно не принимают новые игры).
+   Внутри ВК грузится VK Bridge, покупки идут через VK-платежи, реклама — через VK Ads.
+   Снаружи ничего не грузится: остаются Яндекс SDK или свой платёжный сервис.
+   ========================================================================== */
+const VK_APP_ID = 54920865;                 // id мини-приложения «Тихая заводь: рыбалка»
+const VK = { on:false, bridge:null, ready:false, user:null, adsLeft:0, busy:false, probed:false, env:"" };
+const VK_PRODUCTS = {
+  pass_week:  { kind:"item",  plan:"week",  title:"Клубная карта · неделя", price:99,   ph:"club_pass" },
+  pass_month: { kind:"item",  plan:"month", title:"Клубная карта · месяц", price:249,  ph:"club_pass" },
+  pass_year:  { kind:"item",  plan:"year",  title:"Клубная карта · год",   price:1790, ph:"club_pass" },
+  pearls_100: { kind:"votes", votes:100,    title:"100 жемчуга", price:99 },
+  pearls_500: { kind:"votes", votes:500,    title:"500 жемчуга", price:399 }
+};
+const vkOn = () => VK.ready;
+let vkCasts = 0, vkAdAt = 0;
+
+/* признаки того, что игра открыта внутри ВК: ?vk_app_id=, реферер vk.com, UA приложений ВК */
+function vkEnv(){
+  const q = location.search + location.hash;
+  if (/(^|[?&#])vk_app_id=/.test(q)) return "vk_app_id";
+  if (/vk\.(com|ru)/i.test(document.referrer)) return "referrer";
+  if (/VKAndroidApp|VKApp|OKApp|VKiosApp/i.test(navigator.userAgent)) return "ua";
+  if (window.__vkForce) return "forced";
+  return "";
+}
+function vkLoad(){
+  return new Promise(resolve => {
+    if (window.vkBridge) return resolve(window.vkBridge);
+    if (!vkEnv()) return resolve(null);
+    VK.probed = true;
+    const sc = document.createElement("script");
+    sc.src = "https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js";
+    sc.onload = () => resolve(window.vkBridge || null);
+    sc.onerror = () => resolve(null);
+    document.head.appendChild(sc);
+    setTimeout(() => resolve(window.vkBridge || null), 2000);   // не задерживаем старт игры
+  });
+}
+async function vkInit(){
+  const bridge = await vkLoad();
+  if (!bridge) return false;
+  try {
+    VK.bridge = bridge;
+    await bridge.send("VKWebAppInit", {});
+    VK.on = true;
+    try { const u = await bridge.send("VKWebAppGetUserInfo"); VK.user = { id:u.id, name:(u.first_name||"") }; } catch(_) {}
+    VK.ready = true;
+    VK.env = vkEnv() || "bridge";
+    syncPayUI();
+    return true;
+  } catch(e){ VK.ready = false; return false; }
+}
+/* покупка: карта — товар (item), жемчуг — голоса (votes) */
+async function vkBuy(productId){
+  const prod = VK_PRODUCTS[productId];
+  if (!prod) return { ok:false, why:"нет такого товара" };
+  if (!VK.ready) return { ok:false, why:"не в ВК" };
+  try {
+    if (prod.kind === "votes"){
+      const r = await VK.bridge.send("VKWebAppShowOrderBox", { type:"votes", item:String(prod.votes) });
+      if (!r || !r.success) throw new Error("отменено");
+      save.pearl = (save.pearl || 0) + prod.votes;
+    } else {
+      const r = await VK.bridge.send("VKWebAppShowOrderBox", { type:"item", item:prod.ph });
+      if (!r || !r.success) throw new Error("отменено");
+      passGrant(prod.plan);
+    }
+    persist(); syncPassBtn(); updateChips();
+    if (typeof renderPaySheet === "function") renderPaySheet();
+    toast("Покупка прошла", prod.title + " — уже у тебя.", 2600);
+    try { sfx.level(); } catch(_) {}
+    return { ok:true };
+  } catch(e){
+    toast("Покупка не прошла", "Платёж отменён. Деньги не списаны.", 2400);
+    return { ok:false, why:String(e && e.message || e) };
+  }
+}
+/* реклама ВК: за награду (reward) и межстраничная (interstitial) */
+function vkAd(kind){
+  if (!VK.ready || VK.busy) return Promise.resolve({ ok:false, why:"нет платформы" });
+  VK.busy = true;
+  const done = (ok, why) => { VK.busy = false; return { ok, why }; };
+  const fmt = kind === "rewarded" ? "reward" : "interstitial";
+  return VK.bridge.send("VKWebAppShowNativeAds", { format: fmt })
+    .then(r => done(!!(r && r.result), r && r.result ? undefined : "рекламы нет"))
+    .catch(e => done(false, String(e && e.error_data && e.error_data.error_reason || e)));
+}
+
+/* ============================================================================
    9.1: ОПЛАТА ПРИВИЛЕГИЙ
    Принцип: игра ничего не «включает» сама. Она просит сервер выдать ссылку на оплату
    и принимает доступ только в виде подписанного ключа, который выдаёт сервер после
@@ -3071,6 +3174,11 @@ async function payStart(planId){
   if (ygOn() && YG.payments){
     const prodId = Object.keys(YG_PRODUCTS).find(k => YG_PRODUCTS[k].plan === plan.id);
     if (prodId) return ygBuy(prodId);
+  }
+  // внутри ВК — покупки ВК (внешние платежи там запрещены правилами платформы)
+  if (vkOn()){
+    const vkId = Object.keys(VK_PRODUCTS).find(k => VK_PRODUCTS[k].plan === plan.id);
+    if (vkId) return vkBuy(vkId);
   }
   if (!payReady()){
     toast("Оплата не подключена", "Платёжный сервис ещё не подключён к этой копии игры. Включим — карта откроется здесь же.", 3400);
@@ -4933,6 +5041,11 @@ function biteWait(){
 function startWaiting(){
   // 9.2: изредка, между забросами — межстраничная реклама (доход платформы и наш)
   if (typeof ygMaybeInterstitial === "function") ygMaybeInterstitial();
+  // 9.3: в ВК — своя межстраничная реклама, не чаще раза в 4 минуты
+  if (vkOn() && !save.noAds){
+    vkCasts++;
+    if (vkCasts === 6 || (vkCasts > 6 && Date.now() - vkAdAt > 240000)){ vkAdAt = Date.now(); vkAd("interstitial"); }
+  }
   // 8.0: коряжник может посадить снасть — зацеп решается до начала ожидания
   if (trySnag()) return;
   // 8.5: во время буя клёва у поплавка может всплыть сигнальный шар
@@ -8611,14 +8724,14 @@ function renderPaySheet(){
     '</button>';
   }).join("");
 
-  const platform = ygOn();
+  const platform = ygOn() || vkOn();
   const foot =
     '<div class="pay-foot">' +
       (platform ? '' :
         '<div class="pay-code"><span>код игрока</span><b id="payCode">' + playerCode() + '</b>' +
           '<button class="pay-copy" id="payCopy" type="button">скопировать</button></div>') +
       '<button class="pay-buy" id="payBuy"' + (ready || platform ? "" : " disabled") + ' type="button">' +
-        (platform ? 'Оплатить через Яндекс' : ready ? 'Оплатить и открыть клуб' : 'Оплата скоро подключится') + '</button>' +
+        (ygOn() ? 'Оплатить через Яндекс' : vkOn() ? 'Оплатить голосами ВК' : ready ? 'Оплатить и открыть клуб' : 'Оплата скоро подключится') + '</button>' +
       (platform ? '<button class="pay-ad" id="payAd" type="button">Посмотреть рекламу — +15 жемчуга</button>' : '') +
       '<button class="pay-check" id="payCheck" type="button"' + (ready || platform ? "" : " disabled") + '>' +
         'Уже оплатил — проверить покупку</button>' +
@@ -8644,14 +8757,14 @@ function renderPaySheet(){
   });
   const buy = $("payBuy");
   if (buy) buy.addEventListener("click", () => {
-    if (!payReady() && !ygOn()){ payStart(planPick); return; }
+    if (!payReady() && !ygOn() && !vkOn()){ payStart(planPick); return; }
     sfx.tap();
     payStart(planPick);
   });
   const adBtn = $("payAd");
   if (adBtn) adBtn.addEventListener("click", async () => {
     sfx.tap();
-    const r = await ygAd("rewarded");
+    const r = ygOn() ? await ygAd("rewarded") : await vkAd("rewarded");
     if (r.ok){
       save.pearl = (save.pearl || 0) + 15;
       persist(); updateChips(); syncPassBtn();
@@ -9760,9 +9873,13 @@ function boot(){
   if (typeof bootPWA === "function") bootPWA();
   // 9.2: Яндекс Игры — реклама, покупки, облачные сохранения (если мы на платформе)
   ygInit().then(ok => {
-    if (!ok) return;
+    if (!ok) return false;
     ygRestorePurchases();
     syncPayUI();
+    return true;
+  }).then(yes => {
+    // 9.3: если Яндекса нет — проверяем, не открыта ли игра внутри ВК
+    if (!yes) vkInit().then(v => { if (v) syncPayUI(); });
   });
 }
 
@@ -9842,12 +9959,20 @@ function syncPayUI(){
   syncPassBtn();
   const b = $("payBuy");
   if (b && ygOn()){ b.disabled = false; b.textContent = "Оплатить через Яндекс"; }
+  if (b && !ygOn() && vkOn()){ b.disabled = false; b.textContent = "Оплатить голосами ВК"; }
   if (typeof renderPaySheet === "function" && $("sheetPay") && $("sheetPay").classList.contains("on")) renderPaySheet();
 }
 /* 9.2: наружу для проверок платформы (в тестах SDK подменяется) */
 window.__yg = () => ({ ready: YG.ready, payments: !!YG.payments, player: !!YG.player,
   lang: YG.lang, device: YG.device, products: Object.keys(YG_PRODUCTS), noAds: !!save.noAds,
   cloud: !!YG.player });
+/* 9.3: наружу для проверок VK (в тестах Bridge подменяется) */
+window.__vk = () => ({ on:VK.on, ready:VK.ready, user:VK.user, busy:VK.busy, appId:VK_APP_ID,
+  env: VK.env || vkEnv(), probed: VK.probed, products:Object.keys(VK_PRODUCTS), adsLeft:VK.adsLeft });
+window.__vkInit = () => vkInit().then(ok => { syncPayUI(); return window.__vk(); });
+window.__vkBuy = (id) => vkBuy(id);
+window.__vkAd = (kind) => vkAd(kind);
+window.__vkReset = () => { VK.ready = false; VK.on = false; VK.user = null; VK.busy = false; VK.env = ""; syncPayUI(); return window.__vk(); };
 /* инициализировать платформу принудительно (тесты и отладка) */
 window.__ygInit = () => ygInit().then(ok => { syncPayUI(); return window.__yg(); });
 window.__ygAd = (kind) => ygAd(kind);
@@ -10003,7 +10128,9 @@ async function pwaOffline(){
   if (!("serviceWorker" in navigator)) return;
   if (location.protocol !== "http:" && location.protocol !== "https:") return;
   try {
-    const reg = await navigator.serviceWorker.register("sw.js", { scope: "./" });
+    // в стороннем iframe (ВК, площадки) регистрация может быть запрещена — это нормально
+    const reg = await navigator.serviceWorker.register("sw.js", { scope: "./" }).catch(() => null);
+    if (!reg) return;
     // когда вышло обновление — сообщаем, но не мешаем игре
     reg.addEventListener("updatefound", () => {
       const w = reg.installing;
@@ -10126,6 +10253,5 @@ window.__orphans = () => {
 };
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a6009ea6ea0708c2',t:'MTc5NTYwOTM1NQ=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a6009ea6ea0708c2',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" data-cf-beacon='{"version":"2024.11.0","token":"1954b47c125f43f8b4338b3c4f804e4f","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
