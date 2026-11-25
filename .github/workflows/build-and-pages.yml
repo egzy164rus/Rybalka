@@ -1,0 +1,65 @@
+name: Build & Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Собрать из исходников 9.0.2
+        run: |
+          set -e
+          GAME=""
+          for f in cloud-src/game.js game.js src/game.js; do
+            if [ -f "$f" ] && grep -q "VK_APP_ID" "$f"; then GAME="$f"; break; fi
+          done
+          if [ -z "$GAME" ]; then echo "::error::не найден game.js с блоком ВК"; exit 1; fi
+          echo "источник: $GAME"
+          cp "$GAME" src/game.js
+          for f in cloud-src/shell.html shell.html; do
+            if [ -f "$f" ]; then cp "$f" src/shell.html; break; fi
+          done
+          sed -i 's/?v=732/?v=735/g' src/shell.html
+          python3 build.py
+          grep -q "VK_APP_ID" rybalka.html
+          grep -q "const STORE" rybalka.html
+      - name: Закоммитить сборку
+        run: |
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git add rybalka.html index.html sw.js manifest.webmanifest
+          git diff --staged --quiet || git commit -m "build: 9.0.2 [skip ci]"
+          git push
+      - name: Подготовить сайт
+        run: |
+          mkdir -p _site
+          cp rybalka.html _site/index.html
+          cp manifest.webmanifest sw.js _site/
+          cp icon-120.png icon-152.png icon-167.png icon-180.png icon-192.png icon-512.png icon-maskable-192.png icon-maskable-512.png favicon-32.png _site/ 2>/dev/null || true
+          touch _site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages
